@@ -2,7 +2,10 @@ package llm
 
 import (
 	"fmt"
+	"strings"
 	"time"
+
+	"github.com/Inkedi9/jarvinx/memory"
 )
 
 type SystemContext struct {
@@ -14,45 +17,68 @@ type SystemContext struct {
 	DiskUsed    uint64
 	DiskTotal   uint64
 	DiskPercent float64
+	History     []memory.Snapshot
 }
 
 func BuildSystemPrompt() string {
 	return `Tu es JARVINx, un agent de monitoring système autonome.
-Tu reçois l'état d'un système et tu retournes UNIQUEMENT un objet JSON valide.
+Tu reçois l'état actuel d'un système ainsi que son historique récent.
+Tu retournes UNIQUEMENT un objet JSON valide.
 Aucun texte avant ou après le JSON. Aucun markdown. Aucun backtick.
 
 Format de réponse obligatoire :
 {
-  "analysis": "description courte de l'état système",
-  "action": "log" | "alert" | "suggest",
-  "reason": "explication de ta décision"
+  "analysis": "description courte de l'état et des tendances observées",
+  "action": "log" | "alert" | "suggest" | "execute",
+  "command": "commande à exécuter (seulement si action=execute)",
+  "reason": "explication de ta décision basée sur les tendances"
 }
 
-Règles :
-- "log"     : tout va bien, on enregistre
-- "alert"   : quelque chose dépasse un seuil critique (CPU >85%, RAM >90%, Disk >90%)
-- "suggest" : situation dégradée mais pas critique, tu proposes une action
+Règles d'action :
+- "log"     : système stable, pas de tendance préoccupante
+- "alert"   : seuil critique dépassé (CPU >85%, RAM >90%, Disk >90%)
+- "suggest" : tendance dégradée sur plusieurs cycles
+- "execute" : diagnostic nécessaire
 
-Commandes autorisées uniquement :
+Commandes autorisées :
 - "docker ps"
-- "docker stats"  
+- "docker stats"
 - "uptime"
 - "df -h"
 - "free -h"
 
-Utilise "execute" avec parcimonie, seulement si c'est vraiment utile.`
+Analyse les TENDANCES, pas seulement l'instant présent.`
 }
 
 func BuildUserPrompt(ctx SystemContext) string {
-	return fmt.Sprintf(`État système observé à %s :
-- CPU    : %.1f%%
-- RAM    : %d MB utilisés / %d MB total (%.1f%%)
-- DISQUE : %d GB utilisés / %d GB total (%.1f%%)
+	var sb strings.Builder
 
-Analyse cet état et retourne ta décision JSON.`,
+	// Historique
+	if len(ctx.History) > 0 {
+		sb.WriteString("Historique des observations récentes :\n")
+		for _, snap := range ctx.History {
+			sb.WriteString(fmt.Sprintf("  %s → CPU: %.1f%% | RAM: %.1f%% | Disk: %.1f%%\n",
+				snap.Timestamp.Format("15:04:05"),
+				snap.CPUPercent,
+				snap.MemPercent,
+				snap.DiskPercent,
+			))
+		}
+		sb.WriteString("\n")
+	}
+
+	// Observation actuelle
+	sb.WriteString(fmt.Sprintf(`Observation actuelle à %s :
+- CPU    : %.1f%%
+- RAM    : %d MB / %d MB (%.1f%%)
+- DISQUE : %d GB / %d GB (%.1f%%)
+
+Analyse les tendances et retourne ta décision JSON.`,
 		ctx.Timestamp.Format("15:04:05"),
 		ctx.CPUPercent,
 		ctx.MemUsed, ctx.MemTotal, ctx.MemPercent,
 		ctx.DiskUsed, ctx.DiskTotal, ctx.DiskPercent,
-	)
+	))
+
+	return sb.String()
 }

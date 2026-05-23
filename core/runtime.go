@@ -14,24 +14,25 @@ import (
 type Runtime struct {
 	cfg    *config.Config
 	logger *memory.Logger
+	state  *memory.State
 	agent  *agents.SystemAgent
 }
 
-// Go gère le temps avec des types explicites. 5 * time.Second est plus lisible et moins dangereux que juste 5
 func NewRuntime(cfg *config.Config) *Runtime {
 	return &Runtime{
 		cfg:    cfg,
 		logger: memory.NewLogger(cfg.LogFile),
+		state:  memory.NewState(cfg.StateFile),
 		agent:  agents.NewSystemAgent(cfg.OllamaURL, cfg.Model),
 	}
 }
 
-// Au lieu de copier la struct en mémoire à chaque appel, tu passes son adresse.
-// en Go, * = pointeur, & = adresse.
 func (r *Runtime) Start() {
 	fmt.Println("[ JARVINX ] Démarrage du runtime...")
 	fmt.Printf("[ JARVINX ] Modèle     : %s\n", r.cfg.Model)
-	fmt.Printf("[ JARVINX ] Intervalle : %v\n\n", r.cfg.Interval)
+	fmt.Printf("[ JARVINX ] Intervalle : %v\n", r.cfg.Interval)
+	fmt.Printf("[ JARVINX ] Historique : %d snapshots en mémoire\n\n",
+		len(r.state.History))
 
 	for {
 		// 1. OBSERVE
@@ -43,9 +44,8 @@ func (r *Runtime) Start() {
 		}
 		state.Display()
 
-		// 2. THINK
-		fmt.Println("[ AGENT ] Analyse en cours...")
-		ctx := llm.SystemContext{
+		// 2. Construire le snapshot
+		snap := memory.Snapshot{
 			Timestamp:   state.Timestamp,
 			CPUPercent:  state.CPUPercent,
 			MemUsed:     state.MemUsed,
@@ -56,22 +56,46 @@ func (r *Runtime) Start() {
 			DiskPercent: state.DiskPercent,
 		}
 
+		// 3. THINK — avec historique
+		fmt.Println("[ AGENT ] Analyse en cours...")
+		ctx := llm.SystemContext{
+			Timestamp:   state.Timestamp,
+			CPUPercent:  state.CPUPercent,
+			MemUsed:     state.MemUsed,
+			MemTotal:    state.MemTotal,
+			MemPercent:  state.MemPercent,
+			DiskUsed:    state.DiskUsed,
+			DiskTotal:   state.DiskTotal,
+			DiskPercent: state.DiskPercent,
+			History:     r.state.Last(5),
+		}
+
 		decision, err := r.agent.Decide(ctx)
 		if err != nil {
 			fmt.Printf("[ ERREUR ] Agent : %v\n", err)
+			// On sauvegarde quand même le snapshot
+			r.state.Add(snap)
+			r.state.Save()
 			time.Sleep(r.cfg.Interval)
 			continue
 		}
 		decision.Display()
 
-		// 3. ACT
-		if decision.Action == "execute" && decision.Command != "" {
-			fmt.Printf("[ EXEC ] Exécution de : '%s'\n", decision.Command)
+		// 4. ACT
+		if decision.Command != "" {
+			fmt.Printf("[ EXEC ] Exécution : '%s'\n", decision.Command)
 			result := tools.ExecuteCommand(decision.Command)
 			result.Display()
 		}
 
-		// 4. LOG
+		// 5. MÉMORISER + LOG
+		r.state.Add(snap)
+		if err := r.state.Save(); err != nil {
+			fmt.Printf("[ ERREUR ] State : %v\n", err)
+		} else {
+			fmt.Printf("[ STATE ] %d snapshots en mémoire\n", len(r.state.History))
+		}
+
 		entry := memory.LogEntry{
 			Timestamp:   state.Timestamp,
 			CPUPercent:  state.CPUPercent,

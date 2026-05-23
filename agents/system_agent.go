@@ -52,7 +52,13 @@ func (a *SystemAgent) Decide(ctx llm.SystemContext) (Decision, error) {
 func (d Decision) Display() {
 	fmt.Printf("[ AGENT ] Action   : %s\n", d.Action)
 	fmt.Printf("[ AGENT ] Analyse  : %s\n", d.Analysis)
-	fmt.Printf("[ AGENT ] Raison   : %s\n", d.Reason)
+
+	reason := d.Reason
+	if reason == "" {
+		reason = "—"
+	}
+	fmt.Printf("[ AGENT ] Raison   : %s\n", reason)
+
 	if d.Command != "" {
 		fmt.Printf("[ AGENT ] Commande : %s\n", d.Command)
 	}

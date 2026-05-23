@@ -1,0 +1,104 @@
+{
+  "history": [
+    {
+      "timestamp": "2026-05-23T23:00:35.9832422+02:00",
+      "cpu_percent": 8.093994778067886,
+      "mem_used_mb": 13971,
+      "mem_total_mb": 24493,
+      "mem_percent": 57,
+      "disk_used_gb": 191,
+      "disk_total_gb": 237,
+      "disk_percent": 80.88282193229975
+    },
+    {
+      "timestamp": "2026-05-23T23:01:35.0684976+02:00",
+      "cpu_percent": 13.541666666666666,
+      "mem_used_mb": 13986,
+      "mem_total_mb": 24493,
+      "mem_percent": 57,
+      "disk_used_gb": 191,
+      "disk_total_gb": 237,
+      "disk_percent": 80.88001899951274
+    },
+    {
+      "timestamp": "2026-05-23T23:05:29.6928287+02:00",
+      "cpu_percent": 14.322916666666666,
+      "mem_used_mb": 13935,
+      "mem_total_mb": 24493,
+      "mem_percent": 56,
+      "disk_used_gb": 191,
+      "disk_total_gb": 237,
+      "disk_percent": 80.88752616639813
+    },
+    {
+      "timestamp": "2026-05-23T23:06:00.3389271+02:00",
+      "cpu_percent": 7.368421052631578,
+      "mem_used_mb": 14021,
+      "mem_total_mb": 24493,
+      "mem_percent": 57,
+      "disk_used_gb": 191,
+      "disk_total_gb": 237,
+      "disk_percent": 80.88755509575029
+    },
+    {
+      "timestamp": "2026-05-23T23:06:24.6336919+02:00",
+      "cpu_percent": 9.895833333333332,
+      "mem_used_mb": 14025,
+      "mem_total_mb": 24493,
+      "mem_percent": 57,
+      "disk_used_gb": 191,
+      "disk_total_gb": 237,
+      "disk_percent": 80.88760652570969
+    },
+    {
+      "timestamp": "2026-05-23T23:06:48.934561+02:00",
+      "cpu_percent": 15.66579634464752,
+      "mem_used_mb": 14128,
+      "mem_total_mb": 24493,
+      "mem_percent": 57,
+      "disk_used_gb": 191,
+      "disk_total_gb": 237,
+      "disk_percent": 80.88780742398856
+    },
+    {
+      "timestamp": "2026-05-23T23:07:18.3459227+02:00",
+      "cpu_percent": 1.2987012987012987,
+      "mem_used_mb": 14125,
+      "mem_total_mb": 24493,
+      "mem_percent": 57,
+      "disk_used_gb": 191,
+      "disk_total_gb": 237,
+      "disk_percent": 80.88785885394798
+    },
+    {
+      "timestamp": "2026-05-23T23:07:44.0119449+02:00",
+      "cpu_percent": 10.129870129870131,
+      "mem_used_mb": 14109,
+      "mem_total_mb": 24493,
+      "mem_percent": 57,
+      "disk_used_gb": 191,
+      "disk_total_gb": 237,
+      "disk_percent": 80.88782028147841
+    },
+    {
+      "timestamp": "2026-05-23T23:08:12.5124597+02:00",
+      "cpu_percent": 9.114583333333332,
+      "mem_used_mb": 14083,
+      "mem_total_mb": 24493,
+      "mem_percent": 57,
+      "disk_used_gb": 191,
+      "disk_total_gb": 237,
+      "disk_percent": 80.88779456649871
+    },
+    {
+      "timestamp": "2026-05-23T23:08:37.8470051+02:00",
+      "cpu_percent": 9.895833333333332,
+      "mem_used_mb": 13804,
+      "mem_total_mb": 24493,
+      "mem_percent": 56,
+      "disk_used_gb": 191,
+      "disk_total_gb": 237,
+      "disk_percent": 80.88784117489942
+    }
+  ]
+}
