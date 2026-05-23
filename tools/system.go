@@ -2,6 +2,7 @@ package tools
 
 import (
 	"fmt"
+	"runtime"
 	"time"
 
 	"github.com/shirou/gopsutil/v3/cpu"
@@ -20,6 +21,13 @@ type SystemState struct {
 	DiskPercent float64
 }
 
+func rootPath() string {
+	if runtime.GOOS == "windows" {
+		return "C:\\"
+	}
+	return "/"
+}
+
 func Observe() (SystemState, error) {
 	// CPU — on attend 1 seconde pour avoir une mesure réelle
 	cpuPercent, err := cpu.Percent(1*time.Second, false)
@@ -34,8 +42,7 @@ func Observe() (SystemState, error) {
 	}
 
 	// Disque (racine du système)
-	diskPath := "C:\\"
-	diskStats, err := disk.Usage(diskPath)
+	diskStats, err := disk.Usage(rootPath())
 	if err != nil {
 		return SystemState{}, fmt.Errorf("disk: %w", err)
 	}
@@ -53,10 +60,11 @@ func Observe() (SystemState, error) {
 }
 
 func (s SystemState) Display() {
+	diskLabel := rootPath()
 	fmt.Printf("\n┌─[ JARVINX OBSERVE ]──────────────────────────┐\n")
 	fmt.Printf("│ %s\n", s.Timestamp.Format("15:04:05"))
 	fmt.Printf("│ CPU   : %.1f%%\n", s.CPUPercent)
 	fmt.Printf("│ RAM   : %d MB / %d MB (%.1f%%)\n", s.MemUsed, s.MemTotal, s.MemPercent)
-	fmt.Printf("│ DISK  : %d GB / %d GB (%.1f%%)\n", s.DiskUsed, s.DiskTotal, s.DiskPercent)
+	fmt.Printf("│ DISK  : %d GB / %d GB (%.1f%%) [%s]\n", s.DiskUsed, s.DiskTotal, s.DiskPercent, diskLabel)
 	fmt.Printf("└──────────────────────────────────────────────┘\n")
 }
