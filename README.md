@@ -423,17 +423,39 @@ JARVINx envoie des embeds Discord structurés quand un seuil est dépassé.
 - [ ] **Rapport quotidien** — résumé automatique envoyé à heure fixe
 - [ ] **Prompt adaptatif** — le system prompt évolue selon l'historique des décisions
 
-### Vision v2.0 — Homelab AI Brain
+### Vision v2.0 — Universal Agent Platform
 
-> JARVINx devient le **control plane intelligent** de ton homelab.
+> Au-delà du homelab. JARVINx devient une plateforme
+> d'orchestration agentique généraliste.
 
-- **Proxmox integration** — surveillance des VMs, snapshots automatiques sur anomalie
-- **Self-healing** — restart automatique de services tombés (avec confirmation Discord)
-- **Predictive alerts** — détection de tendances avant que les seuils soient atteints
-- **Agent registry** — ajout/suppression d'agents à chaud sans redémarrage
-- **Web UI avancée** — configuration des seuils et agents depuis le dashboard
-- **API publique** — JARVINx exposable comme service sur ton réseau local
-- **Plugin system** — agents tiers installables comme des packages Go
+**Infrastructure**
+
+- Proxmox, VMware, Kubernetes — surveillance et self-healing
+- Réseau local — scan, anomalies, intrusions
+- NAS, stockage — optimisation automatique
+
+**Productivity**
+
+- Agent email — triage, résumés, réponses suggérées
+- Agent calendrier — optimisation de planning
+- Agent fichiers — organisation, déduplication, archivage
+
+**Development**
+
+- Agent CI/CD — analyse des pipelines, détection de régressions
+- Agent code review — suggestions automatiques
+- Agent logs — parsing intelligent, détection d'erreurs
+
+**Data & Research**
+
+- Agent web research — veille automatique sur des topics
+- Agent RSS/news — résumés quotidiens personnalisés
+- Agent knowledge base — construction d'une base de connaissance locale
+
+**Le fil conducteur :**
+Chaque agent suit le même pattern.
+Chaque agent parle le même langage (interface Agent).
+Tout tourne local. Tout reste privé.
 
 ---
 
