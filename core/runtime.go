@@ -23,13 +23,24 @@ func NewRuntime(cfg *config.Config) *Runtime {
 	state := memory.NewState(cfg.StateFile)
 	logger := memory.NewLogger(cfg.LogFile)
 	agent := agents.NewSystemAgent(cfg.OllamaURL, cfg.Model)
+
+	alertAgent := agents.NewAlertAgent(
+		cfg.CPUAlertThreshold,
+		cfg.RAMAlertThreshold,
+		cfg.DiskAlertThreshold,
+		cfg.AlertMinCycles,
+		cfg.AlertCooldown,
+		cfg.AlertFile,
+		cfg.DiscordWebhook,
+	)
+
 	scheduler := NewScheduler(cfg.Interval, bus)
 
 	return &Runtime{
 		cfg:          cfg,
 		bus:          bus,
 		scheduler:    scheduler,
-		orchestrator: NewOrchestrator(bus, agent, state, logger),
+		orchestrator: NewOrchestrator(bus, agent, alertAgent, state, logger),
 		cli:          NewCLI(state, scheduler),
 		webServer:    web.NewServer(cfg, state, cfg.WebPort),
 	}
@@ -37,10 +48,15 @@ func NewRuntime(cfg *config.Config) *Runtime {
 
 func (r *Runtime) Start() {
 	fmt.Println("╔══════════════════════════════════════════════╗")
-	fmt.Println("║           JARVINX — RUNTIME v0.4            ║")
+	fmt.Println("║           JARVINX — RUNTIME v0.5            ║")
 	fmt.Println("╚══════════════════════════════════════════════╝")
 	fmt.Printf("  Modèle     : %s\n", r.cfg.Model)
 	fmt.Printf("  Intervalle : %v\n", r.cfg.Interval)
+	fmt.Printf("  Seuils     : CPU %.0f%% · RAM %.0f%% · Disk %.0f%%\n",
+		r.cfg.CPUAlertThreshold,
+		r.cfg.RAMAlertThreshold,
+		r.cfg.DiskAlertThreshold,
+	)
 	fmt.Println()
 
 	go r.orchestrator.Start()

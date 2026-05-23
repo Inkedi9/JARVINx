@@ -1,0 +1,4 @@
+.env
+state.json
+logs.jsonl
+alerts.jsonl

@@ -21,6 +21,12 @@ type Config struct {
 
 	// Ports
 	WebPort int
+
+	// Alerts
+	AlertFile      string
+	AlertCooldown  int
+	AlertMinCycles int
+	DiscordWebhook string
 }
 
 func Default() *Config {
@@ -30,9 +36,13 @@ func Default() *Config {
 		Model:              "llama3.1:8b",
 		LogFile:            "logs.jsonl",
 		StateFile:          "state.json",
+		AlertFile:          "alerts.jsonl",
 		WebPort:            8080,
 		CPUAlertThreshold:  85.0,
 		RAMAlertThreshold:  90.0,
-		DiskAlertThreshold: 90.0,
+		DiskAlertThreshold: 85.0,
+		AlertCooldown:      5,
+		AlertMinCycles:     2,
+		DiscordWebhook:     "",
 	}
 }
