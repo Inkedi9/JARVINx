@@ -18,6 +18,9 @@ type Config struct {
 	CPUAlertThreshold  float64
 	RAMAlertThreshold  float64
 	DiskAlertThreshold float64
+
+	// Ports
+	WebPort int
 }
 
 func Default() *Config {
@@ -27,6 +30,7 @@ func Default() *Config {
 		Model:              "llama3.1:8b",
 		LogFile:            "logs.jsonl",
 		StateFile:          "state.json",
+		WebPort:            8080,
 		CPUAlertThreshold:  85.0,
 		RAMAlertThreshold:  90.0,
 		DiskAlertThreshold: 90.0,

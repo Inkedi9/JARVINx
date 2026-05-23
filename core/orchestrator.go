@@ -109,6 +109,22 @@ func (o *Orchestrator) handleObserved(snap memory.Snapshot) {
 	}
 	decision.Display()
 
+	// Enregistrer le cycle complet
+	record := memory.CycleRecord{
+		Snapshot:  snap,
+		Action:    decision.Action,
+		Analysis:  decision.Analysis,
+		Reason:    decision.Reason,
+		Command:   decision.Command,
+		Timestamp: snap.Timestamp,
+	}
+	o.state.AddCycle(record)
+	o.state.Add(snap)
+	if err := o.state.Save(); err != nil {
+		fmt.Printf("[ ERREUR ] State save : %v\n", err)
+	}
+	fmt.Printf("[ STATE ] Cycle #%d enregistré\n", o.state.CycleNum)
+
 	o.bus.Publish(Event{
 		Type:    EventDecided,
 		Payload: decision,

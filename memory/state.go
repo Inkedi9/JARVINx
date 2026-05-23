@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-const maxHistory = 10
+const maxHistory = 20
 
 type Snapshot struct {
 	Timestamp   time.Time `json:"timestamp"`
@@ -20,9 +20,21 @@ type Snapshot struct {
 	DiskPercent float64   `json:"disk_percent"`
 }
 
+type CycleRecord struct {
+	Snapshot  Snapshot  `json:"snapshot"`
+	Action    string    `json:"action"`
+	Analysis  string    `json:"analysis"`
+	Reason    string    `json:"reason"`
+	Command   string    `json:"command,omitempty"`
+	CycleNum  int       `json:"cycle_num"`
+	Timestamp time.Time `json:"timestamp"`
+}
+
 type State struct {
 	filepath string
-	History  []Snapshot `json:"history"`
+	History  []Snapshot    `json:"history"`
+	Cycles   []CycleRecord `json:"cycles"`
+	CycleNum int           `json:"cycle_num"`
 }
 
 func NewState(filepath string) *State {
@@ -33,10 +45,17 @@ func NewState(filepath string) *State {
 
 func (s *State) Add(snap Snapshot) {
 	s.History = append(s.History, snap)
-
-	// On garde seulement les N derniers snapshots
 	if len(s.History) > maxHistory {
 		s.History = s.History[len(s.History)-maxHistory:]
+	}
+}
+
+func (s *State) AddCycle(record CycleRecord) {
+	s.CycleNum++
+	record.CycleNum = s.CycleNum
+	s.Cycles = append(s.Cycles, record)
+	if len(s.Cycles) > maxHistory {
+		s.Cycles = s.Cycles[len(s.Cycles)-maxHistory:]
 	}
 }
 
@@ -47,28 +66,32 @@ func (s *State) Last(n int) []Snapshot {
 	return s.History[len(s.History)-n:]
 }
 
+func (s *State) LastCycles(n int) []CycleRecord {
+	if n > len(s.Cycles) {
+		n = len(s.Cycles)
+	}
+	return s.Cycles[len(s.Cycles)-n:]
+}
+
 func (s *State) Save() error {
 	data, err := json.MarshalIndent(s, "", "  ")
 	if err != nil {
 		return fmt.Errorf("marshal state: %w", err)
 	}
-
 	if err := os.WriteFile(s.filepath, data, 0644); err != nil {
 		return fmt.Errorf("write state: %w", err)
 	}
-
 	return nil
 }
 
 func (s *State) load() {
 	data, err := os.ReadFile(s.filepath)
 	if err != nil {
-		// Fichier inexistant au premier démarrage — c'est normal
 		return
 	}
-
 	if err := json.Unmarshal(data, s); err != nil {
-		fmt.Printf("[ STATE ] Attention : state.json corrompu, reset\n")
+		fmt.Printf("[ STATE ] state.json corrompu, reset\n")
 		s.History = nil
+		s.Cycles = nil
 	}
 }

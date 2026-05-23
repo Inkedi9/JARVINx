@@ -2,6 +2,7 @@ package core
 
 import (
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/Inkedi9/jarvinx/memory"
@@ -11,6 +12,7 @@ import (
 type Scheduler struct {
 	interval time.Duration
 	bus      *Bus
+	mu       sync.RWMutex
 }
 
 func NewScheduler(interval time.Duration, bus *Bus) *Scheduler {
@@ -20,13 +22,25 @@ func NewScheduler(interval time.Duration, bus *Bus) *Scheduler {
 	}
 }
 
+func (s *Scheduler) SetInterval(d time.Duration) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.interval = d
+	fmt.Printf("[ SCHEDULER ] Intervalle → %v\n", d)
+}
+
+func (s *Scheduler) getInterval() time.Duration {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.interval
+}
+
 func (s *Scheduler) Start() {
-	fmt.Printf("[ SCHEDULER ] Démarrage — tick toutes les %v\n", s.interval)
+	fmt.Printf("[ SCHEDULER ] Démarrage — tick toutes les %v\n", s.getInterval())
 
-	ticker := time.NewTicker(s.interval)
-	defer ticker.Stop()
+	for {
+		time.Sleep(s.getInterval())
 
-	for range ticker.C {
 		state, err := tools.Observe()
 		if err != nil {
 			s.bus.Publish(Event{

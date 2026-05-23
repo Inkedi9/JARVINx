@@ -1,76 +1,6 @@
 {
   "history": [
     {
-      "timestamp": "2026-05-23T23:07:18.3459227+02:00",
-      "cpu_percent": 1.2987012987012987,
-      "mem_used_mb": 14125,
-      "mem_total_mb": 24493,
-      "mem_percent": 57,
-      "disk_used_gb": 191,
-      "disk_total_gb": 237,
-      "disk_percent": 80.88785885394798
-    },
-    {
-      "timestamp": "2026-05-23T23:07:44.0119449+02:00",
-      "cpu_percent": 10.129870129870131,
-      "mem_used_mb": 14109,
-      "mem_total_mb": 24493,
-      "mem_percent": 57,
-      "disk_used_gb": 191,
-      "disk_total_gb": 237,
-      "disk_percent": 80.88782028147841
-    },
-    {
-      "timestamp": "2026-05-23T23:08:12.5124597+02:00",
-      "cpu_percent": 9.114583333333332,
-      "mem_used_mb": 14083,
-      "mem_total_mb": 24493,
-      "mem_percent": 57,
-      "disk_used_gb": 191,
-      "disk_total_gb": 237,
-      "disk_percent": 80.88779456649871
-    },
-    {
-      "timestamp": "2026-05-23T23:08:37.8470051+02:00",
-      "cpu_percent": 9.895833333333332,
-      "mem_used_mb": 13804,
-      "mem_total_mb": 24493,
-      "mem_percent": 56,
-      "disk_used_gb": 191,
-      "disk_total_gb": 237,
-      "disk_percent": 80.88784117489942
-    },
-    {
-      "timestamp": "2026-05-23T23:20:29.974681+02:00",
-      "cpu_percent": 8.333333333333332,
-      "mem_used_mb": 11225,
-      "mem_total_mb": 24493,
-      "mem_percent": 45,
-      "disk_used_gb": 191,
-      "disk_total_gb": 237,
-      "disk_percent": 80.8919298566713
-    },
-    {
-      "timestamp": "2026-05-23T23:20:45.0399463+02:00",
-      "cpu_percent": 83.83084577114428,
-      "mem_used_mb": 14067,
-      "mem_total_mb": 24493,
-      "mem_percent": 57,
-      "disk_used_gb": 191,
-      "disk_total_gb": 237,
-      "disk_percent": 80.89193146385753
-    },
-    {
-      "timestamp": "2026-05-23T23:25:39.7187512+02:00",
-      "cpu_percent": 4.177545691906006,
-      "mem_used_mb": 14142,
-      "mem_total_mb": 24493,
-      "mem_percent": 57,
-      "disk_used_gb": 192,
-      "disk_total_gb": 237,
-      "disk_percent": 80.89528405433556
-    },
-    {
       "timestamp": "2026-05-23T23:25:54.7186488+02:00",
       "cpu_percent": 9.138381201044385,
       "mem_used_mb": 14162,
@@ -99,6 +29,285 @@
       "disk_used_gb": 192,
       "disk_total_gb": 237,
       "disk_percent": 80.89475207569306
+    },
+    {
+      "timestamp": "2026-05-23T23:35:35.5315304+02:00",
+      "cpu_percent": 17.402597402597404,
+      "mem_used_mb": 11398,
+      "mem_total_mb": 24493,
+      "mem_percent": 46,
+      "disk_used_gb": 192,
+      "disk_total_gb": 237,
+      "disk_percent": 80.9022045982466
+    },
+    {
+      "timestamp": "2026-05-23T23:36:07.5839073+02:00",
+      "cpu_percent": 10.9375,
+      "mem_used_mb": 14131,
+      "mem_total_mb": 24493,
+      "mem_percent": 57,
+      "disk_used_gb": 192,
+      "disk_total_gb": 237,
+      "disk_percent": 80.9022929934893
+    },
+    {
+      "timestamp": "2026-05-23T23:36:23.5848899+02:00",
+      "cpu_percent": 11.71875,
+      "mem_used_mb": 14176,
+      "mem_total_mb": 24493,
+      "mem_percent": 57,
+      "disk_used_gb": 192,
+      "disk_total_gb": 237,
+      "disk_percent": 80.90238138873201
+    },
+    {
+      "timestamp": "2026-05-23T23:36:39.5861496+02:00",
+      "cpu_percent": 20.833333333333336,
+      "mem_used_mb": 14181,
+      "mem_total_mb": 24493,
+      "mem_percent": 57,
+      "disk_used_gb": 192,
+      "disk_total_gb": 237,
+      "disk_percent": 80.90240871089794
+    },
+    {
+      "timestamp": "2026-05-24T00:09:08.7323423+02:00",
+      "cpu_percent": 14.84375,
+      "mem_used_mb": 11516,
+      "mem_total_mb": 24493,
+      "mem_percent": 47,
+      "disk_used_gb": 192,
+      "disk_total_gb": 237,
+      "disk_percent": 80.89861896576505
+    },
+    {
+      "timestamp": "2026-05-24T00:09:08.7323423+02:00",
+      "cpu_percent": 14.84375,
+      "mem_used_mb": 11516,
+      "mem_total_mb": 24493,
+      "mem_percent": 47,
+      "disk_used_gb": 192,
+      "disk_total_gb": 237,
+      "disk_percent": 80.89861896576505
+    },
+    {
+      "timestamp": "2026-05-24T00:09:40.7852888+02:00",
+      "cpu_percent": 14.583333333333334,
+      "mem_used_mb": 14080,
+      "mem_total_mb": 24493,
+      "mem_percent": 57,
+      "disk_used_gb": 192,
+      "disk_total_gb": 237,
+      "disk_percent": 80.8992007671807
+    },
+    {
+      "timestamp": "2026-05-24T00:09:40.7852888+02:00",
+      "cpu_percent": 14.583333333333334,
+      "mem_used_mb": 14080,
+      "mem_total_mb": 24493,
+      "mem_percent": 57,
+      "disk_used_gb": 192,
+      "disk_total_gb": 237,
+      "disk_percent": 80.8992007671807
+    },
+    {
+      "timestamp": "2026-05-24T00:09:56.7867718+02:00",
+      "cpu_percent": 13.802083333333334,
+      "mem_used_mb": 14148,
+      "mem_total_mb": 24493,
+      "mem_percent": 57,
+      "disk_used_gb": 192,
+      "disk_total_gb": 237,
+      "disk_percent": 80.89919755280825
+    },
+    {
+      "timestamp": "2026-05-24T00:09:56.7867718+02:00",
+      "cpu_percent": 13.802083333333334,
+      "mem_used_mb": 14148,
+      "mem_total_mb": 24493,
+      "mem_percent": 57,
+      "disk_used_gb": 192,
+      "disk_total_gb": 237,
+      "disk_percent": 80.89919755280825
+    },
+    {
+      "timestamp": "2026-05-24T00:10:12.7908152+02:00",
+      "cpu_percent": 35.9375,
+      "mem_used_mb": 14170,
+      "mem_total_mb": 24493,
+      "mem_percent": 57,
+      "disk_used_gb": 192,
+      "disk_total_gb": 237,
+      "disk_percent": 80.89983721292822
+    },
+    {
+      "timestamp": "2026-05-24T00:10:12.7908152+02:00",
+      "cpu_percent": 35.9375,
+      "mem_used_mb": 14170,
+      "mem_total_mb": 24493,
+      "mem_percent": 57,
+      "disk_used_gb": 192,
+      "disk_total_gb": 237,
+      "disk_percent": 80.89983721292822
+    },
+    {
+      "timestamp": "2026-05-24T00:10:44.8943876+02:00",
+      "cpu_percent": 44.53125,
+      "mem_used_mb": 14234,
+      "mem_total_mb": 24493,
+      "mem_percent": 58,
+      "disk_used_gb": 192,
+      "disk_total_gb": 237,
+      "disk_percent": 80.90137850452382
+    },
+    {
+      "timestamp": "2026-05-24T00:10:44.8943876+02:00",
+      "cpu_percent": 44.53125,
+      "mem_used_mb": 14234,
+      "mem_total_mb": 24493,
+      "mem_percent": 58,
+      "disk_used_gb": 192,
+      "disk_total_gb": 237,
+      "disk_percent": 80.90137850452382
+    },
+    {
+      "timestamp": "2026-05-24T00:11:00.8949908+02:00",
+      "cpu_percent": 29.166666666666668,
+      "mem_used_mb": 14236,
+      "mem_total_mb": 24493,
+      "mem_percent": 58,
+      "disk_used_gb": 192,
+      "disk_total_gb": 237,
+      "disk_percent": 80.9012322505768
+    },
+    {
+      "timestamp": "2026-05-24T00:11:00.8949908+02:00",
+      "cpu_percent": 29.166666666666668,
+      "mem_used_mb": 14236,
+      "mem_total_mb": 24493,
+      "mem_percent": 58,
+      "disk_used_gb": 192,
+      "disk_total_gb": 237,
+      "disk_percent": 80.9012322505768
+    },
+    {
+      "timestamp": "2026-05-24T00:11:16.9137099+02:00",
+      "cpu_percent": 73.95833333333334,
+      "mem_used_mb": 14269,
+      "mem_total_mb": 24493,
+      "mem_percent": 58,
+      "disk_used_gb": 192,
+      "disk_total_gb": 237,
+      "disk_percent": 80.90122903620433
     }
-  ]
+  ],
+  "cycles": [
+    {
+      "snapshot": {
+        "timestamp": "2026-05-24T00:10:44.8943876+02:00",
+        "cpu_percent": 44.53125,
+        "mem_used_mb": 14234,
+        "mem_total_mb": 24493,
+        "mem_percent": 58,
+        "disk_used_gb": 192,
+        "disk_total_gb": 237,
+        "disk_percent": 80.90137850452382
+      },
+      "action": "suggest",
+      "analysis": "Tendance à la hausse de la consommation CPU, RAM stable",
+      "reason": "La consommation CPU augmente en quelques minutes avec une variation significative entre les deux dernières observations (13.8% et 44.5%), ce qui pourrait indiquer un problème d'utilisation du système ou d'optimisation.",
+      "cycle_num": 5,
+      "timestamp": "2026-05-24T00:10:44.8943876+02:00"
+    },
+    {
+      "snapshot": {
+        "timestamp": "2026-05-24T00:10:12.7908152+02:00",
+        "cpu_percent": 35.9375,
+        "mem_used_mb": 14170,
+        "mem_total_mb": 24493,
+        "mem_percent": 57,
+        "disk_used_gb": 192,
+        "disk_total_gb": 237,
+        "disk_percent": 80.89983721292822
+      },
+      "action": "alert",
+      "analysis": "Le système a connu une augmentation soudaine de la charge CPU, passant en quelques secondes de 14% à 35%. Cela indique potentiellement un processus ou application qui s'exécute intensivement.",
+      "reason": "L'augmentation inattendue de la charge CPU nécessite une vérification immédiate pour éviter tout défaillance du système.",
+      "command": "uptime",
+      "cycle_num": 4,
+      "timestamp": "2026-05-24T00:10:12.7908152+02:00"
+    },
+    {
+      "snapshot": {
+        "timestamp": "2026-05-24T00:09:40.7852888+02:00",
+        "cpu_percent": 14.583333333333334,
+        "mem_used_mb": 14080,
+        "mem_total_mb": 24493,
+        "mem_percent": 57,
+        "disk_used_gb": 192,
+        "disk_total_gb": 237,
+        "disk_percent": 80.8992007671807
+      },
+      "action": "suggest",
+      "analysis": "Tendance stable en termes de CPU, mais RAM à seuil critique depuis quelques observations.",
+      "reason": "La ram atteint le seuil critique plusieurs fois consécutivement. Un diagnostic est recommandé pour identifier la cause.",
+      "command": "free -h",
+      "cycle_num": 2,
+      "timestamp": "2026-05-24T00:09:40.7852888+02:00"
+    },
+    {
+      "snapshot": {
+        "timestamp": "2026-05-24T00:09:08.7323423+02:00",
+        "cpu_percent": 14.84375,
+        "mem_used_mb": 11516,
+        "mem_total_mb": 24493,
+        "mem_percent": 47,
+        "disk_used_gb": 192,
+        "disk_total_gb": 237,
+        "disk_percent": 80.89861896576505
+      },
+      "action": "suggest",
+      "analysis": "Tendances dégradées sur plusieurs cycles pour la RAM, qui est désormais à 11516 MB alors qu'elle était à 46 % il y a environ une heure.",
+      "reason": "La tendance de la RAM indique un potentiel problème de mémoire disponible sur le système, ce qui nécessite que l'utilisateur ou l'administrateur vérifie pourquoi la RAM est en augmentation continue.",
+      "command": "free -h",
+      "cycle_num": 1,
+      "timestamp": "2026-05-24T00:09:08.7323423+02:00"
+    },
+    {
+      "snapshot": {
+        "timestamp": "2026-05-24T00:09:56.7867718+02:00",
+        "cpu_percent": 13.802083333333334,
+        "mem_used_mb": 14148,
+        "mem_total_mb": 24493,
+        "mem_percent": 57,
+        "disk_used_gb": 192,
+        "disk_total_gb": 237,
+        "disk_percent": 80.89919755280825
+      },
+      "action": "suggest",
+      "analysis": "Le système montre une utilisation constante de la RAM, dépassant 50% en moyenne ces dernières minutes.",
+      "reason": "La tendance à la consommation de RAM augmente et pourrait nécessiter une vérification plus approfondie.",
+      "command": "free -h",
+      "cycle_num": 3,
+      "timestamp": "2026-05-24T00:09:56.7867718+02:00"
+    },
+    {
+      "snapshot": {
+        "timestamp": "2026-05-24T00:11:00.8949908+02:00",
+        "cpu_percent": 29.166666666666668,
+        "mem_used_mb": 14236,
+        "mem_total_mb": 24493,
+        "mem_percent": 58,
+        "disk_used_gb": 192,
+        "disk_total_gb": 237,
+        "disk_percent": 80.9012322505768
+      },
+      "action": "suggest",
+      "analysis": "La charge sur le processeur diminue, mais la mémoire est au maximum de capacité. Le disque dur est presque plein.",
+      "reason": "Les tendances observées suggèrent une utilisation intermittente du processeur et une saturation de la mémoire vive. La pleine capacité du disque dur indique qu'il convient peut-être d'effectuer un nettoyage des données.",
+      "cycle_num": 6,
+      "timestamp": "2026-05-24T00:11:00.8949908+02:00"
+    }
+  ],
+  "cycle_num": 6
 }
