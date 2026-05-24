@@ -67,6 +67,11 @@ func NewAlertAgent(
 		alertFile:     alertFile,
 		webhookURL:    webhookURL,
 		httpClient:    &http.Client{Timeout: 10 * time.Second},
+		state: AlertState{
+			LastAlertCPU: -999,
+			LastAlertRAM: -999,
+			LastAlertDsk: -999,
+		},
 	}
 }
 
