@@ -86,8 +86,8 @@ jarvinx/
 ┌─────────────────────────────────────────────────────────┐
 │                    JARVINX RUNTIME                       │
 │                                                          │
-│  Scheduler ──tick──► Bus ──► Orchestrator               │
-│     (15s)          (chan)        │                        │
+│  Scheduler ──tick──► Bus ──► Orchestrator                │
+│     (15s)          (chan)        │                       │
 │                                 ├── AlertAgent           │
 │                                 │   └── Discord Webhook  │
 │                                 │                        │
