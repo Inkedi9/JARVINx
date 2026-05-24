@@ -405,13 +405,13 @@ JARVINx envoie des embeds Discord structurés quand un seuil est dépassé.
 
 ### v1.0 — Stable & Deployable _(objectif court terme)_
 
-- [ ] Makefile — `make run`, `make build`, `make build-linux`
-- [ ] `.env` chargé automatiquement au démarrage
-- [ ] Chemin disque détecté automatiquement selon l'OS
+- [x] Makefile — `make run`, `make build`, `make build-linux`
+- [x] `.env` chargé automatiquement au démarrage
+- [x] Chemin disque détecté automatiquement selon l'OS
 - [ ] Dashboard — fix agent loop animation
 - [ ] Dashboard — graphique CPU/RAM sur les derniers cycles
 - [ ] Tests unitaires sur le parser JSON des décisions
-- [ ] README complet _(ce fichier)_
+- [x] README complet _(ce fichier)_
 
 ### v1.5 — Intelligence & Mémoire
 
