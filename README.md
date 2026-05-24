@@ -22,6 +22,15 @@ _Your system. My mission._
 
 ---
 
+## Documentation
+
+| Document | Description |
+|----------|-------------|
+| [Manuel Utilisateur](docs/USER_GUIDE.md) | Installation, configuration, CLI, dashboard, alertes, dépannage |
+| [Documentation Technique](docs/TECHNICAL.md) | Architecture, écrire un agent, API, tests, build, roadmap technique |
+
+---
+
 ## What is JARVINx?
 
 JARVINx est un **runtime agentique local** écrit en Go. Il observe ton système en continu, envoie l'état à un LLM local via Ollama, reçoit une décision structurée, et agit — le tout en autonomie complète.
