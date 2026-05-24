@@ -2,6 +2,7 @@ package agents
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -39,6 +40,7 @@ type AlertState struct {
 }
 
 type AlertAgent struct {
+	BaseAgent
 	cpuThreshold  float64
 	ramThreshold  float64
 	diskThreshold float64
@@ -56,6 +58,7 @@ func NewAlertAgent(
 	alertFile, webhookURL string,
 ) *AlertAgent {
 	return &AlertAgent{
+		BaseAgent:     NewBaseAgent("alert", 15*time.Second),
 		cpuThreshold:  cpuThreshold,
 		ramThreshold:  ramThreshold,
 		diskThreshold: diskThreshold,
@@ -65,6 +68,19 @@ func NewAlertAgent(
 		webhookURL:    webhookURL,
 		httpClient:    &http.Client{Timeout: 10 * time.Second},
 	}
+}
+
+func (a *AlertAgent) Run(ctx context.Context, actx AgentContext) error {
+	alerts := a.Analyze(actx.Snapshot)
+	a.Dispatch(alerts)
+
+	if len(alerts) > 0 {
+		a.recordError(fmt.Errorf("%d alertes déclenchées", len(alerts)))
+	} else {
+		a.recordSuccess()
+	}
+
+	return nil
 }
 
 func (a *AlertAgent) Analyze(snap memory.Snapshot) []Alert {

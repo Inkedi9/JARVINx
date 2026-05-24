@@ -95,3 +95,14 @@ func (s *State) load() {
 		s.Cycles = nil
 	}
 }
+
+func NewCycleRecord(snap Snapshot, action, analysis, reason, command string) CycleRecord {
+	return CycleRecord{
+		Snapshot:  snap,
+		Action:    action,
+		Analysis:  analysis,
+		Reason:    reason,
+		Command:   command,
+		Timestamp: snap.Timestamp,
+	}
+}

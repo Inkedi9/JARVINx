@@ -1,70 +1,93 @@
 package core
 
 import (
+	"context"
 	"fmt"
 	"sync"
 
 	"github.com/Inkedi9/jarvinx/agents"
-	"github.com/Inkedi9/jarvinx/llm"
 	"github.com/Inkedi9/jarvinx/memory"
 	"github.com/Inkedi9/jarvinx/tools"
 )
 
 type Orchestrator struct {
-	bus        *Bus
-	agent      *agents.SystemAgent
-	alertAgent *agents.AlertAgent
-	state      *memory.State
-	logger     *memory.Logger
-	mu         sync.Mutex
+	bus      *Bus
+	registry *agents.Registry
+	state    *memory.State
+	logger   *memory.Logger
+	mu       sync.Mutex
+	lastSnap memory.Snapshot
+	snapMu   sync.RWMutex
 }
 
 func NewOrchestrator(
 	bus *Bus,
-	agent *agents.SystemAgent,
-	alertAgent *agents.AlertAgent,
+	registry *agents.Registry,
 	state *memory.State,
 	logger *memory.Logger,
 ) *Orchestrator {
 	return &Orchestrator{
-		bus:        bus,
-		agent:      agent,
-		alertAgent: alertAgent,
-		state:      state,
-		logger:     logger,
+		bus:      bus,
+		registry: registry,
+		state:    state,
+		logger:   logger,
 	}
 }
 
-func (o *Orchestrator) Start() {
+func (o *Orchestrator) AgentContext() agents.AgentContext {
+	o.snapMu.RLock()
+	defer o.snapMu.RUnlock()
+	return agents.AgentContext{
+		Snapshot: o.lastSnap,
+		State:    o.state,
+		Logger:   o.logger,
+	}
+}
+
+func (o *Orchestrator) Start(ctx context.Context) {
 	fmt.Println("[ ORCHESTRATOR ] En écoute sur le bus...")
+
+	// Lance le registry avec un context annulable
+	go o.registry.Start(ctx, o.AgentContext)
+
 	events := o.bus.Subscribe()
-	for event := range events {
-		switch event.Type {
-		case EventObserved:
-			snap, ok := event.Payload.(memory.Snapshot)
+	for {
+		select {
+		case <-ctx.Done():
+			fmt.Println("[ ORCHESTRATOR ] Arrêt propre")
+			return
+		case event, ok := <-events:
 			if !ok {
-				continue
+				return
 			}
-			go o.handleObserved(snap)
-		case EventError:
-			msg, _ := event.Payload.(string)
-			fmt.Printf("[ ERREUR ] %s\n", msg)
+			switch event.Type {
+			case EventObserved:
+				snap, ok := event.Payload.(memory.Snapshot)
+				if !ok {
+					continue
+				}
+				go o.handleObserved(snap)
+			case EventError:
+				msg, _ := event.Payload.(string)
+				fmt.Printf("[ ERREUR ] %s\n", msg)
+			}
 		}
 	}
 }
 
 func (o *Orchestrator) handleObserved(snap memory.Snapshot) {
 	if !o.mu.TryLock() {
-		fmt.Println("[ ORCHESTRATOR ] Cycle précédent encore en cours — tick ignoré")
+		fmt.Println("[ ORCHESTRATOR ] Cycle précédent en cours — tick ignoré")
 		return
 	}
 	defer o.mu.Unlock()
 
-	// 1. Alertes — avant le LLM, instantané
-	alerts := o.alertAgent.Analyze(snap)
-	o.alertAgent.Dispatch(alerts)
+	// Met à jour le dernier snapshot pour le registry
+	o.snapMu.Lock()
+	o.lastSnap = snap
+	o.snapMu.Unlock()
 
-	// 2. Log
+	// Log
 	entry := memory.LogEntry{
 		Timestamp:   snap.Timestamp,
 		CPUPercent:  snap.CPUPercent,
@@ -79,53 +102,13 @@ func (o *Orchestrator) handleObserved(snap memory.Snapshot) {
 		fmt.Printf("[ ERREUR ] Log : %v\n", err)
 	}
 
-	// 3. Think
-	fmt.Println("[ AGENT ] Analyse en cours...")
-	ctx := llm.SystemContext{
-		Timestamp:   snap.Timestamp,
-		CPUPercent:  snap.CPUPercent,
-		MemUsed:     snap.MemUsed,
-		MemTotal:    snap.MemTotal,
-		MemPercent:  snap.MemPercent,
-		DiskUsed:    snap.DiskUsed,
-		DiskTotal:   snap.DiskTotal,
-		DiskPercent: snap.DiskPercent,
-		History:     o.state.Last(5),
-	}
-
-	decision, err := o.agent.Decide(ctx)
-	if err != nil {
-		fmt.Printf("[ ERREUR ] Agent : %v\n", err)
-		o.state.Add(snap)
-		o.state.Save()
-		return
-	}
-	decision.Display()
-
-	// 4. Enregistrer le cycle
-	record := memory.CycleRecord{
-		Snapshot:  snap,
-		Action:    decision.Action,
-		Analysis:  decision.Analysis,
-		Reason:    decision.Reason,
-		Command:   decision.Command,
-		Timestamp: snap.Timestamp,
-	}
-	o.state.AddCycle(record)
-	o.state.Add(snap)
-	if err := o.state.Save(); err != nil {
-		fmt.Printf("[ ERREUR ] State : %v\n", err)
-	}
-	fmt.Printf("[ STATE ] Cycle #%d enregistré\n", o.state.CycleNum)
-
-	// 5. Act
-	if decision.Command != "" {
-		fmt.Printf("[ EXEC ] Exécution : '%s'\n", decision.Command)
-		result := tools.ExecuteCommand(decision.Command)
+	// Exécuter commandes si décision execute
+	cycles := o.state.LastCycles(1)
+	if len(cycles) > 0 && cycles[0].Command != "" {
+		result := tools.ExecuteCommand(cycles[0].Command)
 		result.Display()
 		o.bus.Publish(Event{Type: EventExecuted, Payload: result})
 	}
 
-	o.bus.Publish(Event{Type: EventDecided, Payload: decision})
 	fmt.Println()
 }
