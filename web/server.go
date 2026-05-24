@@ -1,8 +1,10 @@
 package web
 
 import (
+	"embed"
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"net/http"
 	"time"
 
@@ -14,6 +16,7 @@ type Server struct {
 	cfg   *config.Config
 	state *memory.State
 	port  int
+	files embed.FS
 }
 
 type StatusResponse struct {
@@ -32,13 +35,19 @@ type HistoryResponse struct {
 
 var startTime = time.Now()
 
-func NewServer(cfg *config.Config, state *memory.State, port int) *Server {
-	return &Server{cfg: cfg, state: state, port: port}
+func NewServer(cfg *config.Config, state *memory.State, port int, files embed.FS) *Server {
+	return &Server{cfg: cfg, state: state, port: port, files: files}
 }
 
 func (s *Server) Start() {
 	mux := http.NewServeMux()
 
+	// Fichiers statiques — CSS, JS
+	staticFS, _ := fs.Sub(s.files, "static")
+	mux.Handle("/static/", http.StripPrefix("/static/",
+		http.FileServer(http.FS(staticFS))))
+
+	// Routes
 	mux.HandleFunc("/", s.handleIndex)
 	mux.HandleFunc("/api/status", s.withCORS(s.handleStatus))
 	mux.HandleFunc("/api/history", s.withCORS(s.handleHistory))
@@ -52,8 +61,13 @@ func (s *Server) Start() {
 }
 
 func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
+	data, err := s.files.ReadFile("static/index.html")
+	if err != nil {
+		http.Error(w, "index.html not found", http.StatusInternalServerError)
+		return
+	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.Write([]byte(indexHTML))
+	w.Write(data)
 }
 
 func (s *Server) handleStatus(w http.ResponseWriter, r *http.Request) {

@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JARVINx</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo">
+    <div class="logo-mark">JX</div>
+    <div>
+      <div class="logo-name">JARVINX</div>
+      <div class="logo-tagline">Autonomous agent runtime</div>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <div class="pill">
+      <div class="pulse"></div>
+      <span id="model-pill">—</span>
+    </div>
+    <div class="pill" id="uptime-pill">—</div>
+    <div class="refresh-dot" id="refresh-dot"></div>
+  </div>
+</div>
+
+<div class="main">
+  <div class="left">
+
+    <div class="card">
+      <div class="card-title">System state</div>
+      <div class="metrics-grid">
+        <div class="metric">
+          <div class="metric-label">CPU</div>
+          <div class="metric-value" id="cpu-val">—</div>
+          <div class="bar-track"><div class="bar-fill" id="cpu-bar" style="width:0%"></div></div>
+          <div class="metric-meta" id="cpu-meta">—</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">RAM</div>
+          <div class="metric-value" id="ram-val">—</div>
+          <div class="bar-track"><div class="bar-fill" id="ram-bar" style="width:0%"></div></div>
+          <div class="metric-meta" id="ram-meta">—</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">Disk</div>
+          <div class="metric-value" id="disk-val">—</div>
+          <div class="bar-track"><div class="bar-fill" id="disk-bar" style="width:0%"></div></div>
+          <div class="metric-meta" id="disk-meta">—</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Agent decision</div>
+      <div id="decision-action" class="decision-action action-log">—</div>
+      <div id="decision-text" class="decision-text">En attente du premier cycle...</div>
+      <div id="decision-reason" class="decision-reason" style="display:none"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Cycle history</div>
+      <div class="history-list" id="history-list">
+        <div style="color:var(--muted);font-family:var(--mono);font-size:11px">Chargement...</div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="right">
+
+    <div class="console-wrap">
+      <div class="console-topbar">
+        <div class="console-btn btn-red"></div>
+        <div class="console-btn btn-yellow"></div>
+        <div class="console-btn btn-green"></div>
+        <div class="console-title">jarvinx — runtime.log</div>
+      </div>
+      <div class="console-body" id="console-log">
+        <div class="log-line">
+          <span class="log-time">--:--:--</span>
+          <span class="log-tag tag-state">[ STATE ]</span>
+          <span class="log-msg">En attente...</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Agent loop</div>
+      <div class="loop-steps" id="loop-steps">
+        <div class="loop-step idle" id="step-observe">
+          <span class="step-icon">○</span>OBSERVE
+        </div>
+        <div class="loop-step idle" id="step-think">
+          <span class="step-icon">○</span>THINK
+        </div>
+        <div class="loop-step idle" id="step-decide">
+          <span class="step-icon">○</span>DECIDE
+        </div>
+        <div class="loop-step idle" id="step-act">
+          <span class="step-icon">○</span>ACT
+        </div>
+        <div class="loop-step idle" id="step-sleep">
+          <span class="step-icon">○</span>SLEEP
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Runtime info</div>
+      <table style="width:100%;font-family:var(--mono);font-size:11px;border-collapse:collapse">
+        <tr>
+          <td style="color:var(--muted);padding:4px 0">Model</td>
+          <td style="color:var(--text);text-align:right" id="info-model">—</td>
+        </tr>
+        <tr>
+          <td style="color:var(--muted);padding:4px 0">Interval</td>
+          <td style="color:var(--text);text-align:right" id="info-interval">—</td>
+        </tr>
+        <tr>
+          <td style="color:var(--muted);padding:4px 0">Cycle</td>
+          <td style="color:var(--accent);text-align:right" id="info-cycle">#0</td>
+        </tr>
+        <tr>
+          <td style="color:var(--muted);padding:4px 0">Uptime</td>
+          <td style="color:var(--text);text-align:right" id="info-uptime">—</td>
+        </tr>
+      </table>
+    </div>
+
+  </div>
+</div>
+
+<div class="footer">
+  <span>JARVINx · Autonomous Agent System</span>
+  <span class="footer-accent">localhost:8080</span>
+  <span id="footer-cycle">cycle #0</span>
+</div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>
