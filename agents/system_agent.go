@@ -1,65 +1,50 @@
 package agents
 
 import (
-	"encoding/json"
+	"context"
 	"fmt"
-	"strings"
+	"time"
 
 	"github.com/Inkedi9/jarvinx/llm"
 )
 
-type Decision struct {
-	Analysis string `json:"analysis"`
-	Action   string `json:"action"`
-	Command  string `json:"command,omitempty"`
-	Reason   string `json:"reason"`
-}
+// Decision est réexportée depuis llm pour garder l'API propre
+type Decision = llm.Decision
 
 type SystemAgent struct {
-	llm *llm.OllamaClient
+	client *llm.OllamaClient
+	retry  llm.RetryConfig
 }
 
 func NewSystemAgent(baseURL, model string) *SystemAgent {
 	return &SystemAgent{
-		llm: llm.NewOllamaClient(baseURL, model),
+		client: llm.NewOllamaClient(baseURL, model),
+		retry:  llm.DefaultRetryConfig(),
 	}
 }
 
 func (a *SystemAgent) Decide(ctx llm.SystemContext) (Decision, error) {
+	// Timeout par cycle — 60s max pour une décision
+	callCtx, cancel := context.WithTimeout(
+		context.Background(),
+		60*time.Second,
+	)
+	defer cancel()
+
 	systemPrompt := llm.BuildSystemPrompt()
 	userPrompt := llm.BuildUserPrompt(ctx)
 
-	raw, err := a.llm.Think(systemPrompt, userPrompt)
+	decision, attempts, err := a.client.ThinkWithDecision(
+		callCtx,
+		systemPrompt,
+		userPrompt,
+		a.retry,
+	)
+
 	if err != nil {
-		return Decision{}, fmt.Errorf("llm think: %w", err)
+		fmt.Printf("[ AGENT ] Décision par fallback après %d tentatives\n", attempts)
 	}
 
-	// Nettoyage défensif — certains LLM ajoutent des backticks malgré les instructions
-	cleaned := strings.TrimSpace(raw)
-	cleaned = strings.TrimPrefix(cleaned, "```json")
-	cleaned = strings.TrimPrefix(cleaned, "```")
-	cleaned = strings.TrimSuffix(cleaned, "```")
-	cleaned = strings.TrimSpace(cleaned)
-
-	var decision Decision
-	if err := json.Unmarshal([]byte(cleaned), &decision); err != nil {
-		return Decision{}, fmt.Errorf("parse decision: %w\nraw response: %s", err, raw)
-	}
-
-	return decision, nil
-}
-
-func (d Decision) Display() {
-	fmt.Printf("[ AGENT ] Action   : %s\n", d.Action)
-	fmt.Printf("[ AGENT ] Analyse  : %s\n", d.Analysis)
-
-	reason := d.Reason
-	if reason == "" {
-		reason = "—"
-	}
-	fmt.Printf("[ AGENT ] Raison   : %s\n", reason)
-
-	if d.Command != "" {
-		fmt.Printf("[ AGENT ] Commande : %s\n", d.Command)
-	}
+	// On retourne toujours quelque chose — jamais de nil
+	return decision, err
 }
