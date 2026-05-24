@@ -14,7 +14,7 @@
 ![Go](https://img.shields.io/badge/Go-1.21+-00ADD8?style=flat-square&logo=go&logoColor=white)
 ![Ollama](https://img.shields.io/badge/Ollama-local%20LLM-black?style=flat-square)
 ![License](https://img.shields.io/badge/license-MIT-blue?style=flat-square)
-![Status](https://img.shields.io/badge/status-v0.5%20active-00E5FF?style=flat-square)
+![Status](https://img.shields.io/badge/status-v0.6%20stable-00E5FF?style=flat-square)
 
 _Your system. My mission._
 
@@ -50,22 +50,28 @@ jarvinx/
 │   └── main.go              # Point d'entrée — config + lancement
 │
 ├── core/
-│   ├── runtime.go           # Assemblage des composants
+│   ├── runtime.go           # Assemblage + shutdown propre (SIGINT/SIGTERM)
 │   ├── bus.go               # Bus d'événements (channels Go)
 │   ├── scheduler.go         # Ticker — émet les cycles
 │   ├── orchestrator.go      # Cerveau — dispatch observe/think/act
 │   └── cli.go               # Interface CLI interactive
 │
 ├── agents/
+│   ├── agent.go             # Interface Agent + BaseAgent + AgentContext
+│   ├── registry.go          # Registry — lifecycle, enable/disable, panic isolation
 │   ├── system_agent.go      # Agent LLM — analyse + décision JSON
-│   └── alert_agent.go       # Agent alertes — seuils + Discord
+│   ├── alert_agent.go       # Agent alertes — seuils + Discord
+│   ├── alert_test.go        # Tests AlertAgent
+│   └── registry_test.go     # Tests Registry
 │
 ├── llm/
-│   ├── ollama.go            # Client HTTP Ollama
-│   └── prompt.go            # Prompt builder (system + user)
+│   ├── ollama.go            # Client HTTP Ollama + retries
+│   ├── parser.go            # Parser JSON robuste + fallback + validation
+│   ├── parser_test.go       # Tests parser (8 cas)
+│   └── prompt.go            # Prompt builder (system + user + historique)
 │
 ├── tools/
-│   ├── system.go            # Métriques CPU/RAM/Disk (gopsutil)
+│   ├── system.go            # Métriques CPU/RAM/Disk — détection OS auto
 │   └── shell.go             # Executor whitelist de commandes
 │
 ├── memory/
@@ -74,10 +80,15 @@ jarvinx/
 │
 ├── web/
 │   ├── server.go            # HTTP server — API REST
-│   └── static.go            # Dashboard HTML inline
+│   ├── embed.go             # embed.FS — fichiers statiques dans le binaire
+│   └── static/
+│       ├── index.html       # Dashboard HTML
+│       ├── style.css        # Styles dark theme
+│       └── app.js           # Logique dashboard
 │
 └── config/
-    └── config.go            # Configuration centralisée
+    ├── config.go            # Configuration centralisée
+    └── env.go               # Auto-load .env au démarrage
 ```
 
 ### Agent loop
@@ -321,6 +332,33 @@ func Default() *Config {
 
 ---
 
+## Tests
+
+```bash
+# Tous les tests
+go test ./...
+
+# Par package
+go test ./llm/... -v
+go test ./agents/... -v
+
+# Avec coverage
+go test ./... -cover
+```
+
+| Package  | Tests                                                           | Couverture            |
+| -------- | --------------------------------------------------------------- | --------------------- |
+| `llm`    | 8 tests — parser JSON, markdown, fallback, uppercase, malformed | Parser robuste        |
+| `agents` | 18 tests — seuils, cooldown, enable/disable, panic isolation    | AlertAgent + Registry |
+
+**Ce qui est testé :**
+
+- Parser LLM — 8 cas dont JSON malformé, backticks markdown, action uppercase, champs manquants
+- AlertAgent — seuils CPU/RAM/Disk, cooldown anti-spam, reset sur descente, niveaux warning/critical
+- Registry — register, enable/disable, agent skippé si désactivé, isolation panic, status RunCount
+
+---
+
 ## Dashboard web
 
 Le dashboard est accessible à `http://localhost:8080` dès le lancement.
@@ -403,15 +441,17 @@ JARVINx envoie des embeds Discord structurés quand un seuil est dépassé.
 
 ## Roadmap
 
-### v1.0 — Stable & Deployable _(objectif court terme)_
+### v1.0 — Stable & Deployable ✅
 
 - [x] Makefile — `make run`, `make build`, `make build-linux`
 - [x] `.env` chargé automatiquement au démarrage
 - [x] Chemin disque détecté automatiquement selon l'OS
-- [ ] Dashboard — fix agent loop animation
-- [ ] Dashboard — graphique CPU/RAM sur les derniers cycles
-- [ ] Tests unitaires sur le parser JSON des décisions
-- [x] README complet _(ce fichier)_
+- [x] Parser LLM robuste — retries, validation schema, fallback
+- [x] Interface Agent générique — BaseAgent, Registry, panic isolation
+- [x] 26 tests unitaires — parser, alertes, registry
+- [x] embed.FS — dashboard en fichiers HTML/CSS/JS séparés
+- [x] Shutdown propre — SIGINT/SIGTERM, context annulable
+- [x] README complet
 
 ### v1.5 — Intelligence & Mémoire
 
