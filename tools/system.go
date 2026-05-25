@@ -61,10 +61,27 @@ func Observe() (SystemState, error) {
 
 func (s SystemState) Display() {
 	diskLabel := rootPath()
-	fmt.Printf("\n┌─[ JARVINX OBSERVE ]──────────────────────────┐\n")
-	fmt.Printf("│ %s\n", s.Timestamp.Format("15:04:05"))
-	fmt.Printf("│ CPU   : %.1f%%\n", s.CPUPercent)
-	fmt.Printf("│ RAM   : %d MB / %d MB (%.1f%%)\n", s.MemUsed, s.MemTotal, s.MemPercent)
-	fmt.Printf("│ DISK  : %d GB / %d GB (%.1f%%) [%s]\n", s.DiskUsed, s.DiskTotal, s.DiskPercent, diskLabel)
-	fmt.Printf("└──────────────────────────────────────────────┘\n")
+
+	cpuColor := metricColor(s.CPUPercent, 70, 85)
+	ramColor := metricColor(s.MemPercent, 70, 90)
+	diskColor := metricColor(s.DiskPercent, 70, 85)
+
+	fmt.Printf("\n\033[97m┌─[ JARVINX OBSERVE ]──────────────────────────┐\033[0m\n")
+	fmt.Printf("\033[97m│\033[0m \033[90m%s\033[0m\n", s.Timestamp.Format("15:04:05"))
+	fmt.Printf("\033[97m│\033[0m CPU   : %s%.1f%%%s\n", cpuColor, s.CPUPercent, "\033[0m")
+	fmt.Printf("\033[97m│\033[0m RAM   : %s%d MB\033[0m / %d MB (%.1f%%)\n",
+		ramColor, s.MemUsed, s.MemTotal, s.MemPercent)
+	fmt.Printf("\033[97m│\033[0m DISK  : %s%d GB\033[0m / %d GB (%.1f%%) [%s]\n",
+		diskColor, s.DiskUsed, s.DiskTotal, s.DiskPercent, diskLabel)
+	fmt.Printf("\033[97m└──────────────────────────────────────────────┘\033[0m\n")
+}
+
+func metricColor(pct, warn, crit float64) string {
+	if pct >= crit {
+		return "\033[31m"
+	}
+	if pct >= warn {
+		return "\033[33m"
+	}
+	return "\033[32m"
 }

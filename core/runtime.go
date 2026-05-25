@@ -65,16 +65,16 @@ func (r *Runtime) Start() {
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 	go func() {
 		sig := <-sigCh
-		fmt.Printf("\n[ JARVINX ] Signal reçu : %v — arrêt propre...\n", sig)
+		fmt.Printf("\n\033[33m[ JARVINX ]\033[0m Signal reçu : %v — arrêt propre...\n", sig)
 		cancel()
 	}()
 
-	fmt.Println("╔══════════════════════════════════════════════╗")
-	fmt.Println("║           JARVINX — RUNTIME v0.6            ║")
-	fmt.Println("╚══════════════════════════════════════════════╝")
-	fmt.Printf("  Modèle     : %s\n", r.cfg.Model)
-	fmt.Printf("  Intervalle : %v\n", r.cfg.Interval)
-	fmt.Printf("  Seuils     : CPU %.0f%% · RAM %.0f%% · Disk %.0f%%\n",
+	fmt.Println("\033[36m╔══════════════════════════════════════════════╗\033[0m")
+	fmt.Println("\033[36m║\033[0m           \033[97mJARVINx — RUNTIME v0.6\033[0m            \033[36m║\033[0m")
+	fmt.Println("\033[36m╚══════════════════════════════════════════════╝\033[0m")
+	fmt.Printf("  Modèle     : \033[97m%s\033[0m\n", r.cfg.Model)
+	fmt.Printf("  Intervalle : \033[97m%v\033[0m\n", r.cfg.Interval)
+	fmt.Printf("  Seuils     : CPU \033[33m%.0f%%\033[0m · RAM \033[33m%.0f%%\033[0m · Disk \033[33m%.0f%%\033[0m\n",
 		r.cfg.CPUAlertThreshold,
 		r.cfg.RAMAlertThreshold,
 		r.cfg.DiskAlertThreshold,
@@ -88,5 +88,5 @@ func (r *Runtime) Start() {
 
 	// Attend l'annulation du context
 	<-ctx.Done()
-	fmt.Println("[ JARVINX ] Arrêt terminé. À bientôt.")
+	fmt.Println("\033[90m[ JARVINX ]\033[0m Arrêt terminé. À bientôt.")
 }

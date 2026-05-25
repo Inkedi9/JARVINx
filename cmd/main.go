@@ -23,9 +23,9 @@ func main() {
 	}
 
 	if cfg.DiscordWebhook == "" {
-		fmt.Println("[ WARN ] DISCORD_WEBHOOK non défini — alertes Discord désactivées")
+		fmt.Println("\033[33m[ WARN ]\033[0m DISCORD_WEBHOOK non défini — alertes Discord désactivées")
 	} else {
-		fmt.Println("[ OK   ] Discord webhook chargé")
+		fmt.Println("\033[32m[ OK   ]\033[0m Discord webhook chargé")
 	}
 
 	rt := core.NewRuntime(cfg)

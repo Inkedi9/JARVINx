@@ -149,16 +149,28 @@ func fallbackDecision(raw string) Decision {
 }
 
 func (d Decision) Display() {
-	fmt.Printf("[ AGENT ] Action   : %s\n", d.Action)
+	actionColor := "\033[37m"
+	switch d.Action {
+	case "log":
+		actionColor = "\033[32m"
+	case "suggest":
+		actionColor = "\033[33m"
+	case "alert":
+		actionColor = "\033[31m"
+	case "execute":
+		actionColor = "\033[35m"
+	}
+
+	fmt.Printf("[ AGENT ] Action   : %s%s\033[0m\n", actionColor, d.Action)
 	fmt.Printf("[ AGENT ] Analyse  : %s\n", d.Analysis)
 
 	reason := d.Reason
 	if reason == "" {
 		reason = "—"
 	}
-	fmt.Printf("[ AGENT ] Raison   : %s\n", reason)
+	fmt.Printf("[ AGENT ] Raison   : \033[90m%s\033[0m\n", reason)
 
 	if d.Command != "" {
-		fmt.Printf("[ AGENT ] Commande : %s\n", d.Command)
+		fmt.Printf("[ AGENT ] Commande : \033[33m%s\033[0m\n", d.Command)
 	}
 }

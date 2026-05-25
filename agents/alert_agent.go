@@ -175,11 +175,13 @@ func (a *AlertAgent) Dispatch(alerts []Alert) {
 }
 
 func (a *AlertAgent) printAlert(alert Alert) {
-	level := "⚠️ WARNING"
 	if alert.Level == AlertCritical {
-		level = "🚨 CRITICAL"
+		fmt.Printf("\033[31m[ ALERT ] 🚨 CRITICAL — %s : %s\033[0m\n",
+			alert.Metric, alert.Message)
+	} else {
+		fmt.Printf("\033[33m[ ALERT ] ⚠️  WARNING — %s : %s\033[0m\n",
+			alert.Metric, alert.Message)
 	}
-	fmt.Printf("[ ALERT ] %s — %s : %s\n", level, alert.Metric, alert.Message)
 }
 
 func (a *AlertAgent) logAlert(alert Alert) {
