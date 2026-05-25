@@ -24,9 +24,9 @@ _Your system. My mission._
 
 ## Documentation
 
-| Document | Description |
-|----------|-------------|
-| [Manuel Utilisateur](docs/USER_GUIDE.md) | Installation, configuration, CLI, dashboard, alertes, dépannage |
+| Document                                     | Description                                                         |
+| -------------------------------------------- | ------------------------------------------------------------------- |
+| [Manuel Utilisateur](docs/USER_GUIDE.md)     | Installation, configuration, CLI, dashboard, alertes, dépannage     |
 | [Documentation Technique](docs/TECHNICAL.md) | Architecture, écrire un agent, API, tests, build, roadmap technique |
 
 ---
@@ -462,6 +462,14 @@ JARVINx envoie des embeds Discord structurés quand un seuil est dépassé.
 - [x] Shutdown propre — SIGINT/SIGTERM, context annulable
 - [x] README complet
 
+### v1.1 — Hardening v1
+
+- [ ] Fix race conditions (State + AlertAgent)
+- [ ] Structured logging slog
+- [ ] Timeout shell executor
+- [ ] Validation config au démarrage
+- [ ] go test -race clean
+
 ### v1.5 — Intelligence & Mémoire
 
 - [ ] **Vector DB** — intégration Qdrant local pour mémoire sémantique longue durée
@@ -471,6 +479,11 @@ JARVINx envoie des embeds Discord structurés quand un seuil est dépassé.
 - [ ] **Multi-webhook** — support Slack, Ntfy, Gotify en plus de Discord
 - [ ] **Rapport quotidien** — résumé automatique envoyé à heure fixe
 - [ ] **Prompt adaptatif** — le system prompt évolue selon l'historique des décisions
+
+- [ ] **Config via env vars** — (seuils overridables)
+- [ ] **Rotation des logs** — logs.jsonl sans borne = disk full sur machine faible
+- [ ] **Health check Ollama au démarrage** — fail fast avec message clair si le LLM est absent
+- [ ] **Mode `--dry-run`** — pour tester sans que l'agent exécute des commandes réelles
 
 ### Vision v2.0 — Universal Agent Platform
 
@@ -505,6 +518,13 @@ JARVINx envoie des embeds Discord structurés quand un seuil est dépassé.
 Chaque agent suit le même pattern.
 Chaque agent parle le même langage (interface Agent).
 Tout tourne local. Tout reste privé.
+
+- Ajouts recommandés :
+  · Plugin system dynamique
+  · Multi-instance coordination
+  · API d'administration REST complète
+  · TLS + auth dashboard
+  · Audit trail
 
 ---
 
