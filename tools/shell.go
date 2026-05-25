@@ -2,6 +2,7 @@ package tools
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"os/exec"
 	"runtime"
@@ -9,7 +10,8 @@ import (
 	"time"
 )
 
-// Commandes autorisées selon l'OS
+const defaultCommandTimeout = 10 * time.Second
+
 var allowedCommands = map[string]bool{
 	"docker ps":        true,
 	"docker stats":     true,
@@ -19,7 +21,6 @@ var allowedCommands = map[string]bool{
 	"systemctl status": true,
 }
 
-// Équivalents Windows pour le dev local
 var windowsAliases = map[string]string{
 	"uptime":  "net statistics workstation",
 	"df -h":   "wmic logicaldisk get size,freespace,caption",
@@ -32,9 +33,14 @@ type CommandResult struct {
 	Error    string
 	Duration time.Duration
 	Success  bool
+	TimedOut bool
 }
 
 func ExecuteCommand(cmd string) CommandResult {
+	return ExecuteCommandWithTimeout(cmd, defaultCommandTimeout)
+}
+
+func ExecuteCommandWithTimeout(cmd string, timeout time.Duration) CommandResult {
 	start := time.Now()
 	cmd = strings.TrimSpace(cmd)
 
@@ -47,7 +53,7 @@ func ExecuteCommand(cmd string) CommandResult {
 		}
 	}
 
-	// Adaptation Windows si nécessaire
+	// Adaptation Windows
 	actualCmd := cmd
 	if runtime.GOOS == "windows" {
 		if alias, ok := windowsAliases[cmd]; ok {
@@ -55,9 +61,22 @@ func ExecuteCommand(cmd string) CommandResult {
 		}
 	}
 
-	// Exécution
-	result, err := runCommand(actualCmd)
+	// Context avec timeout — tué proprement après N secondes
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	result, timedOut, err := runCommandWithContext(ctx, actualCmd)
 	duration := time.Since(start)
+
+	if timedOut {
+		return CommandResult{
+			Command:  cmd,
+			Error:    fmt.Sprintf("timeout après %v", timeout),
+			Duration: duration,
+			Success:  false,
+			TimedOut: true,
+		}
+	}
 
 	if err != nil {
 		return CommandResult{
@@ -76,27 +95,38 @@ func ExecuteCommand(cmd string) CommandResult {
 	}
 }
 
-func runCommand(cmd string) (string, error) {
+func runCommandWithContext(ctx context.Context, cmd string) (string, bool, error) {
 	var command *exec.Cmd
 
 	if runtime.GOOS == "windows" {
-		command = exec.Command("cmd", "/C", cmd)
+		command = exec.CommandContext(ctx, "cmd", "/C", cmd)
 	} else {
-		command = exec.Command("sh", "-c", cmd)
+		command = exec.CommandContext(ctx, "sh", "-c", cmd)
 	}
 
 	var stdout, stderr bytes.Buffer
 	command.Stdout = &stdout
 	command.Stderr = &stderr
 
-	if err := command.Run(); err != nil {
-		return "", fmt.Errorf("%v: %s", err, stderr.String())
+	err := command.Run()
+
+	// Vérifie si c'est un timeout
+	if ctx.Err() == context.DeadlineExceeded {
+		return "", true, nil
 	}
 
-	return strings.TrimSpace(stdout.String()), nil
+	if err != nil {
+		return "", false, fmt.Errorf("%v: %s", err, stderr.String())
+	}
+
+	return strings.TrimSpace(stdout.String()), false, nil
 }
 
 func (r CommandResult) Display() {
+	if r.TimedOut {
+		fmt.Printf("[ EXEC ] ⏱ '%s' — timeout après %v\n", r.Command, r.Duration.Round(time.Millisecond))
+		return
+	}
 	if r.Success {
 		fmt.Printf("[ EXEC ] ✓ '%s' (%v)\n", r.Command, r.Duration.Round(time.Millisecond))
 		fmt.Printf("[ EXEC ] Output : %s\n", truncate(r.Output, 200))
