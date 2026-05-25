@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"sync"
 	"time"
 )
 
@@ -32,6 +33,8 @@ type CycleRecord struct {
 
 type State struct {
 	filepath string
+	mu       sync.RWMutex
+
 	History  []Snapshot    `json:"history"`
 	Cycles   []CycleRecord `json:"cycles"`
 	CycleNum int           `json:"cycle_num"`
@@ -44,6 +47,9 @@ func NewState(filepath string) *State {
 }
 
 func (s *State) Add(snap Snapshot) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
 	s.History = append(s.History, snap)
 	if len(s.History) > maxHistory {
 		s.History = s.History[len(s.History)-maxHistory:]
@@ -51,6 +57,9 @@ func (s *State) Add(snap Snapshot) {
 }
 
 func (s *State) AddCycle(record CycleRecord) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
 	s.CycleNum++
 	record.CycleNum = s.CycleNum
 	s.Cycles = append(s.Cycles, record)
@@ -60,20 +69,34 @@ func (s *State) AddCycle(record CycleRecord) {
 }
 
 func (s *State) Last(n int) []Snapshot {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
 	if n > len(s.History) {
 		n = len(s.History)
 	}
-	return s.History[len(s.History)-n:]
+	// Copie défensive — on retourne jamais une slice du slice interne
+	result := make([]Snapshot, n)
+	copy(result, s.History[len(s.History)-n:])
+	return result
 }
 
 func (s *State) LastCycles(n int) []CycleRecord {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
 	if n > len(s.Cycles) {
 		n = len(s.Cycles)
 	}
-	return s.Cycles[len(s.Cycles)-n:]
+	result := make([]CycleRecord, n)
+	copy(result, s.Cycles[len(s.Cycles)-n:])
+	return result
 }
 
 func (s *State) Save() error {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
 	data, err := json.MarshalIndent(s, "", "  ")
 	if err != nil {
 		return fmt.Errorf("marshal state: %w", err)

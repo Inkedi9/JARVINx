@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/Inkedi9/jarvinx/memory"
@@ -49,6 +50,7 @@ type AlertAgent struct {
 	alertFile     string
 	webhookURL    string
 	state         AlertState
+	mu            sync.Mutex
 	httpClient    *http.Client
 }
 
@@ -89,6 +91,9 @@ func (a *AlertAgent) Run(ctx context.Context, actx AgentContext) error {
 }
 
 func (a *AlertAgent) Analyze(snap memory.Snapshot) []Alert {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
 	a.state.CurrentCycle++
 	var alerts []Alert
 

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"sync"
 	"time"
 )
 
@@ -21,6 +22,7 @@ type LogEntry struct {
 
 type Logger struct {
 	filepath string
+	mu       sync.Mutex
 }
 
 func round(v float64, decimals int) float64 {
@@ -33,18 +35,16 @@ func NewLogger(filepath string) *Logger {
 }
 
 func (l *Logger) Write(entry LogEntry) error {
-	// On arrondit avant d'encoder
-	entry.CPUPercent = round(entry.CPUPercent, 1)
-	entry.MemPercent = round(entry.MemPercent, 1)
-	entry.DiskPercent = round(entry.DiskPercent, 1)
-	// Ouvre le fichier en mode append, le crée s'il n'existe pas
-	file, err := os.OpenFile(l.filepath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
+	file, err := os.OpenFile(l.filepath,
+		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		return fmt.Errorf("open log file: %w", err)
 	}
 	defer file.Close()
 
-	// Encode l'entrée en JSON sur une seule ligne
 	encoder := json.NewEncoder(file)
 	if err := encoder.Encode(entry); err != nil {
 		return fmt.Errorf("encode log entry: %w", err)
