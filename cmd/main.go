@@ -16,6 +16,12 @@ func main() {
 	cfg := config.Default()
 	cfg.DiscordWebhook = os.Getenv("DISCORD_WEBHOOK")
 
+	// Validation — on sort immédiatement si la config est invalide
+	if err := cfg.Validate(); err != nil {
+		fmt.Fprintf(os.Stderr, "\n[ JARVINX ] Erreur de configuration :\n%v\n\n", err)
+		os.Exit(1)
+	}
+
 	if cfg.DiscordWebhook == "" {
 		fmt.Println("[ WARN ] DISCORD_WEBHOOK non défini — alertes Discord désactivées")
 	} else {

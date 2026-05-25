@@ -2,6 +2,11 @@ package config
 
 import "time"
 
+const (
+	minInterval = 5 * time.Second
+	maxInterval = 1 * time.Hour
+)
+
 type Config struct {
 	// Runtime
 	Interval time.Duration
