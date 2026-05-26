@@ -465,11 +465,12 @@ JARVINx envoie des embeds Discord structurés quand un seuil est dépassé.
 
 ### v1.1 — Hardening v1
 
-- [ ] Fix race conditions (State + AlertAgent)
-- [ ] Structured logging slog
-- [ ] Timeout shell executor
-- [ ] Validation config au démarrage
-- [ ] go test -race clean
+- [x] Fix race conditions (State + AlertAgent)
+- [x] Structured logging slog / jxlog
+- [x] Timeout shell executor
+- [x] Validation config au démarrage
+- [x] go test -race clean
+- [x] Health check Ollama au démarrage — fail fast avec message clair si le LLM est absent
 
 ### v1.5 — Intelligence & Mémoire
 
@@ -480,10 +481,8 @@ JARVINx envoie des embeds Discord structurés quand un seuil est dépassé.
 - [ ] **Multi-webhook** — support Slack, Ntfy, Gotify en plus de Discord
 - [ ] **Rapport quotidien** — résumé automatique envoyé à heure fixe
 - [ ] **Prompt adaptatif** — le system prompt évolue selon l'historique des décisions
-
 - [ ] **Config via env vars** — (seuils overridables)
 - [ ] **Rotation des logs** — logs.jsonl sans borne = disk full sur machine faible
-- [ ] **Health check Ollama au démarrage** — fail fast avec message clair si le LLM est absent
 - [ ] **Mode `--dry-run`** — pour tester sans que l'agent exécute des commandes réelles
 
 ### Vision v2.0 — Universal Agent Platform

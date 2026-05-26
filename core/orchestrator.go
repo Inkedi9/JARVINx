@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/Inkedi9/jarvinx/agents"
+	"github.com/Inkedi9/jarvinx/jxlog"
 	"github.com/Inkedi9/jarvinx/memory"
 	"github.com/Inkedi9/jarvinx/tools"
 )
@@ -45,7 +46,7 @@ func (o *Orchestrator) AgentContext() agents.AgentContext {
 }
 
 func (o *Orchestrator) Start(ctx context.Context) {
-	fmt.Println("[ ORCHESTRATOR ] En écoute sur le bus...")
+	jxlog.Info("ORCHESTRATOR", "En écoute sur le bus...")
 
 	// Lance le registry avec un context annulable
 	go o.registry.Start(ctx, o.AgentContext)
@@ -54,7 +55,7 @@ func (o *Orchestrator) Start(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
-			fmt.Println("[ ORCHESTRATOR ] Arrêt propre")
+			jxlog.Info("ORCHESTRATOR", "Arrêt propre")
 			return
 		case event, ok := <-events:
 			if !ok {
@@ -69,7 +70,7 @@ func (o *Orchestrator) Start(ctx context.Context) {
 				go o.handleObserved(snap)
 			case EventError:
 				msg, _ := event.Payload.(string)
-				fmt.Printf("[ ERREUR ] %s\n", msg)
+				jxlog.Error("ORCHESTRATOR", msg)
 			}
 		}
 	}
@@ -77,7 +78,7 @@ func (o *Orchestrator) Start(ctx context.Context) {
 
 func (o *Orchestrator) handleObserved(snap memory.Snapshot) {
 	if !o.mu.TryLock() {
-		fmt.Println("[ ORCHESTRATOR ] Cycle précédent en cours — tick ignoré")
+		jxlog.Debug("ORCHESTRATOR", "Cycle précédent en cours — tick ignoré")
 		return
 	}
 	defer o.mu.Unlock()
@@ -99,7 +100,7 @@ func (o *Orchestrator) handleObserved(snap memory.Snapshot) {
 		DiskPercent: snap.DiskPercent,
 	}
 	if err := o.logger.Write(entry); err != nil {
-		fmt.Printf("[ ERREUR ] Log : %v\n", err)
+		jxlog.Error("ORCHESTRATOR", fmt.Sprintf("Log : %v", err))
 	}
 
 	// Exécuter commandes si décision execute

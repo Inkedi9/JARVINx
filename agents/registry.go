@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"sync"
 	"time"
+
+	"github.com/Inkedi9/jarvinx/jxlog"
 )
 
 // Registry gère le cycle de vie de tous les agents
@@ -21,8 +23,8 @@ func (r *Registry) Register(a Agent) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.agents = append(r.agents, a)
-	fmt.Printf("[ REGISTRY ] Agent enregistré : %s (schedule: %v)\n",
-		a.Name(), a.Schedule())
+	jxlog.Info("REGISTRY", fmt.Sprintf("Agent enregistré : %s (schedule: %v)",
+		a.Name(), a.Schedule()))
 }
 
 func (r *Registry) Get(name string) (Agent, bool) {

@@ -5,6 +5,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Inkedi9/jarvinx/jxlog"
 	"github.com/Inkedi9/jarvinx/memory"
 	"github.com/Inkedi9/jarvinx/tools"
 )
@@ -36,7 +37,7 @@ func (s *Scheduler) getInterval() time.Duration {
 }
 
 func (s *Scheduler) Start() {
-	fmt.Printf("[ SCHEDULER ] Démarrage — tick toutes les %v\n", s.getInterval())
+	jxlog.Info("SCHEDULER", fmt.Sprintf("Démarrage — tick toutes les %v", s.getInterval()))
 
 	for {
 		time.Sleep(s.getInterval())

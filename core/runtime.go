@@ -9,6 +9,7 @@ import (
 
 	"github.com/Inkedi9/jarvinx/agents"
 	"github.com/Inkedi9/jarvinx/config"
+	"github.com/Inkedi9/jarvinx/jxlog"
 	"github.com/Inkedi9/jarvinx/memory"
 	"github.com/Inkedi9/jarvinx/web"
 )
@@ -65,7 +66,7 @@ func (r *Runtime) Start() {
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 	go func() {
 		sig := <-sigCh
-		fmt.Printf("\n\033[33m[ JARVINX ]\033[0m Signal reçu : %v — arrêt propre...\n", sig)
+		jxlog.Warn("JARVINX", fmt.Sprintf("Signal reçu : %v — arrêt propre...", sig))
 		cancel()
 	}()
 
@@ -88,5 +89,5 @@ func (r *Runtime) Start() {
 
 	// Attend l'annulation du context
 	<-ctx.Done()
-	fmt.Println("\033[90m[ JARVINX ]\033[0m Arrêt terminé. À bientôt.")
+	jxlog.Info("JARVINX", "Arrêt terminé. À bientôt.")
 }

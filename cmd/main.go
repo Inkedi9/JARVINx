@@ -6,12 +6,16 @@ import (
 
 	"github.com/Inkedi9/jarvinx/config"
 	"github.com/Inkedi9/jarvinx/core"
+	"github.com/Inkedi9/jarvinx/jxlog"
 	"github.com/Inkedi9/jarvinx/llm"
 )
 
 // la fonction principale. C'est ici que tout commence quand tu lances le binaire.
 func main() {
-	// Charge .env avant tout
+	// Logger en premier — avant tout le reste
+	debug := os.Getenv("JARVINX_DEBUG") == "true"
+	jxlog.Init(debug)
+	// Charge .env juste apres le logger
 	config.LoadEnv(".env")
 
 	cfg := config.Default()
