@@ -1,4 +1,17 @@
-.env
-state.json
-logs.jsonl
-alerts.jsonl
+# Go runtime
+runtime/.env
+runtime/state.json
+runtime/logs.jsonl
+runtime/alerts.jsonl
+runtime/jarvinx
+runtime/jarvinx.exe
+runtime/jarvinx-linux
+runtime/*.exe
+
+# Next.js dashboard
+dashboard/.env.local
+dashboard/.next/
+dashboard/node_modules/
+
+# Misc
+.DS_Store

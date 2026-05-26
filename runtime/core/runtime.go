@@ -51,7 +51,7 @@ func NewRuntime(cfg *config.Config) *Runtime {
 		scheduler:    scheduler,
 		orchestrator: orchestrator,
 		cli:          NewCLI(state, scheduler),
-		webServer:    web.NewServer(cfg, state, cfg.WebPort, web.StaticFiles()),
+		webServer:    web.NewServer(cfg, state, registry, cfg.WebPort, web.StaticFiles()),
 		registry:     registry,
 	}
 }
