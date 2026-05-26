@@ -28,6 +28,7 @@ observe → think → decide → act → log → repeat (toutes les 15s)
 ```
 
 Ce que JARVINx fait concrètement :
+
 - Lit CPU, RAM et espace disque toutes les 15 secondes
 - Envoie ces données à un LLM local (llama3.1, qwen2.5, mistral...)
 - Reçoit une décision : `log` / `alert` / `suggest` / `execute`
@@ -36,6 +37,7 @@ Ce que JARVINx fait concrètement :
 - Affiche tout sur un dashboard web à `http://localhost:8080`
 
 Ce que JARVINx **ne fait pas** :
+
 - Pas de connexion cloud
 - Pas de commandes shell arbitraires (whitelist stricte)
 - Pas de modification de fichiers système
@@ -44,20 +46,20 @@ Ce que JARVINx **ne fait pas** :
 
 ## Prérequis
 
-| Outil  | Version minimale | Vérification              |
-|--------|------------------|---------------------------|
-| Go     | 1.21+            | `go version`              |
-| Ollama | latest           | `ollama --version`        |
-| Git    | any              | `git --version`           |
+| Outil  | Version minimale | Vérification       |
+| ------ | ---------------- | ------------------ |
+| Go     | 1.21+            | `go version`       |
+| Ollama | latest           | `ollama --version` |
+| Git    | any              | `git --version`    |
 
 ### Modèles Ollama recommandés
 
-| Modèle             | RAM requise | Recommandation                    |
-|--------------------|-------------|-----------------------------------|
+| Modèle             | RAM requise | Recommandation                     |
+| ------------------ | ----------- | ---------------------------------- |
 | `llama3.1:8b`      | ~6 GB       | Meilleur équilibre qualité/vitesse |
-| `qwen2.5:7b`       | ~5 GB       | Très rapide, excellent en JSON    |
-| `qwen2.5-coder:7b` | ~5 GB       | Si tu ajoutes des agents code     |
-| `mistral:7b`       | ~5 GB       | Alternative légère                |
+| `qwen2.5:7b`       | ~5 GB       | Très rapide, excellent en JSON     |
+| `qwen2.5-coder:7b` | ~5 GB       | Si tu ajoutes des agents code      |
+| `mistral:7b`       | ~5 GB       | Alternative légère                 |
 
 > **Note RAM :** Ollama charge le modèle entier en mémoire. Sur 8 GB de RAM, préfère `qwen2.5:7b` pour laisser de la place au système.
 
@@ -101,7 +103,11 @@ ollama serve
 Crée un fichier `.env` à la racine du projet si tu veux les alertes Discord :
 
 ```env
+# Discord webhook (optionnel)
 DISCORD_WEBHOOK=https://discord.com/api/webhooks/TON_ID/TON_TOKEN
+
+# Logs debug (optionnel — false par défaut)
+JARVINX_DEBUG=false
 ```
 
 Sans ce fichier, JARVINx fonctionne normalement — les alertes Discord sont simplement désactivées.
@@ -145,6 +151,7 @@ func Default() *Config {
 ### Paramètres importants expliqués
 
 **`Interval`** — Fréquence des cycles d'observation.
+
 - `15s` : bon équilibre réactivité / charge LLM
 - `30s` : si ton LLM est lent ou ta machine limitée
 - `5s` : minimum autorisé (limite imposée par la CLI)
@@ -264,9 +271,18 @@ sudo systemctl status jarvinx
 ### Sortie attendue au démarrage
 
 ```
-[ OK   ] Discord webhook chargé          ← ou WARN si .env absent
+[ JARVINX ] Vérification Ollama...
+[ OLLAMA ] ✓ En ligne · modèle 'llama3.1:8b' disponible · 5 modèle(s) installé(s)
+[ OK   ] Discord webhook chargé
 [ REGISTRY ] Agent enregistré : system (schedule: 15s)
 [ REGISTRY ] Agent enregistré : alert (schedule: 15s)
+╔══════════════════════════════════════════════╗
+║           JARVINx — RUNTIME v1.1            ║
+╚══════════════════════════════════════════════╝
+  Modèle     : llama3.1:8b
+  Intervalle : 15s
+  Seuils     : CPU 85% · RAM 90% · Disk 85%
+
 [ WEB ] Dashboard → http://localhost:8080
 [ ORCHESTRATOR ] En écoute sur le bus...
 [ REGISTRY ] Démarrage agent : system
@@ -354,31 +370,37 @@ Le dashboard est accessible à `http://localhost:8080` dès le démarrage de JAR
 ### Sections du dashboard
 
 **Runtime Info** (bandeau supérieur)
+
 - Modèle LLM actif
 - Intervalle de cycle
 - Numéro du cycle courant
 - Uptime depuis le démarrage
 
 **Métriques système** (3 jauges)
+
 - CPU % avec barre de progression
 - RAM utilisée / totale en MB avec %
 - Disk utilisé / total en GB avec %
 - Actualisé toutes les 5 secondes
 
 **Dernière décision LLM**
+
 - Action décidée par le LLM (`log` / `alert` / `suggest` / `execute`)
 - Analyse courte de l'état du système
 - Raison de la décision
 
 **Agent Loop** (animation visuelle)
+
 - Visualise le cycle : Observe → Think → Decide → Act → Sleep
 - L'étape active est mise en surbrillance
 
 **Console logs** (style macOS)
+
 - Derniers logs du runtime en temps réel
 - Code couleur selon le type d'événement
 
 **Historique des 10 derniers cycles** (tableau)
+
 - Timestamp, CPU, RAM, Disk, action décidée
 - Badges colorés selon l'action (log=gris, alert=rouge, suggest=orange, execute=bleu)
 
@@ -438,11 +460,11 @@ DISCORD_WEBHOOK=https://discord.com/api/webhooks/123456789/abcdefg...
 
 ### Ce qui déclenche une alerte
 
-| Métrique | Condition                                                   | Niveau    |
-|----------|-------------------------------------------------------------|-----------|
-| CPU      | ≥ 85% pendant **2 cycles consécutifs** (30s par défaut)     | CRITICAL  |
-| RAM      | ≥ 90% pendant **2 cycles consécutifs** (30s par défaut)     | CRITICAL  |
-| Disk     | ≥ 85% pendant un cycle (peut se répéter selon cooldown)     | WARNING   |
+| Métrique | Condition                                               | Niveau   |
+| -------- | ------------------------------------------------------- | -------- |
+| CPU      | ≥ 85% pendant **2 cycles consécutifs** (30s par défaut) | CRITICAL |
+| RAM      | ≥ 90% pendant **2 cycles consécutifs** (30s par défaut) | CRITICAL |
+| Disk     | ≥ 85% pendant un cycle (peut se répéter selon cooldown) | WARNING  |
 
 ### Format des alertes Discord
 
@@ -460,6 +482,7 @@ JARVINx · Autonomous Agent Runtime — 14:32:17
 ### Anti-spam
 
 Le système évite les alertes en rafale :
+
 - **CPU / RAM** : alerte seulement après N cycles consécutifs au-dessus du seuil (défaut : 2). Un pic isolé ne déclenche pas d'alerte.
 - **Cooldown** : minimum 5 cycles (75s) entre deux alertes sur la même métrique, même si le seuil reste dépassé.
 - **Reset** : dès que la métrique repasse sous le seuil, le compteur de cycles repart à zéro.
@@ -526,7 +549,15 @@ cat logs.jsonl | jq 'select(.cpu_percent > 80)'
 Historique de toutes les alertes déclenchées.
 
 ```jsonl
-{"timestamp":"2025-05-20T14:32:17Z","level":"critical","metric":"CPU","value":91.3,"threshold":85.0,"message":"CPU à 91.3% depuis 3 cycles consécutifs","cycles_above":3}
+{
+  "timestamp": "2025-05-20T14:32:17Z",
+  "level": "critical",
+  "metric": "CPU",
+  "value": 91.3,
+  "threshold": 85,
+  "message": "CPU à 91.3% depuis 3 cycles consécutifs",
+  "cycles_above": 3
+}
 ```
 
 ---
@@ -545,9 +576,30 @@ curl http://localhost:11434/api/tags
 ollama serve
 ```
 
+### JARVINx refuse de démarrer avec "configuration invalide"
+
+La validation de config a détecté un problème. Exemples d'erreurs :
+
+- `CPUAlertThreshold doit être <= 100` — seuil > 100%
+- `Interval trop court` — interval < 5s
+- `WebPort invalide` — port < 1024 ou > 65535
+
+Corrige les valeurs dans `config/config.go` et relance.
+
+### Ollama est lancé mais le modèle n'est pas trouvé
+
+Le modèle configuré n'est pas installé. Lance :
+
+```bash
+ollama pull llama3.1:8b
+```
+
+Ou change le modèle dans `config/config.go` pour un modèle présent dans `ollama list`.
+
 ### Le LLM répond très lentement ou time out
 
 **Causes et solutions :**
+
 1. Le modèle est trop lourd pour ta RAM → passe à `qwen2.5:7b` ou `llama3.2:3b`
 2. Le premier appel est lent (chargement en RAM) → normal, les suivants seront plus rapides
 3. Si le timeout persiste → augmente `Interval` à 30s pour donner plus de temps au LLM
@@ -581,6 +633,7 @@ lsof -i :8080
 ### "Cycle précédent en cours — tick ignoré"
 
 Ce message est normal. Il indique que le LLM a mis plus de 15s pour répondre, donc un cycle a été sauté. Solutions :
+
 - Augmente `Interval` : `interval 30` dans la CLI
 - Utilise un modèle plus rapide
 

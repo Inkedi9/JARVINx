@@ -15,7 +15,7 @@ Version 1.0
 ![Go](https://img.shields.io/badge/Go-1.21+-00ADD8?style=flat-square&logo=go&logoColor=white)
 ![Ollama](https://img.shields.io/badge/Ollama-local%20LLM-black?style=flat-square)
 ![License](https://img.shields.io/badge/license-MIT-blue?style=flat-square)
-![Status](https://img.shields.io/badge/status-v0.6%20stable-00E5FF?style=flat-square)
+![Status](https://img.shields.io/badge/status-v1.1%20stable-00E5FF?style=flat-square)
 
 _Your system. My mission._
 
@@ -95,6 +95,10 @@ jarvinx/
 │       ├── index.html       # Dashboard HTML
 │       ├── style.css        # Styles dark theme
 │       └── app.js           # Logique dashboard
+│
+├── jxlog/
+│   ├── log.go               # Structured logging slog — niveaux INFO/WARN/ERROR/DEBUG
+│   └── log_test.go          # Tests handler et helpers
 │
 └── config/
     ├── config.go            # Configuration centralisée
@@ -339,6 +343,7 @@ func Default() *Config {
 | Variable          | Description                          | Requis |
 | ----------------- | ------------------------------------ | ------ |
 | `DISCORD_WEBHOOK` | URL webhook Discord pour les alertes | Non    |
+| `JARVINX_DEBUG`   | Active les logs DEBUG (`true/false`) | Non    |
 
 ---
 
@@ -360,12 +365,19 @@ go test ./... -cover
 | -------- | --------------------------------------------------------------- | --------------------- |
 | `llm`    | 8 tests — parser JSON, markdown, fallback, uppercase, malformed | Parser robuste        |
 | `agents` | 18 tests — seuils, cooldown, enable/disable, panic isolation    | AlertAgent + Registry |
+| `tools`  | 5 tests — whitelist, timeout, commandes valides                 | Shell executor        |
+| `config` | 11 tests — seuils, intervalle, port, champs vides               | Validation config     |
+| `jxlog`  | 9 tests — niveaux, filtrage debug, nil safety                   | Logger structuré      |
 
 **Ce qui est testé :**
 
 - Parser LLM — 8 cas dont JSON malformé, backticks markdown, action uppercase, champs manquants
 - AlertAgent — seuils CPU/RAM/Disk, cooldown anti-spam, reset sur descente, niveaux warning/critical
 - Registry — register, enable/disable, agent skippé si désactivé, isolation panic, status RunCount
+- Health check Ollama — serveur de test httptest, modèle manquant, offline, erreur 500
+- Shell executor — whitelist stricte, timeout context, commandes valides
+- Config validation — seuils hors range, intervalle invalide, port, champs vides, erreurs multiples
+- jxlog — niveaux INFO/WARN/ERROR/DEBUG, filtrage, nil safety, CaptureOutput
 
 ---
 

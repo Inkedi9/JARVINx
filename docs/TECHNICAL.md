@@ -35,6 +35,7 @@ jarvinx/
 ├── tools/      Métriques système, exécuteur shell whitelist
 ├── web/        HTTP server, embed.FS, API REST
 └── config/     Config centralisée, chargement .env
+└── jxlog/      Structured logging — handler slog custom, niveaux, couleurs
 ```
 
 **Principe de dépendance :** les couches basses (`tools`, `memory`, `config`) ne dépendent de rien d'autre dans le projet. Les couches hautes (`core`, `agents`, `web`) importent les couches basses, jamais l'inverse.
@@ -116,6 +117,7 @@ type Runtime struct {
 ```
 
 Ordre d'initialisation dans `Start()` :
+
 1. `memory.NewState()` + `memory.NewLogger()` — persistance
 2. `agents.NewRegistry()` + registration des agents
 3. `core.NewBus()` + `core.NewScheduler()` + `core.NewOrchestrator()`
@@ -214,6 +216,7 @@ type MonAgent struct {
 ```
 
 `BaseAgent` maintient automatiquement :
+
 - `runCount` — nombre de runs réussis
 - `errorCount` — nombre d'erreurs
 - `lastRun` — timestamp du dernier run
@@ -254,6 +257,7 @@ defer func() {
 ```
 
 **Enable/Disable à chaud :**
+
 ```go
 registry.Disable("alert")  // L'AlertAgent ne sera plus appelé
 registry.Enable("alert")   // Réactivation
@@ -322,6 +326,7 @@ Actions valides : `log`, `alert`, `suggest`, `execute`. Toute autre valeur est n
 **System prompt** (statique) — définit le rôle de JARVINx, le format JSON attendu, les règles d'action et les commandes autorisées.
 
 **User prompt** (dynamique) — construit à chaque cycle avec :
+
 - L'historique des 5 derniers snapshots (timestamps + CPU/RAM/Disk)
 - L'observation courante (valeurs absolues + pourcentages)
 
@@ -342,6 +347,7 @@ type State struct {
 ```
 
 **`Snapshot`** — métriques brutes d'un cycle :
+
 ```go
 type Snapshot struct {
     Timestamp   time.Time
@@ -356,6 +362,7 @@ type Snapshot struct {
 ```
 
 **`CycleRecord`** — décision LLM associée à un cycle :
+
 ```go
 type CycleRecord struct {
     CycleNum  int
@@ -368,6 +375,7 @@ type CycleRecord struct {
 ```
 
 Méthodes principales :
+
 - `state.AddSnapshot(snap)` — ajoute + rotate si > 20 entrées
 - `state.AddCycle(record)` — ajoute sans borne actuelle
 - `state.Last(n)` — retourne les N derniers snapshots
@@ -404,6 +412,7 @@ var StaticFiles embed.FS
 ```
 
 Routes :
+
 ```
 GET /                → index.html (embed.FS)
 GET /static/*        → fichiers statiques (CSS, JS)
@@ -441,11 +450,13 @@ func CollectSnapshot() (memory.Snapshot, error)
 ```
 
 Utilise `gopsutil/v3` :
+
 - `cpu.Percent(1*time.Second, false)` — bloque 1s pour la mesure différentielle
 - `mem.VirtualMemory()` — RAM totale et utilisée
 - `disk.Usage(diskPath)` — espace disque du path configuré
 
 Détection automatique du path disque selon l'OS :
+
 ```go
 var diskPath = "/"        // Linux / macOS
 // Windows : "C:\\"       // via build tag ou détection runtime
@@ -470,13 +481,55 @@ var allowedCommands = map[string]bool{
 ```
 
 Sur Windows, les commandes Unix sont mappées vers leurs équivalents PowerShell via `windowsAliases` :
+
 - `uptime` → `(Get-Date) - (gcim Win32_OperatingSystem).LastBootUpTime`
 - `df -h` → `Get-PSDrive`
 - `free -h` → `Get-CimInstance Win32_OperatingSystem | Select FreePhysicalMemory,TotalVisibleMemorySize`
 
 Toute commande non listée retourne une erreur `command not allowed` sans exécution.
 
+### Health check Ollama (`llm/health.go`)
+
+Appelé au démarrage avant le lancement du runtime.
+
+```go
+func CheckOllama(baseURL string, model string) HealthStatus
+```
+
+- Ping sur `/api/tags` avec timeout 5s
+- Vérifie que le modèle configuré est dans la liste des modèles installés
+- Retourne `HealthStatus{Online, Models, Error}`
+- Si offline → `os.Exit(1)` avec message d'aide
+- Si modèle manquant → warning mais démarrage quand même
+
 ---
+
+## Logging structuré (jxlog)
+
+JARVINx utilise un handler `slog` custom qui produit des logs colorés avec niveaux.
+
+```go
+jxlog.Info("REGISTRY", "Agent enregistré : system")
+jxlog.Warn("AGENT", "Fallback après 3 tentatives")
+jxlog.Error("STATE", fmt.Sprintf("Save failed: %v", err))
+jxlog.Debug("ORCHESTRATOR", "Cycle précédent en cours — tick ignoré")
+```
+
+**Niveaux :**
+
+- `DEBUG` — filtré par défaut, activé via `JARVINX_DEBUG=true`
+- `INFO` — logs normaux du runtime
+- `WARN` — situations dégradées non critiques
+- `ERROR` — erreurs qui nécessitent attention
+
+**Couleurs par tag :**
+
+- `REGISTRY`, `SCHEDULER`, `WEB` → cyan
+- `ORCHESTRATOR`, `CLI` → bleu
+- `SYSTEM AGENT`, `AGENT` → magenta
+- `ALERT` → rouge
+- `EXEC` → jaune
+- `STATE` → gris
 
 ## Écrire un nouvel agent
 
@@ -677,6 +730,7 @@ GOOS=windows GOARCH=amd64 go build -o jarvinx.exe cmd/main.go
 ### Binaire auto-suffisant
 
 Grâce à `embed.FS`, le binaire compilé contient :
+
 - Le runtime Go
 - Le dashboard HTML/CSS/JS
 - Aucune dépendance externe à déployer
@@ -685,8 +739,8 @@ Le seul prérequis sur la machine cible est **Ollama**.
 
 ### Variables d'environnement
 
-| Variable          | Requis | Description                     |
-|-------------------|--------|---------------------------------|
+| Variable          | Requis | Description                      |
+| ----------------- | ------ | -------------------------------- |
 | `DISCORD_WEBHOOK` | Non    | URL webhook Discord pour alertes |
 
 Toutes les autres configurations se font dans `config/config.go` avant compilation.
@@ -718,16 +772,18 @@ Toutes les autres configurations se font dans `config/config.go` avant compilati
 - Polling toutes les 5s — remplacement futur par WebSocket pour les mises à jour en temps réel
 - Pas d'authentification — acceptable sur réseau local uniquement
 
-### Roadmap technique v1.1 (corrections prioritaires)
+### Roadmap technique v1.1 ✅ (corrections appliquées)
 
 ```
-[ ] Mutex sur State (race condition)
-[ ] Mutex sur AlertState (race condition)
-[ ] go test -race propre sur tous les packages
-[ ] Timeout sur tools.ExecuteCommand()
-[ ] Cap sur state.Cycles (garder les N derniers)
-[ ] Log explicite quand le fallback LLM se déclenche
-[ ] Validation des valeurs de Config au démarrage
+[x] Mutex sur State (race condition)
+[x] Mutex sur AlertState et Logger (race condition)
+[x] Timeout sur tools.ExecuteCommand() — context.WithTimeout 10s
+[x] Cap sur state.Cycles (garder les N derniers)
+[x] Validation des valeurs de Config au démarrage — fail fast
+[x] Health check Ollama au démarrage — ping + vérification modèle
+[x] Structured logging (jxlog) — remplace fmt.Printf
+[x] Couleurs ANSI terminal — métriques, décisions, alertes, banner
+[x] 58 tests unitaires — parser, health, alertes, registry, shell, config, logger
 ```
 
 ### Roadmap technique v1.5
