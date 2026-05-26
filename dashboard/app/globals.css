@@ -1,0 +1,31 @@
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@300;400;500;600&display=swap');
+
+@import "tailwindcss";
+
+@theme {
+  --color-bg-primary:   #0D1117;
+  --color-bg-secondary: #161B22;
+  --color-bg-tertiary:  #1C2128;
+  --color-border:       #21262D;
+  --color-border-subtle:#30363D;
+  --color-accent-blue:  #3B82F6;
+  --color-accent-blue:  #005BFF;
+
+  --font-family-sans: 'Inter', system-ui, sans-serif;
+  --font-family-mono: 'JetBrains Mono', 'Fira Code', monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  background-color: var(--color-bg-primary);
+  color: #E6EDF3;
+  font-family: var(--font-family-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+::-webkit-scrollbar       { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #30363D; border-radius: 2px; }

@@ -1,6 +1,6 @@
 const RUNTIME_URL = process.env.NEXT_PUBLIC_RUNTIME_URL ?? 'http://localhost:8080'
 
-// ── Types — miroir exact des structs Go ──────────────────────────────────────
+// ── Types ────────────────────────────────────────────────────────────────────
 
 export interface Snapshot {
     timestamp: string
@@ -52,18 +52,14 @@ export interface AgentsResponse {
     total: number
 }
 
-// ── Client API ───────────────────────────────────────────────────────────────
+// ── Client ───────────────────────────────────────────────────────────────────
 
 async function fetchAPI<T>(endpoint: string): Promise<T> {
     const res = await fetch(`${RUNTIME_URL}${endpoint}`, {
-        next: { revalidate: 0 }, // pas de cache — données temps réel
+        cache: 'no-store',
     })
-
-    if (!res.ok) {
-        throw new Error(`API error ${res.status} on ${endpoint}`)
-    }
-
-    return res.json() as Promise<T>
+    if (!res.ok) throw new Error(`API ${res.status} on ${endpoint}`)
+    return res.json()
 }
 
 export const api = {
