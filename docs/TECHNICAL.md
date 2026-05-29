@@ -488,6 +488,19 @@ Sur Windows, les commandes Unix sont mappées vers leurs équivalents PowerShell
 
 Toute commande non listée retourne une erreur `command not allowed` sans exécution.
 
+### Sécurité
+
+**CORS** — whitelist explicite via `allowedOrigins map[string]bool` dans `web/server.go`.
+Origins autorisées par défaut : `http://localhost:3000`, `http://localhost:8080`.
+Origins supplémentaires configurables via `JARVINX_ALLOWED_ORIGINS=url1,url2` dans `.env`.
+Requêtes sans header `Origin` (curl, scripts) passent sans restriction.
+Preflight OPTIONS retourne 403 si l'origin n'est pas dans la whitelist.
+
+**Shell executor** — dispatch direct sans shell intermédiaire.
+Chaque commande whitelistée est mappée vers un `CommandSpec{bin, args}` — `exec.Command("df", "-h")` et non `sh -c "df -h"`. Injection shell structurellement impossible même si la whitelist est contournée.
+
+**Fichiers** — permissions `0600` sur `state.json`, `logs.jsonl`, `alerts.jsonl`. World-readable uniquement sur Windows (pas de permissions Unix).
+
 ### Health check Ollama (`llm/health.go`)
 
 Appelé au démarrage avant le lancement du runtime.
@@ -739,9 +752,11 @@ Le seul prérequis sur la machine cible est **Ollama**.
 
 ### Variables d'environnement
 
-| Variable          | Requis | Description                      |
-| ----------------- | ------ | -------------------------------- |
-| `DISCORD_WEBHOOK` | Non    | URL webhook Discord pour alertes |
+| Variable                  | Requis                                 | Description                      |
+| ------------------------- | -------------------------------------- | -------------------------------- |
+| `DISCORD_WEBHOOK`         | Non                                    | URL webhook Discord pour alertes |
+| `JARVINX_DEBUG`           | Active les logs DEBUG (`true/false`)   | Non                              |
+| `JARVINX_ALLOWED_ORIGINS` | Origins CORS supplémentaires (virgule) | Non                              |
 
 Toutes les autres configurations se font dans `config/config.go` avant compilation.
 

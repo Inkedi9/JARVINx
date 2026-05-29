@@ -277,7 +277,7 @@ sudo systemctl status jarvinx
 [ REGISTRY ] Agent enregistré : system (schedule: 15s)
 [ REGISTRY ] Agent enregistré : alert (schedule: 15s)
 ╔══════════════════════════════════════════════╗
-║           JARVINx — RUNTIME v1.1            ║
+║           JARVINx — RUNTIME v1.2            ║
 ╚══════════════════════════════════════════════╝
   Modèle     : llama3.1:8b
   Intervalle : 15s
@@ -299,6 +299,8 @@ Si tu vois `connection refused` à l'adresse Ollama, vérifie qu'Ollama est bien
 La CLI fonctionne en parallèle du runtime — tape directement dans le terminal pendant que JARVINx tourne.
 
 ### Commandes disponibles
+
+> Les commandes sont exécutées directement sans shell intermédiaire (`exec("df", "-h")` et non `sh -c "df -h"`). L'injection shell est structurellement impossible.
 
 #### `help`
 
@@ -455,7 +457,14 @@ Retourne les 10 derniers cycles, du plus récent au plus ancien.
 4. Colle-la dans ton `.env` :
 
 ```env
-DISCORD_WEBHOOK=https://discord.com/api/webhooks/123456789/abcdefg...
+# Discord webhook (optionnel)
+DISCORD_WEBHOOK=https://discord.com/api/webhooks/TON_ID/TON_TOKEN
+
+# Logs debug (optionnel)
+JARVINX_DEBUG=false
+
+# Origins CORS supplémentaires — pour accès homelab ou Tailscale (optionnel)
+# JARVINX_ALLOWED_ORIGINS=http://192.168.1.X:3000,http://100.X.X.X:3000
 ```
 
 ### Ce qui déclenche une alerte

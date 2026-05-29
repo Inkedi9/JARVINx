@@ -340,10 +340,11 @@ func Default() *Config {
 
 ### Variables d'environnement
 
-| Variable          | Description                          | Requis |
-| ----------------- | ------------------------------------ | ------ |
-| `DISCORD_WEBHOOK` | URL webhook Discord pour les alertes | Non    |
-| `JARVINX_DEBUG`   | Active les logs DEBUG (`true/false`) | Non    |
+| Variable                  | Description                            | Requis |
+| ------------------------- | -------------------------------------- | ------ |
+| `DISCORD_WEBHOOK`         | URL webhook Discord pour les alertes   | Non    |
+| `JARVINX_DEBUG`           | Active les logs DEBUG (`true/false`)   | Non    |
+| `JARVINX_ALLOWED_ORIGINS` | Origins CORS supplémentaires (virgule) | Non    |
 
 ---
 
@@ -486,9 +487,9 @@ JARVINx envoie des embeds Discord structurés quand un seuil est dépassé.
 
 ### V1.2 — Correction & Robustesse (pre V1.5)
 
-- [ ] Permissions 0600 — state.json + alerts.jsonl
-- [ ] CORS whitelist explicite
-- [ ] Shell dispatch direct sans sh -c
+- [x] Permissions 0600 — state.json + alerts.jsonl
+- [x] CORS whitelist explicite
+- [x] Shell dispatch direct sans sh -c
 - [ ] AlertAgent recordError → recordSuccess
 - [ ] schedule_ms → nanosecondes corrigées
 - [ ] Scheduler → time.Ticker + context
