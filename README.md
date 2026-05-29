@@ -490,9 +490,9 @@ JARVINx envoie des embeds Discord structurés quand un seuil est dépassé.
 - [x] Permissions 0600 — state.json + alerts.jsonl
 - [x] CORS whitelist explicite
 - [x] Shell dispatch direct sans sh -c
-- [ ] AlertAgent recordError → recordSuccess
-- [ ] schedule_ms → nanosecondes corrigées
-- [ ] Scheduler → time.Ticker + context
+- [X] AlertAgent recordError → recordSuccess
+- [X] schedule_ms → nanosecondes corrigées
+- [X] Scheduler → time.Ticker + context
 - [ ] Migration logging complète vers jxlog
 - [ ] Bus → vrai pub/sub fan-out
 - [ ] Endpoint toggle agents
