@@ -130,6 +130,7 @@ Shutdown propre via `signal.NotifyContext(ctx, SIGINT, SIGTERM)` : quand le sign
 ### `core/bus.go` — Bus d'événements
 
 Bus central basé sur un channel Go bufferisé.
+**Bus** — pub/sub avec fan-out. `Subscribe(name)` retourne un canal dédié par consommateur. `Publish()` broadcast à tous les subscribers simultanément. Buffer plein → warning + drop sans bloquer les autres subscribers. `Unsubscribe(name)` ferme le canal proprement.
 
 ```go
 type EventType string
@@ -307,6 +308,7 @@ Le LLM ne retourne pas toujours un JSON propre. Le parser gère :
 4. **Action en majuscules** — `"LOG"` → `"log"`
 5. **Champs manquants** — `analysis` et `reason` ont des valeurs par défaut
 6. **Fallback total** — si rien ne marche, retourne `action: "log"` avec un message d'erreur
+7. **Bus** — pub/sub avec fan-out. `Subscribe(name)` retourne un canal dédié par consommateur. `Publish()` broadcast à tous les subscribers simultanément. Buffer plein → warning + drop sans bloquer les autres subscribers. `Unsubscribe(name)` ferme le canal proprement.
 
 ```go
 type Decision struct {

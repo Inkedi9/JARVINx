@@ -398,9 +398,11 @@ Le dashboard est accessible à `http://localhost:8080` dès le lancement.
 **Endpoints API :**
 
 ```
-GET /              → Dashboard HTML
-GET /api/status    → Dernier cycle + métriques actuelles
-GET /api/history   → 10 derniers cycles complets
+GET /                   → Dashboard HTML
+GET /api/status         → Dernier cycle + métriques actuelles
+GET /api/history        → 10 derniers cycles complets
+GET /api/agents         → Registry agents + statuts
+POST /api/agents/toggle → Active/désactive un agent à chaud
 ```
 
 ---
@@ -490,12 +492,12 @@ JARVINx envoie des embeds Discord structurés quand un seuil est dépassé.
 - [x] Permissions 0600 — state.json + alerts.jsonl
 - [x] CORS whitelist explicite
 - [x] Shell dispatch direct sans sh -c
-- [X] AlertAgent recordError → recordSuccess
-- [X] schedule_ms → nanosecondes corrigées
-- [X] Scheduler → time.Ticker + context
-- [ ] Migration logging complète vers jxlog
-- [ ] Bus → vrai pub/sub fan-out
-- [ ] Endpoint toggle agents
+- [x] AlertAgent recordError → recordSuccess
+- [x] schedule_ms → nanosecondes corrigées
+- [x] Scheduler → time.Ticker + context
+- [x] Migration logging complète vers jxlog
+- [x] Bus → vrai pub/sub fan-out
+- [x] Endpoint toggle agents
 - [ ] Version unifiée via ldflags
 - [ ] handleIndex → 404 propre
 - [ ] govulncheck
