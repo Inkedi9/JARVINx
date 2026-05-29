@@ -63,6 +63,17 @@ func (c *Config) Validate() error {
 		ve.Add(fmt.Sprintf("WebPort invalide : %d (doit être entre 1024 et 65535)", c.WebPort))
 	}
 
+	if len(c.AllowedOrigins) == 0 {
+		ve.Add("AllowedOrigins ne peut pas être vide")
+	}
+
+	for _, origin := range c.AllowedOrigins {
+		if !strings.HasPrefix(origin, "http://") &&
+			!strings.HasPrefix(origin, "https://") {
+			ve.Add(fmt.Sprintf("AllowedOrigins: '%s' doit commencer par http:// ou https://", origin))
+		}
+	}
+
 	// ── Fichiers ──────────────────────────────────────────────────
 	if strings.TrimSpace(c.LogFile) == "" {
 		ve.Add("LogFile ne peut pas être vide")

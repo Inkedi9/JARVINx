@@ -32,6 +32,8 @@ type Config struct {
 	AlertCooldown  int
 	AlertMinCycles int
 	DiscordWebhook string
+
+	AllowedOrigins []string
 }
 
 func Default() *Config {
@@ -49,5 +51,9 @@ func Default() *Config {
 		AlertCooldown:      5,
 		AlertMinCycles:     2,
 		DiscordWebhook:     "",
+		AllowedOrigins: []string{
+			"http://localhost:3000", // Next.js dev
+			"http://localhost:8080", // dashboard servi par Go
+		},
 	}
 }

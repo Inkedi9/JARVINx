@@ -10,15 +10,17 @@ import (
 
 	"github.com/Inkedi9/jarvinx/agents"
 	"github.com/Inkedi9/jarvinx/config"
+	"github.com/Inkedi9/jarvinx/jxlog"
 	"github.com/Inkedi9/jarvinx/memory"
 )
 
 type Server struct {
-	cfg      *config.Config
-	state    *memory.State
-	registry *agents.Registry
-	port     int
-	files    embed.FS
+	cfg            *config.Config
+	state          *memory.State
+	registry       *agents.Registry
+	port           int
+	files          embed.FS
+	allowedOrigins map[string]bool
 }
 
 type StatusResponse struct {
@@ -43,12 +45,19 @@ type AgentStatusResponse struct {
 var startTime = time.Now()
 
 func NewServer(cfg *config.Config, state *memory.State, registry *agents.Registry, port int, files embed.FS) *Server {
+	// Construit une map pour lookup O(1)
+	origins := make(map[string]bool, len(cfg.AllowedOrigins))
+	for _, o := range cfg.AllowedOrigins {
+		origins[o] = true
+	}
+
 	return &Server{
-		cfg:      cfg,
-		state:    state,
-		registry: registry,
-		port:     port,
-		files:    files,
+		cfg:            cfg,
+		state:          state,
+		registry:       registry,
+		port:           port,
+		files:          files,
+		allowedOrigins: origins,
 	}
 }
 
@@ -66,35 +75,35 @@ func (s *Server) Start() {
 	mux.HandleFunc("/api/history", s.handleHistory)
 	mux.HandleFunc("/api/agents", s.handleAgents)
 
-	// CORS middleware appliqué globalement
-	handler := corsMiddleware(mux)
+	// corsMiddleware est maintenant une méthode — accès à s.allowedOrigins
+	handler := s.corsMiddleware(mux)
 
 	addr := fmt.Sprintf(":%d", s.port)
-	fmt.Printf("\033[36m[ WEB ]\033[0m Dashboard → http://localhost%s\n", addr)
+	jxlog.Info("WEB", fmt.Sprintf("Dashboard → http://localhost%s", addr))
 
 	if err := http.ListenAndServe(addr, handler); err != nil {
-		fmt.Printf("\033[31m[ WEB ]\033[0m Erreur serveur : %v\n", err)
+		jxlog.Error("WEB", fmt.Sprintf("Erreur serveur : %v", err))
 	}
 }
 
 // corsMiddleware gère les CORS pour Next.js en dev et en prod
-func corsMiddleware(next http.Handler) http.Handler {
+func (s *Server) corsMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Autorise localhost:3000 (Next.js dev) et toute origine locale
 		origin := r.Header.Get("Origin")
-		if origin != "" {
+
+		if origin != "" && s.allowedOrigins[origin] {
 			w.Header().Set("Access-Control-Allow-Origin", origin)
-		} else {
-			w.Header().Set("Access-Control-Allow-Origin", "*")
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+			w.Header().Set("Access-Control-Max-Age", "86400")
 		}
 
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
-		w.Header().Set("Access-Control-Max-Age", "86400")
-
-		// Preflight OPTIONS — Next.js en envoie avant chaque requête cross-origin
 		if r.Method == http.MethodOptions {
-			w.WriteHeader(http.StatusNoContent)
+			if origin != "" && s.allowedOrigins[origin] {
+				w.WriteHeader(http.StatusNoContent)
+			} else {
+				w.WriteHeader(http.StatusForbidden)
+			}
 			return
 		}
 

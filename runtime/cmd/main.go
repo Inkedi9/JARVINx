@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/Inkedi9/jarvinx/config"
 	"github.com/Inkedi9/jarvinx/core"
@@ -20,6 +21,16 @@ func main() {
 
 	cfg := config.Default()
 	cfg.DiscordWebhook = os.Getenv("DISCORD_WEBHOOK")
+
+	// Origins supplémentaires depuis l'env
+	if extra := os.Getenv("JARVINX_ALLOWED_ORIGINS"); extra != "" {
+		for _, o := range strings.Split(extra, ",") {
+			o = strings.TrimSpace(o)
+			if o != "" {
+				cfg.AllowedOrigins = append(cfg.AllowedOrigins, o)
+			}
+		}
+	}
 
 	// Validation — on sort immédiatement si la config est invalide
 	if err := cfg.Validate(); err != nil {
