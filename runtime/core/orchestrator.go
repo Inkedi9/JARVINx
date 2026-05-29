@@ -48,15 +48,18 @@ func (o *Orchestrator) AgentContext() agents.AgentContext {
 func (o *Orchestrator) Start(ctx context.Context) {
 	jxlog.Info("ORCHESTRATOR", "En écoute sur le bus...")
 
-	// Lance le registry avec un context annulable
+	// Nom unique pour ce subscriber
+	events := o.bus.Subscribe("orchestrator")
+
 	go o.registry.Start(ctx, o.AgentContext)
 
-	events := o.bus.Subscribe()
 	for {
 		select {
 		case <-ctx.Done():
+			o.bus.Unsubscribe("orchestrator")
 			jxlog.Info("ORCHESTRATOR", "Arrêt propre")
 			return
+
 		case event, ok := <-events:
 			if !ok {
 				return

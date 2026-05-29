@@ -40,7 +40,7 @@ func TestScheduler_PublishesEvents(t *testing.T) {
 	go s.Start(ctx)
 
 	// Attend un événement sur le bus
-	events := bus.Subscribe()
+	events := bus.Subscribe("test-scheduler")
 	select {
 	case e := <-events:
 		if e.Type != EventObserved && e.Type != EventError {
