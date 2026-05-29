@@ -7,12 +7,12 @@
 ██   ██║██╔══██║██╔══██╗╚██╗ ██╔╝██║██║╚██╗██║ ██╔██╗
 ╚█████╔╝██║  ██║██║  ██║ ╚████╔╝ ██║██║ ╚████║██╔╝ ██╗
  ╚════╝ ╚═╝  ╚═╝╚═╝  ╚═╝  ╚═══╝  ╚═╝╚═╝  ╚═══╝╚═╝  ╚═╝
-Version 1.0
+Version 1.2.0
 ```
 
 **Autonomous AI Runtime · Observing. Thinking. Acting. Evolving.**
 
-![Go](https://img.shields.io/badge/Go-1.21+-00ADD8?style=flat-square&logo=go&logoColor=white)
+![Go](https://img.shields.io/badge/Go-1.26.3-00ADD8?style=flat-square&logo=go&logoColor=white)
 ![Ollama](https://img.shields.io/badge/Ollama-local%20LLM-black?style=flat-square)
 ![License](https://img.shields.io/badge/license-MIT-blue?style=flat-square)
 ![Status](https://img.shields.io/badge/status-v1.1%20stable-00E5FF?style=flat-square)
@@ -498,9 +498,9 @@ JARVINx envoie des embeds Discord structurés quand un seuil est dépassé.
 - [x] Migration logging complète vers jxlog
 - [x] Bus → vrai pub/sub fan-out
 - [x] Endpoint toggle agents
-- [ ] Version unifiée via ldflags
-- [ ] handleIndex → 404 propre
-- [ ] govulncheck
+- [X] Version unifiée via ldflags
+- [X] handleIndex → 404 propre
+- [X] govulncheck
 - [ ] Tests core/ (Orchestrator, Bus, Scheduler)
 - [ ] Backoff exponentiel polling dashboard
 - [ ] Tests dashboard hooks + composants

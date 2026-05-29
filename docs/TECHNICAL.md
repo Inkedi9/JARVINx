@@ -717,6 +717,23 @@ func TestNetworkAgent_Failure(t *testing.T) {
 
 ## Build & déploiement
 
+### Build & version
+
+La version est injectée au build via `-ldflags "-X main.Version=x.y.z"`.
+En dev (`go run`), la variable vaut `"dev"`.
+
+```bash
+make build          # jarvinx v1.2.0
+make build-linux    # jarvinx-linux v1.2.0
+```
+
+`govulncheck` doit être lancé avant chaque release :
+
+```bash
+cd runtime && govulncheck ./...
+# Expected: No vulnerabilities found.
+```
+
 ### Commandes Makefile
 
 ```bash
