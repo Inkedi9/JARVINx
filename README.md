@@ -484,6 +484,24 @@ JARVINx envoie des embeds Discord structurés quand un seuil est dépassé.
 - [x] go test -race clean
 - [x] Health check Ollama au démarrage — fail fast avec message clair si le LLM est absent
 
+### V1.2 — Correction & Robustesse (pre V1.5)
+
+- [ ] Permissions 0600 — state.json + alerts.jsonl
+- [ ] CORS whitelist explicite
+- [ ] Shell dispatch direct sans sh -c
+- [ ] AlertAgent recordError → recordSuccess
+- [ ] schedule_ms → nanosecondes corrigées
+- [ ] Scheduler → time.Ticker + context
+- [ ] Migration logging complète vers jxlog
+- [ ] Bus → vrai pub/sub fan-out
+- [ ] Endpoint toggle agents
+- [ ] Version unifiée via ldflags
+- [ ] handleIndex → 404 propre
+- [ ] govulncheck
+- [ ] Tests core/ (Orchestrator, Bus, Scheduler)
+- [ ] Backoff exponentiel polling dashboard
+- [ ] Tests dashboard hooks + composants
+
 ### v1.5 — Intelligence & Mémoire
 
 - [ ] **Vector DB** — intégration Qdrant local pour mémoire sémantique longue durée
