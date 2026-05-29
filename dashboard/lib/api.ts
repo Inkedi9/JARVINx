@@ -68,3 +68,21 @@ export const api = {
     history: () => fetchAPI<HistoryResponse>('/api/history'),
     agents: () => fetchAPI<AgentsResponse>('/api/agents'),
 }
+
+// ── Toggle  ───────────────────────────────────────────────────────────────────
+
+export async function toggleAgent(name: string): Promise<ToggleResponse> {
+    const res = await fetch(`${RUNTIME_URL}/api/agents/toggle`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name }),
+    })
+    if (!res.ok) throw new Error(`Toggle failed: ${res.status}`)
+    return res.json()
+}
+
+export interface ToggleResponse {
+    name: string
+    enabled: boolean
+    message: string
+}

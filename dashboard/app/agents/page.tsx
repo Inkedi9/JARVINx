@@ -2,26 +2,20 @@
 
 import { useAgents, useHistory } from '@/lib/hooks'
 import { formatTime, cn } from '@/lib/utils'
+import { toggleAgent, AgentStatus } from '@/lib/api'
+import { useState } from 'react'
 import {
     Bot, CheckCircle, AlertCircle, Clock,
     Activity, Zap, XCircle
 } from 'lucide-react'
 
-function AgentCard({ agent, cycles }: {
-    agent: {
-        name: string
-        enabled: boolean
-        last_run: string
-        last_error?: string
-        run_count: number
-        error_count: number
-        schedule_ns: number
-    }
-    cycles: number
-}) {
+function AgentCard({ agent }: { agent: AgentStatus }) {
+    const [enabled, setEnabled] = useState(agent.enabled)
+    const [loading, setLoading] = useState(false)
+
     const health = agent.run_count === 0
         ? 100
-        : Math.round((1 - agent.error_count / agent.run_count) * 100)
+        : Math.round((1 - agent.error_count / Math.max(agent.run_count, 1)) * 100)
 
     const scheduleS = Math.round(agent.schedule_ns / 1_000_000_000)
 
@@ -33,10 +27,22 @@ function AgentCard({ agent, cycles }: {
         : health >= 80 ? 'bg-amber-500'
             : 'bg-red-500'
 
+    async function handleToggle() {
+        setLoading(true)
+        try {
+            const resp = await toggleAgent(agent.name)
+            setEnabled(resp.enabled)
+        } catch (e) {
+            console.error(e)
+        } finally {
+            setLoading(false)
+        }
+    }
+
     return (
         <div className={cn(
             'bg-bg-secondary border rounded-xl p-5 flex flex-col gap-5 transition-all',
-            agent.enabled ? 'border-border hover:border-border-subtle' : 'border-border opacity-60'
+            enabled ? 'border-border hover:border-border-subtle' : 'border-border opacity-60'
         )}>
 
             {/* Header */}
@@ -44,11 +50,9 @@ function AgentCard({ agent, cycles }: {
                 <div className="flex items-center gap-3">
                     <div className={cn(
                         'w-10 h-10 rounded-xl border flex items-center justify-center',
-                        agent.enabled
-                            ? 'bg-accent-blue/10 border-accent-blue/20'
-                            : 'bg-bg-tertiary border-border'
+                        enabled ? 'bg-accent-blue/10 border-accent-blue/20' : 'bg-bg-tertiary border-border'
                     )}>
-                        <Bot size={18} className={agent.enabled ? 'text-accent-blue' : 'text-gray-600'} />
+                        <Bot size={18} className={enabled ? 'text-accent-blue' : 'text-gray-600'} />
                     </div>
                     <div>
                         <div className="font-mono text-sm font-semibold text-white capitalize">
@@ -57,21 +61,35 @@ function AgentCard({ agent, cycles }: {
                         <div className="flex items-center gap-1.5 mt-0.5">
                             <div className={cn(
                                 'w-1.5 h-1.5 rounded-full',
-                                agent.enabled ? 'bg-emerald-400 animate-pulse' : 'bg-gray-600'
+                                enabled ? 'bg-emerald-400 animate-pulse' : 'bg-gray-600'
                             )} />
                             <span className="font-mono text-[10px] text-gray-500">
-                                {agent.enabled ? 'Running' : 'Disabled'}
+                                {enabled ? 'Running' : 'Disabled'}
                             </span>
                         </div>
                     </div>
                 </div>
 
-                {/* Health badge */}
-                <div className="text-right">
-                    <div className={cn('font-mono text-xl font-bold', healthColor)}>
-                        {health}%
+                <div className="flex items-center gap-2">
+                    <button
+                        onClick={handleToggle}
+                        disabled={loading}
+                        className={cn(
+                            'px-3 py-1.5 rounded-lg font-mono text-[10px] border transition-all disabled:opacity-50',
+                            enabled
+                                ? 'bg-red-500/10 border-red-500/20 text-red-400 hover:bg-red-500/20'
+                                : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20'
+                        )}
+                    >
+                        {loading ? '...' : enabled ? 'Disable' : 'Enable'}
+                    </button>
+
+                    <div className="text-right">
+                        <div className={cn('font-mono text-xl font-bold', healthColor)}>
+                            {health}%
+                        </div>
+                        <div className="font-mono text-[10px] text-gray-600">health</div>
                     </div>
-                    <div className="font-mono text-[10px] text-gray-600">health</div>
                 </div>
             </div>
 
@@ -86,7 +104,7 @@ function AgentCard({ agent, cycles }: {
             {/* Stats grid */}
             <div className="grid grid-cols-3 gap-3">
                 <div className="bg-bg-tertiary rounded-lg p-3 text-center">
-                    <div className="flex items-center justify-center gap-1 mb-1">
+                    <div className="flex items-center justify-center mb-1">
                         <Activity size={11} className="text-gray-500" />
                     </div>
                     <div className="font-mono text-sm font-semibold text-white">
@@ -98,7 +116,7 @@ function AgentCard({ agent, cycles }: {
                 </div>
 
                 <div className="bg-bg-tertiary rounded-lg p-3 text-center">
-                    <div className="flex items-center justify-center gap-1 mb-1">
+                    <div className="flex items-center justify-center mb-1">
                         <XCircle size={11} className="text-gray-500" />
                     </div>
                     <div className={cn(
@@ -113,7 +131,7 @@ function AgentCard({ agent, cycles }: {
                 </div>
 
                 <div className="bg-bg-tertiary rounded-lg p-3 text-center">
-                    <div className="flex items-center justify-center gap-1 mb-1">
+                    <div className="flex items-center justify-center mb-1">
                         <Zap size={11} className="text-gray-500" />
                     </div>
                     <div className="font-mono text-sm font-semibold text-white">
@@ -125,6 +143,14 @@ function AgentCard({ agent, cycles }: {
                 </div>
             </div>
 
+            {/* Alert count */}
+            {agent.alert_count > 0 && (
+                <div className="flex items-center gap-2 font-mono text-[10px] text-amber-400">
+                    <span>⚡</span>
+                    <span>{agent.alert_count} alerts déclenchées</span>
+                </div>
+            )}
+
             {/* Last run */}
             <div className="flex items-center gap-2 pt-1 border-t border-border">
                 <Clock size={11} className="text-gray-600" />
@@ -134,7 +160,7 @@ function AgentCard({ agent, cycles }: {
                 </span>
             </div>
 
-            {/* Error message */}
+            {/* Error */}
             {agent.last_error && (
                 <div className="flex items-start gap-2 bg-red-500/5 border border-red-500/20 rounded-lg p-3">
                     <AlertCircle size={12} className="text-red-400 flex-shrink-0 mt-0.5" />
@@ -166,26 +192,19 @@ export default function AgentsPage() {
                     <h1 className="text-xl font-semibold text-white">Agent Registry</h1>
                 </div>
 
-                {/* Summary pills */}
                 <div className="flex items-center gap-3">
                     <div className="flex items-center gap-2 bg-bg-secondary border border-border rounded-lg px-3 py-2">
                         <CheckCircle size={12} className="text-emerald-400" />
-                        <span className="font-mono text-xs text-gray-400">
-                            {running} running
-                        </span>
+                        <span className="font-mono text-xs text-gray-400">{running} running</span>
                     </div>
                     <div className="flex items-center gap-2 bg-bg-secondary border border-border rounded-lg px-3 py-2">
                         <Bot size={12} className="text-gray-400" />
-                        <span className="font-mono text-xs text-gray-400">
-                            {agents.total} total
-                        </span>
+                        <span className="font-mono text-xs text-gray-400">{agents.total} total</span>
                     </div>
                     {errors > 0 && (
                         <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
                             <AlertCircle size={12} className="text-red-400" />
-                            <span className="font-mono text-xs text-red-400">
-                                {errors} errors
-                            </span>
+                            <span className="font-mono text-xs text-red-400">{errors} errors</span>
                         </div>
                     )}
                 </div>
@@ -199,37 +218,28 @@ export default function AgentsPage() {
                 </div>
             )}
 
-            {/* Agent cards */}
+            {/* Cards */}
             <div className="grid grid-cols-3 gap-4">
                 {agents.agents.map((agent) => (
-                    <AgentCard
-                        key={agent.name}
-                        agent={agent}
-                        cycles={history.total}
-                    />
+                    <AgentCard key={agent.name} agent={agent} />
                 ))}
 
                 {agents.agents.length === 0 && !error && (
                     <div className="col-span-3 bg-bg-secondary border border-border rounded-xl p-12 text-center">
                         <Bot size={32} className="text-gray-700 mx-auto mb-3" />
-                        <div className="font-mono text-sm text-gray-600">
-                            Aucun agent enregistré
-                        </div>
+                        <div className="font-mono text-sm text-gray-600">Aucun agent enregistré</div>
                     </div>
                 )}
             </div>
 
-            {/* Interface note */}
+            {/* Note */}
             <div className="bg-bg-secondary border border-border rounded-xl p-4">
                 <div className="font-mono text-[10px] text-gray-600 tracking-widest uppercase mb-2">
                     Enable / Disable
                 </div>
                 <div className="font-mono text-[11px] text-gray-500 leading-relaxed">
-                    Pour activer ou désactiver un agent à chaud, utilise la CLI interactive :{' '}
-                    <span className="text-accent-blue">interval</span>,{' '}
-                    <span className="text-accent-blue">status</span>,{' '}
-                    <span className="text-accent-blue">history</span>.
-                    L'API d'administration REST est prévue en v2.0.
+                    Toggle disponible depuis le dashboard ou la CLI.
+                    API d'administration complète prévue en v2.0.
                 </div>
             </div>
 

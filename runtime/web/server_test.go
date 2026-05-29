@@ -1,14 +1,34 @@
 package web
 
 import (
+	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/Inkedi9/jarvinx/agents"
 	"github.com/Inkedi9/jarvinx/config"
 	"github.com/Inkedi9/jarvinx/memory"
 )
+
+// mockToggleAgent — agent minimal pour tester le toggle
+type mockToggleAgent struct {
+	name    string
+	enabled bool
+}
+
+func (m *mockToggleAgent) Name() string                                       { return m.name }
+func (m *mockToggleAgent) Schedule() time.Duration                            { return 15 * time.Second }
+func (m *mockToggleAgent) Run(_ context.Context, _ agents.AgentContext) error { return nil }
+func (m *mockToggleAgent) IsEnabled() bool                                    { return m.enabled }
+func (m *mockToggleAgent) Enable()                                            { m.enabled = true }
+func (m *mockToggleAgent) Disable()                                           { m.enabled = false }
+func (m *mockToggleAgent) Status() agents.AgentStatus {
+	return agents.AgentStatus{Name: m.name, Enabled: m.enabled}
+}
 
 func makeTestServer(origins []string) *Server {
 	cfg := config.Default()
@@ -137,5 +157,92 @@ func TestConfig_EmptyAllowedOrigins(t *testing.T) {
 	err := cfg.Validate()
 	if err == nil {
 		t.Fatal("expected error for empty AllowedOrigins")
+	}
+}
+
+func TestToggle_AgentEnable(t *testing.T) {
+	srv := makeTestServer([]string{"http://localhost:3000"})
+
+	// Enregistre un agent de test
+	a := &mockToggleAgent{name: "system", enabled: true}
+	srv.registry.Register(a)
+
+	// Désactive
+	body := strings.NewReader(`{"name":"system"}`)
+	req := httptest.NewRequest("POST", "/api/agents/toggle", body)
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+
+	srv.handleAgentToggle(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d — body: %s", w.Code, w.Body.String())
+	}
+
+	var resp ToggleResponse
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("invalid response JSON: %v", err)
+	}
+
+	if resp.Enabled {
+		t.Error("expected agent to be disabled after toggle")
+	}
+}
+
+func TestToggle_AgentNotFound(t *testing.T) {
+	srv := makeTestServer([]string{"http://localhost:3000"})
+
+	body := strings.NewReader(`{"name":"nonexistent"}`)
+	req := httptest.NewRequest("POST", "/api/agents/toggle", body)
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+
+	srv.handleAgentToggle(w, req)
+
+	if w.Code != http.StatusNotFound {
+		t.Errorf("expected 404, got %d", w.Code)
+	}
+}
+
+func TestToggle_MethodNotAllowed(t *testing.T) {
+	srv := makeTestServer([]string{"http://localhost:3000"})
+
+	req := httptest.NewRequest("GET", "/api/agents/toggle", nil)
+	w := httptest.NewRecorder()
+
+	srv.handleAgentToggle(w, req)
+
+	if w.Code != http.StatusMethodNotAllowed {
+		t.Errorf("expected 405, got %d", w.Code)
+	}
+}
+
+func TestToggle_MissingName(t *testing.T) {
+	srv := makeTestServer([]string{"http://localhost:3000"})
+
+	body := strings.NewReader(`{}`)
+	req := httptest.NewRequest("POST", "/api/agents/toggle", body)
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+
+	srv.handleAgentToggle(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected 400, got %d", w.Code)
+	}
+}
+
+func TestToggle_InvalidJSON(t *testing.T) {
+	srv := makeTestServer([]string{"http://localhost:3000"})
+
+	body := strings.NewReader(`not json`)
+	req := httptest.NewRequest("POST", "/api/agents/toggle", body)
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+
+	srv.handleAgentToggle(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected 400, got %d", w.Code)
 	}
 }

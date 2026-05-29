@@ -42,6 +42,16 @@ type AgentStatusResponse struct {
 	Total  int                  `json:"total"`
 }
 
+type ToggleRequest struct {
+	Name string `json:"name"`
+}
+
+type ToggleResponse struct {
+	Name    string `json:"name"`
+	Enabled bool   `json:"enabled"`
+	Message string `json:"message"`
+}
+
 var startTime = time.Now()
 
 func NewServer(cfg *config.Config, state *memory.State, registry *agents.Registry, port int, files embed.FS) *Server {
@@ -74,6 +84,7 @@ func (s *Server) Start() {
 	mux.HandleFunc("/api/status", s.handleStatus)
 	mux.HandleFunc("/api/history", s.handleHistory)
 	mux.HandleFunc("/api/agents", s.handleAgents)
+	mux.HandleFunc("/api/agents/toggle", s.handleAgentToggle)
 
 	// corsMiddleware est maintenant une méthode — accès à s.allowedOrigins
 	handler := s.corsMiddleware(mux)
@@ -168,6 +179,48 @@ func (s *Server) writeJSON(w http.ResponseWriter, v any) {
 	if err := json.NewEncoder(w).Encode(v); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
+}
+
+func (s *Server) handleAgentToggle(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req ToggleRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid JSON body", http.StatusBadRequest)
+		return
+	}
+
+	if req.Name == "" {
+		http.Error(w, "name is required", http.StatusBadRequest)
+		return
+	}
+
+	agent, found := s.registry.Get(req.Name)
+	if !found {
+		http.Error(w, fmt.Sprintf("agent '%s' not found", req.Name), http.StatusNotFound)
+		return
+	}
+
+	// Toggle — inverse l'état actuel
+	var msg string
+	if agent.IsEnabled() {
+		agent.Disable()
+		msg = fmt.Sprintf("agent '%s' désactivé", req.Name)
+	} else {
+		agent.Enable()
+		msg = fmt.Sprintf("agent '%s' activé", req.Name)
+	}
+
+	jxlog.Info("WEB", msg)
+
+	s.writeJSON(w, ToggleResponse{
+		Name:    req.Name,
+		Enabled: agent.IsEnabled(),
+		Message: msg,
+	})
 }
 
 func formatUptime(d time.Duration) string {
