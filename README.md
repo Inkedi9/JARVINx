@@ -15,7 +15,7 @@ Version 1.2.0
 ![Go](https://img.shields.io/badge/Go-1.26.3-00ADD8?style=flat-square&logo=go&logoColor=white)
 ![Ollama](https://img.shields.io/badge/Ollama-local%20LLM-black?style=flat-square)
 ![License](https://img.shields.io/badge/license-MIT-blue?style=flat-square)
-![Status](https://img.shields.io/badge/status-v1.1%20stable-00E5FF?style=flat-square)
+![Status](https://img.shields.io/badge/status-v1.2%20stable-00E5FF?style=flat-square)
 
 _Your system. My mission._
 
@@ -362,13 +362,18 @@ go test ./agents/... -v
 go test ./... -cover
 ```
 
-| Package  | Tests                                                           | Couverture            |
-| -------- | --------------------------------------------------------------- | --------------------- |
-| `llm`    | 8 tests — parser JSON, markdown, fallback, uppercase, malformed | Parser robuste        |
-| `agents` | 18 tests — seuils, cooldown, enable/disable, panic isolation    | AlertAgent + Registry |
-| `tools`  | 5 tests — whitelist, timeout, commandes valides                 | Shell executor        |
-| `config` | 11 tests — seuils, intervalle, port, champs vides               | Validation config     |
-| `jxlog`  | 9 tests — niveaux, filtrage debug, nil safety                   | Logger structuré      |
+| Package         | Tests                                                           | Couverture            |
+| --------------- | --------------------------------------------------------------- | --------------------- |
+| `llm`           | 8 tests — parser JSON, markdown, fallback, uppercase, malformed | Parser robuste        |
+| `agents`        | 18 tests — seuils, cooldown, enable/disable, panic isolation    | AlertAgent + Registry |
+| `tools`         | 5 tests — whitelist, timeout, commandes valides                 | Shell executor        |
+| `config`        | 11 tests — seuils, intervalle, port, champs vides               | Validation config     |
+| `jxlog`         | 9 tests — niveaux, filtrage debug, nil safety                   | Logger structuré      |
+| `memory`        | 2 tests                                                         |
+| `web`           | 12 tests                                                        |
+| `core`          | 17 tests                                                        |
+| `dashboard/lib` | 18 tests                                                        |
+| **Total**       | **111 tests**                                                   |
 
 **Ce qui est testé :**
 
@@ -498,12 +503,12 @@ JARVINx envoie des embeds Discord structurés quand un seuil est dépassé.
 - [x] Migration logging complète vers jxlog
 - [x] Bus → vrai pub/sub fan-out
 - [x] Endpoint toggle agents
-- [X] Version unifiée via ldflags
-- [X] handleIndex → 404 propre
-- [X] govulncheck
-- [ ] Tests core/ (Orchestrator, Bus, Scheduler)
-- [ ] Backoff exponentiel polling dashboard
-- [ ] Tests dashboard hooks + composants
+- [x] Version unifiée via ldflags
+- [x] handleIndex → 404 propre
+- [x] govulncheck
+- [x] Tests core/ (Orchestrator, Bus, Scheduler)
+- [x] Backoff exponentiel polling dashboard
+- [x] Tests dashboard hooks + composants
 
 ### v1.5 — Intelligence & Mémoire
 
