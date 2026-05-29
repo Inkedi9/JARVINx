@@ -4,27 +4,35 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"os/exec"
-	"runtime"
 	"strings"
 	"time"
+
+	"os/exec"
+	"runtime"
 )
 
 const defaultCommandTimeout = 10 * time.Second
 
-var allowedCommands = map[string]bool{
-	"docker ps":        true,
-	"docker stats":     true,
-	"uptime":           true,
-	"df -h":            true,
-	"free -h":          true,
-	"systemctl status": true,
+// CommandSpec — binaire + args directs, sans shell intermédiaire
+type CommandSpec struct {
+	bin  string
+	args []string
 }
 
-var windowsAliases = map[string]string{
-	"uptime":  "net statistics workstation",
-	"df -h":   "wmic logicaldisk get size,freespace,caption",
-	"free -h": "wmic OS get FreePhysicalMemory,TotalVisibleMemorySize",
+// whitelist — map commande → spec d'exécution directe
+var commandSpecs = map[string]CommandSpec{
+	"docker ps":    {bin: "docker", args: []string{"ps"}},
+	"docker stats": {bin: "docker", args: []string{"stats", "--no-stream"}},
+	"uptime":       {bin: "uptime", args: []string{}},
+	"df -h":        {bin: "df", args: []string{"-h"}},
+	"free -h":      {bin: "free", args: []string{"-h"}},
+}
+
+// windowsSpecs — équivalents Windows pour chaque commande Unix
+var windowsSpecs = map[string]CommandSpec{
+	"uptime":  {bin: "cmd", args: []string{"/C", "net statistics workstation"}},
+	"df -h":   {bin: "wmic", args: []string{"logicaldisk", "get", "size,freespace,caption"}},
+	"free -h": {bin: "wmic", args: []string{"OS", "get", "FreePhysicalMemory,TotalVisibleMemorySize"}},
 }
 
 type CommandResult struct {
@@ -44,8 +52,9 @@ func ExecuteCommandWithTimeout(cmd string, timeout time.Duration) CommandResult 
 	start := time.Now()
 	cmd = strings.TrimSpace(cmd)
 
-	// Vérification whitelist
-	if !allowedCommands[cmd] {
+	// Lookup dans la whitelist
+	spec, ok := commandSpecs[cmd]
+	if !ok {
 		return CommandResult{
 			Command: cmd,
 			Error:   fmt.Sprintf("commande non autorisée : '%s'", cmd),
@@ -54,18 +63,16 @@ func ExecuteCommandWithTimeout(cmd string, timeout time.Duration) CommandResult 
 	}
 
 	// Adaptation Windows
-	actualCmd := cmd
 	if runtime.GOOS == "windows" {
-		if alias, ok := windowsAliases[cmd]; ok {
-			actualCmd = alias
+		if winSpec, hasWin := windowsSpecs[cmd]; hasWin {
+			spec = winSpec
 		}
 	}
 
-	// Context avec timeout — tué proprement après N secondes
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
-	result, timedOut, err := runCommandWithContext(ctx, actualCmd)
+	output, timedOut, err := runDirect(ctx, spec)
 	duration := time.Since(start)
 
 	if timedOut {
@@ -89,20 +96,15 @@ func ExecuteCommandWithTimeout(cmd string, timeout time.Duration) CommandResult 
 
 	return CommandResult{
 		Command:  cmd,
-		Output:   result,
+		Output:   output,
 		Duration: duration,
 		Success:  true,
 	}
 }
 
-func runCommandWithContext(ctx context.Context, cmd string) (string, bool, error) {
-	var command *exec.Cmd
-
-	if runtime.GOOS == "windows" {
-		command = exec.CommandContext(ctx, "cmd", "/C", cmd)
-	} else {
-		command = exec.CommandContext(ctx, "sh", "-c", cmd)
-	}
+// runDirect — exécution directe sans shell intermédiaire
+func runDirect(ctx context.Context, spec CommandSpec) (string, bool, error) {
+	command := exec.CommandContext(ctx, spec.bin, spec.args...)
 
 	var stdout, stderr bytes.Buffer
 	command.Stdout = &stdout
@@ -110,13 +112,16 @@ func runCommandWithContext(ctx context.Context, cmd string) (string, bool, error
 
 	err := command.Run()
 
-	// Vérifie si c'est un timeout
 	if ctx.Err() == context.DeadlineExceeded {
 		return "", true, nil
 	}
 
 	if err != nil {
-		return "", false, fmt.Errorf("%v: %s", err, stderr.String())
+		errMsg := stderr.String()
+		if errMsg == "" {
+			errMsg = err.Error()
+		}
+		return "", false, fmt.Errorf("%s", strings.TrimSpace(errMsg))
 	}
 
 	return strings.TrimSpace(stdout.String()), false, nil
@@ -124,11 +129,13 @@ func runCommandWithContext(ctx context.Context, cmd string) (string, bool, error
 
 func (r CommandResult) Display() {
 	if r.TimedOut {
-		fmt.Printf("[ EXEC ] ⏱ '%s' — timeout après %v\n", r.Command, r.Duration.Round(time.Millisecond))
+		fmt.Printf("[ EXEC ] ⏱ '%s' — timeout après %v\n",
+			r.Command, r.Duration.Round(time.Millisecond))
 		return
 	}
 	if r.Success {
-		fmt.Printf("[ EXEC ] ✓ '%s' (%v)\n", r.Command, r.Duration.Round(time.Millisecond))
+		fmt.Printf("[ EXEC ] ✓ '%s' (%v)\n",
+			r.Command, r.Duration.Round(time.Millisecond))
 		fmt.Printf("[ EXEC ] Output : %s\n", truncate(r.Output, 200))
 	} else {
 		fmt.Printf("[ EXEC ] ✗ '%s' — %s\n", r.Command, r.Error)
