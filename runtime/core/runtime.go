@@ -16,6 +16,7 @@ import (
 
 type Runtime struct {
 	cfg          *config.Config
+	version      string
 	bus          *Bus
 	scheduler    *Scheduler
 	orchestrator *Orchestrator
@@ -24,7 +25,7 @@ type Runtime struct {
 	registry     *agents.Registry
 }
 
-func NewRuntime(cfg *config.Config) *Runtime {
+func NewRuntime(cfg *config.Config, version string) *Runtime {
 	bus := NewBus(10)
 	state := memory.NewState(cfg.StateFile)
 	logger := memory.NewLogger(cfg.LogFile)
@@ -47,6 +48,7 @@ func NewRuntime(cfg *config.Config) *Runtime {
 
 	return &Runtime{
 		cfg:          cfg,
+		version:      version,
 		bus:          bus,
 		scheduler:    scheduler,
 		orchestrator: orchestrator,
@@ -69,7 +71,13 @@ func (r *Runtime) Start() {
 	}()
 
 	fmt.Println("\033[36m╔══════════════════════════════════════════════╗\033[0m")
-	fmt.Println("\033[36m║\033[0m           \033[97mJARVINx — RUNTIME v1.2\033[0m            \033[36m║\033[0m")
+	fmt.Printf("\033[36m║\033[0m        \033[97mJARVINx — RUNTIME v%s\033[0m", r.version)
+	// Padding dynamique selon la longueur de la version
+	padding := 20 - len(r.version)
+	for i := 0; i < padding; i++ {
+		fmt.Print(" ")
+	}
+	fmt.Println("\033[36m║\033[0m")
 	fmt.Println("\033[36m╚══════════════════════════════════════════════╝\033[0m")
 	fmt.Printf("  Modèle     : \033[97m%s\033[0m\n", r.cfg.Model)
 	fmt.Printf("  Intervalle : \033[97m%v\033[0m\n", r.cfg.Interval)
@@ -81,7 +89,7 @@ func (r *Runtime) Start() {
 	fmt.Println()
 
 	go r.orchestrator.Start(ctx)
-	go r.scheduler.Start(ctx) // ← context passé
+	go r.scheduler.Start(ctx)
 	go r.cli.Start()
 	go r.webServer.Start()
 

@@ -125,7 +125,8 @@ func (s *Server) corsMiddleware(next http.Handler) http.Handler {
 func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	data, err := s.files.ReadFile("static/index.html")
 	if err != nil {
-		http.Error(w, "index.html not found", http.StatusInternalServerError)
+		// 404 propre — ne pas exposer "index.html not found"
+		http.NotFound(w, r)
 		return
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")

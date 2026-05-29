@@ -7,9 +7,13 @@ import (
 
 	"github.com/Inkedi9/jarvinx/config"
 	"github.com/Inkedi9/jarvinx/core"
-	"github.com/Inkedi9/jarvinx/jxlog"
+	jxlog "github.com/Inkedi9/jarvinx/jxlog"
 	"github.com/Inkedi9/jarvinx/llm"
 )
+
+// Version est injectée au build via -ldflags "-X main.Version=x.y.z"
+// Valeur par défaut pour le dev local
+var Version = "dev"
 
 // la fonction principale. C'est ici que tout commence quand tu lances le binaire.
 func main() {
@@ -34,7 +38,7 @@ func main() {
 
 	// Validation — on sort immédiatement si la config est invalide
 	if err := cfg.Validate(); err != nil {
-		fmt.Fprintf(os.Stderr, "\n[ JARVINX ] Erreur de configuration :\n%v\n\n", err)
+		fmt.Fprintf(os.Stderr, "\n\033[31m[ JARVINX ]\033[0m Erreur de configuration :\n%v\n\n", err)
 		os.Exit(1)
 	}
 
@@ -65,6 +69,6 @@ func main() {
 		fmt.Println("\033[32m[ OK   ]\033[0m Discord webhook chargé")
 	}
 
-	rt := core.NewRuntime(cfg)
+	rt := core.NewRuntime(cfg, Version)
 	rt.Start()
 }
