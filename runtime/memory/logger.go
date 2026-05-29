@@ -38,8 +38,9 @@ func (l *Logger) Write(entry LogEntry) error {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
+	// 0644 → 0600
 	file, err := os.OpenFile(l.filepath,
-		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
 	if err != nil {
 		return fmt.Errorf("open log file: %w", err)
 	}
