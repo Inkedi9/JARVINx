@@ -57,11 +57,9 @@ func NewRuntime(cfg *config.Config) *Runtime {
 }
 
 func (r *Runtime) Start() {
-	// Context annulable — Ctrl+C déclenche un shutdown propre
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	// Écoute SIGINT et SIGTERM
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 	go func() {
@@ -71,7 +69,7 @@ func (r *Runtime) Start() {
 	}()
 
 	fmt.Println("\033[36m╔══════════════════════════════════════════════╗\033[0m")
-	fmt.Println("\033[36m║\033[0m           \033[97mJARVINx — RUNTIME v0.6\033[0m            \033[36m║\033[0m")
+	fmt.Println("\033[36m║\033[0m           \033[97mJARVINx — RUNTIME v1.2\033[0m            \033[36m║\033[0m")
 	fmt.Println("\033[36m╚══════════════════════════════════════════════╝\033[0m")
 	fmt.Printf("  Modèle     : \033[97m%s\033[0m\n", r.cfg.Model)
 	fmt.Printf("  Intervalle : \033[97m%v\033[0m\n", r.cfg.Interval)
@@ -83,11 +81,10 @@ func (r *Runtime) Start() {
 	fmt.Println()
 
 	go r.orchestrator.Start(ctx)
-	go r.scheduler.Start()
+	go r.scheduler.Start(ctx) // ← context passé
 	go r.cli.Start()
 	go r.webServer.Start()
 
-	// Attend l'annulation du context
 	<-ctx.Done()
 	jxlog.Info("JARVINX", "Arrêt terminé. À bientôt.")
 }

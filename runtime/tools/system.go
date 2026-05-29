@@ -1,6 +1,7 @@
 package tools
 
 import (
+	"context"
 	"fmt"
 	"runtime"
 	"time"
@@ -57,6 +58,52 @@ func Observe() (SystemState, error) {
 		DiskUsed:    diskStats.Used / 1024 / 1024 / 1024,
 		DiskPercent: diskStats.UsedPercent,
 	}, nil
+}
+
+func ObserveWithContext(ctx context.Context) (SystemState, error) {
+	// cpu.Percent avec context — interruptible
+	done := make(chan struct {
+		pct []float64
+		err error
+	}, 1)
+
+	go func() {
+		pct, err := cpu.Percent(1*time.Second, false)
+		done <- struct {
+			pct []float64
+			err error
+		}{pct, err}
+	}()
+
+	select {
+	case <-ctx.Done():
+		return SystemState{}, ctx.Err()
+	case result := <-done:
+		if result.err != nil {
+			return SystemState{}, fmt.Errorf("cpu: %w", result.err)
+		}
+
+		memStats, err := mem.VirtualMemory()
+		if err != nil {
+			return SystemState{}, fmt.Errorf("mem: %w", err)
+		}
+
+		diskStats, err := disk.Usage(rootPath())
+		if err != nil {
+			return SystemState{}, fmt.Errorf("disk: %w", err)
+		}
+
+		return SystemState{
+			Timestamp:   time.Now(),
+			CPUPercent:  result.pct[0],
+			MemTotal:    memStats.Total / 1024 / 1024,
+			MemUsed:     memStats.Used / 1024 / 1024,
+			MemPercent:  memStats.UsedPercent,
+			DiskTotal:   diskStats.Total / 1024 / 1024 / 1024,
+			DiskUsed:    diskStats.Used / 1024 / 1024 / 1024,
+			DiskPercent: diskStats.UsedPercent,
+		}, nil
+	}
 }
 
 func (s SystemState) Display() {

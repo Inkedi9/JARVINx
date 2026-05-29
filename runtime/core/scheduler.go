@@ -1,6 +1,7 @@
 package core
 
 import (
+	"context"
 	"fmt"
 	"sync"
 	"time"
@@ -27,7 +28,7 @@ func (s *Scheduler) SetInterval(d time.Duration) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.interval = d
-	fmt.Printf("[ SCHEDULER ] Intervalle → %v\n", d)
+	jxlog.Info("SCHEDULER", fmt.Sprintf("Intervalle → %v", d))
 }
 
 func (s *Scheduler) getInterval() time.Duration {
@@ -36,37 +37,65 @@ func (s *Scheduler) getInterval() time.Duration {
 	return s.interval
 }
 
-func (s *Scheduler) Start() {
+func (s *Scheduler) Start(ctx context.Context) {
 	jxlog.Info("SCHEDULER", fmt.Sprintf("Démarrage — tick toutes les %v", s.getInterval()))
 
+	ticker := time.NewTicker(s.getInterval())
+	defer ticker.Stop()
+
+	currentInterval := s.getInterval()
+
 	for {
-		time.Sleep(s.getInterval())
+		select {
+		case <-ctx.Done():
+			jxlog.Info("SCHEDULER", "Arrêt propre")
+			return
 
-		state, err := tools.Observe()
-		if err != nil {
+		case <-ticker.C:
+			newInterval := s.getInterval()
+			if newInterval != currentInterval {
+				ticker.Stop()
+				ticker = time.NewTicker(newInterval)
+				currentInterval = newInterval
+				jxlog.Info("SCHEDULER", fmt.Sprintf("Ticker mis à jour → %v", newInterval))
+			}
+
+			// Observe interruptible — répond au ctx.Done()
+			state, err := tools.ObserveWithContext(ctx)
+			if err != nil {
+				if ctx.Err() != nil {
+					return // context annulé — sortie propre
+				}
+				s.bus.Publish(Event{
+					Type:    EventError,
+					Payload: fmt.Sprintf("observe: %v", err),
+				})
+				continue
+			}
+
+			snap := memory.Snapshot{
+				Timestamp:   state.Timestamp,
+				CPUPercent:  state.CPUPercent,
+				MemUsed:     state.MemUsed,
+				MemTotal:    state.MemTotal,
+				MemPercent:  state.MemPercent,
+				DiskUsed:    state.DiskUsed,
+				DiskTotal:   state.DiskTotal,
+				DiskPercent: state.DiskPercent,
+			}
+
+			state.Display()
+
 			s.bus.Publish(Event{
-				Type:    EventError,
-				Payload: fmt.Sprintf("observe: %v", err),
+				Type:    EventObserved,
+				Payload: snap,
 			})
-			continue
 		}
-
-		snap := memory.Snapshot{
-			Timestamp:   state.Timestamp,
-			CPUPercent:  state.CPUPercent,
-			MemUsed:     state.MemUsed,
-			MemTotal:    state.MemTotal,
-			MemPercent:  state.MemPercent,
-			DiskUsed:    state.DiskUsed,
-			DiskTotal:   state.DiskTotal,
-			DiskPercent: state.DiskPercent,
-		}
-
-		state.Display()
-
-		s.bus.Publish(Event{
-			Type:    EventObserved,
-			Payload: snap,
-		})
 	}
+}
+
+// Restart recrée le ticker avec le nouvel intervalle
+// Appelé depuis CLI quand l'utilisateur change l'intervalle à chaud
+func (s *Scheduler) Restart(ctx context.Context) {
+	go s.Start(ctx)
 }
