@@ -78,15 +78,17 @@ func NewAlertAgent(
 }
 
 func (a *AlertAgent) Run(ctx context.Context, actx AgentContext) error {
-	alerts := a.Analyze(actx.Snapshot)
-	a.Dispatch(alerts)
 
-	if len(alerts) > 0 {
-		a.recordError(fmt.Errorf("%d alertes déclenchées", len(alerts)))
-	} else {
+	alerts := a.Analyze(actx.Snapshot)
+
+	if len(alerts) == 0 {
 		a.recordSuccess()
+		return nil
 	}
 
+	// Des alertes déclenchées = succès du travail de l'agent
+	a.Dispatch(alerts)
+	a.recordAlert()
 	return nil
 }
 

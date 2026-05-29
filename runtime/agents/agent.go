@@ -23,6 +23,7 @@ type AgentStatus struct {
 	LastError  string        `json:"last_error,omitempty"`
 	RunCount   int           `json:"run_count"`
 	ErrorCount int           `json:"error_count"`
+	AlertCount int           `json:"alert_count"`
 	Schedule   time.Duration `json:"schedule_ms"`
 }
 
@@ -48,6 +49,7 @@ type BaseAgent struct {
 	lastError  string
 	runCount   int
 	errorCount int
+	alertCount int
 }
 
 func NewBaseAgent(name string, schedule time.Duration) BaseAgent {
@@ -89,6 +91,7 @@ func (b *BaseAgent) Status() AgentStatus {
 		LastError:  b.lastError,
 		RunCount:   b.runCount,
 		ErrorCount: b.errorCount,
+		AlertCount: b.alertCount,
 		Schedule:   b.schedule,
 	}
 }
@@ -109,4 +112,13 @@ func (b *BaseAgent) recordError(err error) {
 	b.runCount++
 	b.errorCount++
 	b.lastError = err.Error()
+}
+
+func (b *BaseAgent) recordAlert() {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	b.lastRun = time.Now()
+	b.runCount++
+	b.alertCount++
+	b.lastError = ""
 }

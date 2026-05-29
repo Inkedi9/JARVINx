@@ -26,9 +26,13 @@ export default function AgentList() {
 
             <div className="space-y-3">
                 {data.agents.map((agent) => {
-                    const health = agent.error_count === 0
+                    // Calcul health — alerts ne comptent plus comme erreurs
+                    const health = agent.run_count === 0
                         ? 100
                         : Math.round((1 - agent.error_count / Math.max(agent.run_count, 1)) * 100)
+
+                    // Schedule — divise par 1_000_000_000 pour avoir des secondes
+                    const scheduleS = Math.round(agent.schedule_ns / 1_000_000_000)
 
                     const healthColor = health >= 95
                         ? 'text-emerald-400'
@@ -82,6 +86,15 @@ export default function AgentList() {
                                 <div className="font-mono text-[9px] text-gray-600">
                                     {agent.run_count} runs
                                 </div>
+                            </div>
+
+                            <div className="font-mono text-[10px] text-gray-600 mt-0.5">
+                                {agent.alert_count > 0 && (
+                                    <span className="text-amber-400 mr-2">
+                                        ⚡ {agent.alert_count} alerts
+                                    </span>
+                                )}
+                                {agent.run_count} runs
                             </div>
                         </div>
                     )

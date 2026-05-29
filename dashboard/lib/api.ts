@@ -44,7 +44,8 @@ export interface AgentStatus {
     last_error?: string
     run_count: number
     error_count: number
-    schedule_ms: number
+    alert_count: number   // nouveau
+    schedule_ns: number   // renommé depuis schedule_ms
 }
 
 export interface AgentsResponse {

@@ -1,6 +1,7 @@
 package agents
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -219,4 +220,85 @@ func countAlerts(alerts []Alert, metric string) int {
 		}
 	}
 	return count
+}
+
+func TestAlertAgent_Run_NoAlert(t *testing.T) {
+	a := makeAlertAgent() // alertFile="" — pas d'écriture disque
+	snap := makeSnap(10.0, 50.0, 50.0)
+
+	ctx := context.Background()
+	actx := AgentContext{
+		Snapshot: snap,
+		State:    memory.NewState(""),
+		Logger:   memory.NewLogger(""),
+	}
+
+	err := a.Run(ctx, actx)
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+
+	status := a.Status()
+	if status.RunCount != 1 {
+		t.Errorf("expected RunCount=1, got %d", status.RunCount)
+	}
+	if status.ErrorCount != 0 {
+		t.Errorf("expected ErrorCount=0, got %d", status.ErrorCount)
+	}
+	if status.AlertCount != 0 {
+		t.Errorf("expected AlertCount=0, got %d", status.AlertCount)
+	}
+}
+
+func TestAlertAgent_Run_WithAlert(t *testing.T) {
+	// Utilise un fichier temporaire pour éviter les erreurs d'écriture
+	tmpFile := t.TempDir() + "/alerts.jsonl"
+	a := NewAlertAgent(85.0, 90.0, 85.0, 2, 5, tmpFile, "")
+	a.state = AlertState{
+		LastAlertCPU: -999,
+		LastAlertRAM: -999,
+		LastAlertDsk: -999,
+	}
+
+	snap := makeSnap(10.0, 50.0, 92.0) // disk au-dessus du seuil
+
+	ctx := context.Background()
+	actx := AgentContext{
+		Snapshot: snap,
+		State:    memory.NewState(""),
+		Logger:   memory.NewLogger(""),
+	}
+
+	err := a.Run(ctx, actx)
+	if err != nil {
+		t.Fatalf("expected no error when alerts fire, got: %v", err)
+	}
+
+	status := a.Status()
+	if status.AlertCount != 1 {
+		t.Errorf("expected AlertCount=1, got %d", status.AlertCount)
+	}
+	if status.ErrorCount != 0 {
+		t.Errorf("expected ErrorCount=0 when alert fires, got %d", status.ErrorCount)
+	}
+	if status.LastError != "" {
+		t.Errorf("expected empty LastError when alert fires, got: %s", status.LastError)
+	}
+}
+
+func TestBaseAgent_RecordAlert(t *testing.T) {
+	b := NewBaseAgent("test", 15*time.Second)
+
+	b.recordAlert()
+
+	status := b.Status()
+	if status.AlertCount != 1 {
+		t.Errorf("expected AlertCount=1, got %d", status.AlertCount)
+	}
+	if status.ErrorCount != 0 {
+		t.Errorf("expected ErrorCount=0, got %d", status.ErrorCount)
+	}
+	if status.RunCount != 1 {
+		t.Errorf("expected RunCount=1, got %d", status.RunCount)
+	}
 }

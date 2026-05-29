@@ -15,7 +15,7 @@ function AgentCard({ agent, cycles }: {
         last_error?: string
         run_count: number
         error_count: number
-        schedule_ms: number
+        schedule_ns: number
     }
     cycles: number
 }) {
@@ -23,7 +23,7 @@ function AgentCard({ agent, cycles }: {
         ? 100
         : Math.round((1 - agent.error_count / agent.run_count) * 100)
 
-    const scheduleS = Math.round(agent.schedule_ms / 1_000_000_000)
+    const scheduleS = Math.round(agent.schedule_ns / 1_000_000_000)
 
     const healthColor = health >= 95 ? 'text-emerald-400'
         : health >= 80 ? 'text-amber-400'
