@@ -6,10 +6,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Inkedi9/jarvinx/jxlog"
+	jxlog "github.com/Inkedi9/jarvinx/jxlog"
 )
 
-// Registry gère le cycle de vie de tous les agents
 type Registry struct {
 	agents []Agent
 	mu     sync.RWMutex
@@ -41,7 +40,7 @@ func (r *Registry) Get(name string) (Agent, bool) {
 func (r *Registry) Enable(name string) bool {
 	if a, ok := r.Get(name); ok {
 		a.Enable()
-		fmt.Printf("[ REGISTRY ] Agent activé : %s\n", name)
+		jxlog.Info("REGISTRY", fmt.Sprintf("Agent activé : %s", name))
 		return true
 	}
 	return false
@@ -50,7 +49,7 @@ func (r *Registry) Enable(name string) bool {
 func (r *Registry) Disable(name string) bool {
 	if a, ok := r.Get(name); ok {
 		a.Disable()
-		fmt.Printf("[ REGISTRY ] Agent désactivé : %s\n", name)
+		jxlog.Info("REGISTRY", fmt.Sprintf("Agent désactivé : %s", name))
 		return true
 	}
 	return false
@@ -66,18 +65,16 @@ func (r *Registry) Statuses() []AgentStatus {
 	return statuses
 }
 
-// Start lance chaque agent dans sa propre goroutine avec son propre ticker
 func (r *Registry) Start(ctx context.Context, actxFn func() AgentContext) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-
 	for _, agent := range r.agents {
 		go r.runAgent(ctx, agent, actxFn)
 	}
 }
 
 func (r *Registry) runAgent(ctx context.Context, a Agent, actxFn func() AgentContext) {
-	fmt.Printf("[ REGISTRY ] Démarrage agent : %s\n", a.Name())
+	jxlog.Info("REGISTRY", fmt.Sprintf("Démarrage agent : %s", a.Name()))
 
 	ticker := time.NewTicker(a.Schedule())
 	defer ticker.Stop()
@@ -85,7 +82,7 @@ func (r *Registry) runAgent(ctx context.Context, a Agent, actxFn func() AgentCon
 	for {
 		select {
 		case <-ctx.Done():
-			fmt.Printf("[ REGISTRY ] Agent arrêté : %s\n", a.Name())
+			jxlog.Info("REGISTRY", fmt.Sprintf("Agent arrêté : %s", a.Name()))
 			return
 
 		case <-ticker.C:
@@ -93,19 +90,18 @@ func (r *Registry) runAgent(ctx context.Context, a Agent, actxFn func() AgentCon
 				continue
 			}
 
-			// Chaque agent dans sa propre goroutine — un panic ne tue pas les autres
 			func() {
 				defer func() {
 					if rec := recover(); rec != nil {
-						fmt.Printf("[ REGISTRY ] Panic récupéré dans %s : %v\n",
-							a.Name(), rec)
+						jxlog.Error("REGISTRY", fmt.Sprintf("Panic dans %s : %v",
+							a.Name(), rec))
 					}
 				}()
 
 				actx := actxFn()
 				if err := a.Run(ctx, actx); err != nil {
-					fmt.Printf("[ REGISTRY ] Erreur agent %s : %v\n",
-						a.Name(), err)
+					jxlog.Error("REGISTRY", fmt.Sprintf("Erreur agent %s : %v",
+						a.Name(), err))
 				}
 			}()
 		}

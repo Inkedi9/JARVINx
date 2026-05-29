@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	jxlog "github.com/Inkedi9/jarvinx/jxlog"
 	"github.com/Inkedi9/jarvinx/memory"
 )
 
@@ -24,7 +25,7 @@ func NewCLI(state *memory.State, scheduler *Scheduler) *CLI {
 }
 
 func (c *CLI) Start() {
-	fmt.Println("[ CLI ] Prêt — tape 'help' pour les commandes")
+	jxlog.Info("CLI", "Prêt — tape 'help' pour les commandes")
 
 	scanner := bufio.NewScanner(os.Stdin)
 
@@ -50,7 +51,7 @@ func (c *CLI) Start() {
 		case "clear":
 			fmt.Print("\033[H\033[2J")
 		default:
-			fmt.Printf("[ CLI ] Commande inconnue : '%s' — tape 'help'\n", cmd)
+			jxlog.Warn("CLI", fmt.Sprintf("Commande inconnue : '%s' — tape 'help'", cmd))
 		}
 	}
 }
@@ -71,7 +72,7 @@ func (c *CLI) cmdHelp() {
 func (c *CLI) cmdStatus() {
 	snapshots := c.state.Last(1)
 	if len(snapshots) == 0 {
-		fmt.Println("[ CLI ] Aucune observation disponible")
+		jxlog.Warn("CLI", "Aucune observation disponible")
 		return
 	}
 
@@ -91,7 +92,7 @@ func (c *CLI) cmdHistory(args []string) {
 	if len(args) > 0 {
 		parsed, err := strconv.Atoi(args[0])
 		if err != nil || parsed < 1 {
-			fmt.Println("[ CLI ] Usage : history [nombre]")
+			jxlog.Warn("CLI", "Usage : history [nombre]")
 			return
 		}
 		n = parsed
@@ -99,7 +100,7 @@ func (c *CLI) cmdHistory(args []string) {
 
 	snapshots := c.state.Last(n)
 	if len(snapshots) == 0 {
-		fmt.Println("[ CLI ] Aucun historique disponible")
+		jxlog.Warn("CLI", "Aucun historique disponible")
 		return
 	}
 
@@ -124,16 +125,16 @@ func (c *CLI) cmdHistory(args []string) {
 func (c *CLI) cmdInterval(args []string) {
 	if len(args) == 0 {
 		fmt.Printf("[ CLI ] Intervalle actuel : %v\n", c.scheduler.interval)
-		fmt.Println("[ CLI ] Usage : interval <secondes>")
+		jxlog.Info("CLI", "Usage : interval <secondes>")
 		return
 	}
 
 	secs, err := strconv.Atoi(args[0])
 	if err != nil || secs < 5 {
-		fmt.Println("[ CLI ] Minimum 5 secondes")
+		jxlog.Warn("CLI", "Minimum 5 secondes")
 		return
 	}
 
 	c.scheduler.SetInterval(time.Duration(secs) * time.Second)
-	fmt.Printf("[ CLI ] Intervalle mis à jour : %ds\n", secs)
+	jxlog.Info("CLI", fmt.Sprintf("Intervalle mis à jour : %ds", secs))
 }

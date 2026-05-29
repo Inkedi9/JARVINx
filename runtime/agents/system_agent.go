@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	jxlog "github.com/Inkedi9/jarvinx/jxlog"
 	"github.com/Inkedi9/jarvinx/llm"
 	"github.com/Inkedi9/jarvinx/memory"
 )
@@ -45,7 +46,7 @@ func (a *SystemAgent) Run(ctx context.Context, actx AgentContext) error {
 	systemPrompt := llm.BuildSystemPrompt()
 	userPrompt := llm.BuildUserPrompt(llmCtx)
 
-	fmt.Println("[ SYSTEM AGENT ] Analyse en cours...")
+	jxlog.Info("SYSTEM AGENT", "Analyse en cours...")
 
 	decision, attempts, err := a.client.ThinkWithDecision(
 		callCtx,
@@ -56,14 +57,13 @@ func (a *SystemAgent) Run(ctx context.Context, actx AgentContext) error {
 
 	if err != nil {
 		a.recordError(err)
-		fmt.Printf("[ SYSTEM AGENT ] Fallback après %d tentatives\n", attempts)
+		jxlog.Warn("SYSTEM AGENT", fmt.Sprintf("Fallback après %d tentatives", attempts))
 	} else {
 		a.recordSuccess()
 	}
 
 	decision.Display()
 
-	// Enregistrer le cycle
 	record := memory.NewCycleRecord(
 		snap,
 		decision.Action,
@@ -73,17 +73,12 @@ func (a *SystemAgent) Run(ctx context.Context, actx AgentContext) error {
 	)
 	actx.State.AddCycle(record)
 	actx.State.Add(snap)
+
 	if err := actx.State.Save(); err != nil {
-		fmt.Printf("[ SYSTEM AGENT ] State save error : %v\n", err)
+		jxlog.Error("SYSTEM AGENT", fmt.Sprintf("State save : %v", err))
 	}
 
-	fmt.Printf("[ STATE ] Cycle #%d enregistré\n", actx.State.CycleNum)
-
-	// Exécuter si commande présente
-	if decision.Command != "" {
-		fmt.Printf("[ EXEC ] Exécution : '%s'\n", decision.Command)
-		// tools.ExecuteCommand sera appelé via le bus — on publie juste la décision
-	}
+	jxlog.Info("STATE", fmt.Sprintf("Cycle #%d enregistré", actx.State.CycleNum))
 
 	return err
 }
