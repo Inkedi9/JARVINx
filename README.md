@@ -14,7 +14,7 @@ Version 1.5.0
 
 ![Go](https://img.shields.io/badge/Go-1.26.3-00ADD8?style=flat-square&logo=go&logoColor=white)
 ![Ollama](https://img.shields.io/badge/Ollama-local%20LLM-black?style=flat-square)
-![License](https://img.shields.io/badge/license-MIT-blue?style=flat-square)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 ![Status](https://img.shields.io/badge/status-v1.2%20stable-00E5FF?style=flat-square)
 
 _Your system. My mission._
