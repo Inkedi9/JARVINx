@@ -98,6 +98,18 @@ func (c *Config) FromEnv() {
 		}
 	}
 
+	// Rotation des logs
+	if v := os.Getenv("JARVINX_LOG_MAX_MB"); v != "" {
+		if i, err := strconv.ParseInt(v, 10, 64); err == nil {
+			c.LogMaxSizeBytes = i * 1024 * 1024
+		}
+	}
+	if v := os.Getenv("JARVINX_LOG_MAX_BACKUPS"); v != "" {
+		if i, err := strconv.Atoi(v); err == nil {
+			c.LogMaxBackups = i
+		}
+	}
+
 	// Web
 	if v := os.Getenv("JARVINX_PORT"); v != "" {
 		if i, err := strconv.Atoi(v); err == nil {

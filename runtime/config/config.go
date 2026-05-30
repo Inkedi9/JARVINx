@@ -34,6 +34,12 @@ type Config struct {
 	DiscordWebhook string
 
 	AllowedOrigins []string
+
+	// Rotation des logs
+	LogMaxSizeBytes   int64
+	LogMaxBackups     int
+	AlertMaxSizeBytes int64
+	AlertMaxBackups   int
 }
 
 func Default() *Config {
@@ -55,5 +61,9 @@ func Default() *Config {
 			"http://localhost:3000", // Next.js dev
 			"http://localhost:8080", // dashboard servi par Go
 		},
+		LogMaxSizeBytes:   10 * 1024 * 1024, // 10 MB
+		LogMaxBackups:     3,
+		AlertMaxSizeBytes: 5 * 1024 * 1024, // 5 MB
+		AlertMaxBackups:   3,
 	}
 }

@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	jxlog "github.com/Inkedi9/jarvinx/jxlog"
 	"github.com/Inkedi9/jarvinx/memory"
 )
 
@@ -47,7 +48,7 @@ type AlertAgent struct {
 	diskThreshold float64
 	minCycles     int
 	cooldown      int
-	alertFile     string
+	alertLogger   *memory.Logger
 	webhookURL    string
 	state         AlertState
 	mu            sync.Mutex
@@ -66,7 +67,7 @@ func NewAlertAgent(
 		diskThreshold: diskThreshold,
 		minCycles:     minCycles,
 		cooldown:      cooldown,
-		alertFile:     alertFile,
+		alertLogger:   memory.NewLogger(alertFile),
 		webhookURL:    webhookURL,
 		httpClient:    &http.Client{Timeout: 10 * time.Second},
 		state: AlertState{
@@ -187,14 +188,18 @@ func (a *AlertAgent) printAlert(alert Alert) {
 }
 
 func (a *AlertAgent) logAlert(alert Alert) {
-	file, err := os.OpenFile(a.alertFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	// Utilise le Logger avec rotation au lieu d'ouvrir le fichier directement
+	// On crée une LogEntry adaptée — ou on écrit directement en JSON
+	file, err := os.OpenFile(a.alertLogger.Filepath(), // ← ajoute un getter
+		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
 	if err != nil {
-		fmt.Printf("[ ALERT ] Log failed : %v\n", err)
+		jxlog.Error("ALERT", fmt.Sprintf("Log open failed: %v", err))
 		return
 	}
 	defer file.Close()
+
 	if err := json.NewEncoder(file).Encode(alert); err != nil {
-		fmt.Printf("[ ALERT ] Encode failed : %v\n", err)
+		jxlog.Error("ALERT", fmt.Sprintf("Log encode failed: %v", err))
 	}
 }
 

@@ -28,7 +28,11 @@ type Runtime struct {
 func NewRuntime(cfg *config.Config, version string) *Runtime {
 	bus := NewBus(10)
 	state := memory.NewState(cfg.StateFile)
-	logger := memory.NewLogger(cfg.LogFile)
+	logger := memory.NewLoggerWithRotation(
+		cfg.LogFile,
+		cfg.LogMaxSizeBytes,
+		cfg.LogMaxBackups,
+	)
 	registry := agents.NewRegistry()
 
 	// Enregistrement des agents
