@@ -3,22 +3,7 @@ package llm
 import (
 	"fmt"
 	"strings"
-	"time"
-
-	"github.com/Inkedi9/jarvinx/memory"
 )
-
-type SystemContext struct {
-	Timestamp   time.Time
-	CPUPercent  float64
-	MemUsed     uint64
-	MemTotal    uint64
-	MemPercent  float64
-	DiskUsed    uint64
-	DiskTotal   uint64
-	DiskPercent float64
-	History     []memory.Snapshot
-}
 
 func BuildSystemPrompt() string {
 	return `Tu es JARVINx, un agent de monitoring système autonome.
@@ -34,11 +19,11 @@ Format de réponse obligatoire :
   "reason": "explication de ta décision basée sur les tendances"
 }
 
-Règles d'action :
-- "log"     : système stable, pas de tendance préoccupante
-- "alert"   : seuil critique dépassé (CPU >85%, RAM >90%, Disk >90%)
-- "suggest" : tendance dégradée sur plusieurs cycles
-- "execute" : diagnostic nécessaire
+Rules:
+- "log"     : system stable, no worrying trend
+- "alert"   : critical threshold exceeded (CPU >85%, RAM >90%, Disk >90%)
+- "suggest" : degraded trend over multiple cycles
+- "execute" : diagnostic needed
 
 Commands autorisées :
 - "docker ps"
@@ -48,6 +33,14 @@ Commands autorisées :
 - "free -h"
 
 Analyse les TENDANCES, pas seulement l'instant présent.`
+}
+
+func BuildAdaptivePrompt(ctx SystemContext) string {
+	base := BuildSystemPrompt()
+
+	// Construit le contexte adaptatif depuis l'historique
+	adaptiveCtx := BuildAdaptiveContext(ctx.Cycles, ctx.History)
+	return BuildAdaptiveSystemPrompt(base, adaptiveCtx)
 }
 
 func BuildUserPrompt(ctx SystemContext) string {
@@ -67,8 +60,8 @@ func BuildUserPrompt(ctx SystemContext) string {
 		sb.WriteString("\n")
 	}
 
-	// Observation actuelle
-	sb.WriteString(fmt.Sprintf(`Observation actuelle à %s :
+	sb.WriteString(fmt.Sprintf(
+		`Observation actuelle à %s :
 - CPU    : %.1f%%
 - RAM    : %d MB / %d MB (%.1f%%)
 - DISQUE : %d GB / %d GB (%.1f%%)

@@ -30,7 +30,10 @@ func (a *SystemAgent) Run(ctx context.Context, actx AgentContext) error {
 	callCtx, cancel := context.WithTimeout(ctx, 60*time.Second)
 	defer cancel()
 
-	history := actx.State.Last(5)
+	// Récupère l'historique des snapshots ET des décisions
+	history := actx.State.Last(10)
+	cycles := actx.State.LastCycles(20)
+
 	llmCtx := llm.SystemContext{
 		Timestamp:   snap.Timestamp,
 		CPUPercent:  snap.CPUPercent,
@@ -41,9 +44,11 @@ func (a *SystemAgent) Run(ctx context.Context, actx AgentContext) error {
 		DiskTotal:   snap.DiskTotal,
 		DiskPercent: snap.DiskPercent,
 		History:     history,
+		Cycles:      cycles, // nouveau
 	}
 
-	systemPrompt := llm.BuildSystemPrompt()
+	// Prompt adaptatif — enrichi du contexte historique
+	systemPrompt := llm.BuildAdaptivePrompt(llmCtx)
 	userPrompt := llm.BuildUserPrompt(llmCtx)
 
 	jxlog.Info("SYSTEM AGENT", "Analyse en cours...")
