@@ -91,9 +91,9 @@ func (n *DiscordNotifier) Send(alert Alert) error {
 				"description": alert.Message,
 				"color":       color,
 				"fields": []map[string]any{
-					{"name": "Valeur",  "value": fmt.Sprintf("%.1f%%", alert.Value),     "inline": true},
-					{"name": "Seuil",   "value": fmt.Sprintf("%.1f%%", alert.Threshold), "inline": true},
-					{"name": "Cycles",  "value": fmt.Sprintf("%d", alert.CyclesAbove),   "inline": true},
+					{"name": "Valeur", "value": fmt.Sprintf("%.1f%%", alert.Value), "inline": true},
+					{"name": "Seuil", "value": fmt.Sprintf("%.1f%%", alert.Threshold), "inline": true},
+					{"name": "Cycles", "value": fmt.Sprintf("%d", alert.CyclesAbove), "inline": true},
 				},
 				"footer":    map[string]any{"text": "JARVINx · Autonomous Agent Runtime"},
 				"timestamp": alert.Timestamp.Format(time.RFC3339),
@@ -201,9 +201,9 @@ func (n *NtfyNotifier) Send(alert Alert) error {
 		return fmt.Errorf("create request: %w", err)
 	}
 
-	req.Header.Set("Title",    fmt.Sprintf("JARVINx — %s %s", alert.Level, alert.Metric))
+	req.Header.Set("Title", fmt.Sprintf("JARVINx — %s %s", alert.Level, alert.Metric))
 	req.Header.Set("Priority", priority)
-	req.Header.Set("Tags",     "jarvinx,alert")
+	req.Header.Set("Tags", "jarvinx,alert")
 
 	resp, err := n.client.Do(req)
 	if err != nil {

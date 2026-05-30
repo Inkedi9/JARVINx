@@ -148,7 +148,7 @@ func (a *AlertAgent) Analyze(snap memory.Snapshot) []Alert {
 			Metric:    "DISK",
 			Value:     snap.DiskPercent,
 			Threshold: a.diskThreshold,
-			Message: fmt.Sprintf("Disque a %.1f%% - nettoyage recommande",
+			Message: fmt.Sprintf("Disque a %.1f%% - cleanup recommended",
 				snap.DiskPercent),
 		})
 		a.state.LastAlertDsk = a.state.CurrentCycle
