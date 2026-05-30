@@ -1,6 +1,6 @@
 'use client'
 
-import { useAgents, useHistory } from '@/lib/hooks'
+import { useAgents } from '@/lib/hooks'
 import { formatTime, cn } from '@/lib/utils'
 import { toggleAgent, AgentStatus } from '@/lib/api'
 import { useState } from 'react'
@@ -175,7 +175,6 @@ function AgentCard({ agent }: { agent: AgentStatus }) {
 
 export default function AgentsPage() {
     const { data: agents, error } = useAgents()
-    const { data: history } = useHistory()
 
     const running = agents.agents.filter(a => a.enabled).length
     const errors = agents.agents.reduce((acc, a) => acc + a.error_count, 0)

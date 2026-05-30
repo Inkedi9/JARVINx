@@ -30,7 +30,7 @@ export default function RuntimeCycle({ activeStep = 1 }: RuntimeCycleProps) {
                 {/* Ligne de connexion */}
                 <div className="absolute top-6 left-[10%] right-[10%] h-px bg-border z-0" />
 
-                {steps.map((step, i) => {
+                {steps.map((step) => {
                     const isDone = step.id < activeStep
                     const isActive = step.id === activeStep
 

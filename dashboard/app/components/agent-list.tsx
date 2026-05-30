@@ -31,9 +31,6 @@ export default function AgentList() {
                         ? 100
                         : Math.round((1 - agent.error_count / Math.max(agent.run_count, 1)) * 100)
 
-                    // Schedule — divise par 1_000_000_000 pour avoir des secondes
-                    const scheduleS = Math.round(agent.schedule_ns / 1_000_000_000)
-
                     const healthColor = health >= 95
                         ? 'text-emerald-400'
                         : health >= 80

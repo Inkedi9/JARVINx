@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback, useRef } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { api, StatusResponse, HistoryResponse, AgentsResponse } from './api'
 
 const MAX_BACKOFF_MS = 30_000  // 30s max
@@ -16,35 +16,35 @@ function usePolling<T>(
     const backoffRef = useRef(BASE_BACKOFF_MS)
     const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-    const schedule = useCallback((delay: number) => {
-        if (timerRef.current) clearTimeout(timerRef.current)
-        timerRef.current = setTimeout(run, delay)
-    }, [])
-
-    const run = useCallback(async () => {
-        try {
-            const result = await fetcher()
-            setData(result)
-            setError(null)
-            backoffRef.current = BASE_BACKOFF_MS  // reset backoff on success
-            schedule(interval)
-        } catch (e) {
-            const msg = e instanceof Error ? e.message : 'Erreur inconnue'
-            setError(msg)
-
-            // Backoff exponentiel — double à chaque échec, plafonné à MAX_BACKOFF_MS
-            const nextBackoff = Math.min(backoffRef.current * 2, MAX_BACKOFF_MS)
-            backoffRef.current = nextBackoff
-            schedule(nextBackoff)
-        }
-    }, [fetcher, interval, schedule])
-
     useEffect(() => {
-        run()
+        let cancelled = false
+        backoffRef.current = BASE_BACKOFF_MS
+
+        async function poll() {
+            try {
+                const result = await fetcher()
+                if (cancelled) return
+                setData(result)
+                setError(null)
+                backoffRef.current = BASE_BACKOFF_MS
+                timerRef.current = setTimeout(poll, interval)
+            } catch (e) {
+                if (cancelled) return
+                const msg = e instanceof Error ? e.message : 'Erreur inconnue'
+                setError(msg)
+                const nextBackoff = Math.min(backoffRef.current * 2, MAX_BACKOFF_MS)
+                backoffRef.current = nextBackoff
+                timerRef.current = setTimeout(poll, nextBackoff)
+            }
+        }
+
+        poll()
+
         return () => {
+            cancelled = true
             if (timerRef.current) clearTimeout(timerRef.current)
         }
-    }, [run])
+    }, [fetcher, interval])
 
     return { data, error }
 }
