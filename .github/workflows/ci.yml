@@ -8,11 +8,15 @@ on:
 
 jobs:
   # ─────────────────────────────────────────
-  # Job 1 — Backend Go
+  # Job 1 — Backend Go (runtime/)
   # ─────────────────────────────────────────
   go:
     name: Go — Lint & Test
     runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: runtime
 
     steps:
       - name: Checkout
@@ -21,13 +25,14 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version-file: go.mod
+          go-version-file: runtime/go.mod
           cache: true
 
       - name: Lint
         uses: golangci/golangci-lint-action@v6
         with:
           version: latest
+          working-directory: runtime
           args: --timeout=5m
 
       - name: Test
@@ -37,7 +42,7 @@ jobs:
         run: go tool cover -func=coverage.out
 
   # ─────────────────────────────────────────
-  # Job 2 — Dashboard Next.js
+  # Job 2 — Dashboard Next.js (dashboard/)
   # ─────────────────────────────────────────
   dashboard:
     name: Dashboard — Lint, Test & Build
