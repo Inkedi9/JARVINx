@@ -13,10 +13,10 @@ import (
 // DockerAgent surveille les containers Docker
 type DockerAgent struct {
 	BaseAgent
-	dryRun        bool
-	watchList     []string // containers à surveiller — vide = tous
-	prevStates    map[string]string
-	webhookURL    string
+	dryRun     bool
+	watchList  []string // containers à surveiller — vide = tous
+	prevStates map[string]string
+	webhookURL string
 }
 
 func NewDockerAgent(webhookURL string, dryRun bool, watchList ...string) *DockerAgent {
@@ -73,7 +73,7 @@ func (a *DockerAgent) Run(ctx context.Context, actx AgentContext) error {
 	}
 
 	jxlog.Debug("DOCKER AGENT", fmt.Sprintf(
-		"%d containers surveillés — %d running, %d exited",
+		"%d containers monitored — %d running, %d exited",
 		len(containers),
 		countByStatus(containers, "running"),
 		countByStatus(containers, "exited"),

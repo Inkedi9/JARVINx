@@ -45,6 +45,11 @@ type Config struct {
 	// Docker
 	DockerEnabled   bool
 	DockerWatchList []string
+
+	// Files
+	FileEnabled    bool
+	FileWatchPaths []string
+	FileMaxSizeMB  int64
 }
 
 func Default() *Config {
@@ -71,8 +76,10 @@ func Default() *Config {
 		AlertMaxSizeBytes: 5 * 1024 * 1024, // 5 MB
 		AlertMaxBackups:   3,
 		DryRun:            false,
-
-		DockerEnabled:   true,
-		DockerWatchList: []string{},
+		DockerEnabled:     true,
+		DockerWatchList:   []string{},
+		FileEnabled:       true,
+		FileWatchPaths:    []string{}, // vide = désactivé jusqu'à config
+		FileMaxSizeMB:     500,        // alerte si fichier > 500 MB
 	}
 }

@@ -54,6 +54,13 @@ func NewRuntime(cfg *config.Config, version string) *Runtime {
 			cfg.DockerWatchList...,
 		))
 	}
+	if cfg.FileEnabled && len(cfg.FileWatchPaths) > 0 {
+		registry.Register(agents.NewFileAgent(
+			cfg.FileWatchPaths,
+			cfg.FileMaxSizeMB,
+			cfg.DryRun,
+		))
+	}
 
 	scheduler := NewScheduler(cfg.Interval, bus)
 	orchestrator := NewOrchestrator(bus, registry, state, logger, cfg.DryRun)

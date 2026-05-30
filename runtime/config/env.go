@@ -146,4 +146,17 @@ func (c *Config) FromEnv() {
 	if v := os.Getenv("JARVINX_DOCKER_WATCH"); v != "" {
 		c.DockerWatchList = strings.Split(v, ",")
 	}
+
+	// Files
+	if v := os.Getenv("JARVINX_FILE_WATCH"); v != "" {
+		c.FileWatchPaths = strings.Split(v, ",")
+	}
+	if v := os.Getenv("JARVINX_FILE_MAX_MB"); v != "" {
+		if i, err := strconv.ParseInt(v, 10, 64); err == nil {
+			c.FileMaxSizeMB = i
+		}
+	}
+	if v := os.Getenv("JARVINX_FILE_ENABLED"); v == "false" {
+		c.FileEnabled = false
+	}
 }

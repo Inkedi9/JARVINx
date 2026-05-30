@@ -68,11 +68,11 @@ func ListContainers(ctx context.Context) ([]ContainerState, error) {
 
 	// Structure brute de l'API Docker
 	var raw []struct {
-		ID    string   `json:"Id"`
-		Names []string `json:"Names"`
-		Image string   `json:"Image"`
-		State string   `json:"State"`
-		Status string  `json:"Status"`
+		ID     string   `json:"Id"`
+		Names  []string `json:"Names"`
+		Image  string   `json:"Image"`
+		State  string   `json:"State"`
+		Status string   `json:"Status"`
 	}
 
 	if err := json.Unmarshal(body, &raw); err != nil {
