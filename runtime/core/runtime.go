@@ -15,14 +15,15 @@ import (
 )
 
 type Runtime struct {
-	cfg          *config.Config
-	version      string
-	bus          *Bus
-	scheduler    *Scheduler
-	orchestrator *Orchestrator
-	cli          *CLI
-	webServer    *web.Server
-	registry     *agents.Registry
+	cfg           *config.Config
+	version       string
+	bus           *Bus
+	scheduler     *Scheduler
+	orchestrator  *Orchestrator
+	cli           *CLI
+	webServer     *web.Server
+	registry      *agents.Registry
+	dailyReporter *agents.DailyReporter
 }
 
 func NewRuntime(cfg *config.Config, version string) *Runtime {
@@ -61,6 +62,17 @@ func NewRuntime(cfg *config.Config, version string) *Runtime {
 		dispatcher,
 	))
 
+	var dailyReporter *agents.DailyReporter
+	if cfg.DailyReportEnabled {
+		dailyReporter = agents.NewDailyReporter(
+			dispatcher,
+			state,
+			cfg.DailyReportHour,
+			cfg.DailyReportMinute,
+			cfg.DryRun,
+		)
+	}
+
 	if cfg.DockerEnabled {
 		registry.Register(agents.NewDockerAgent(
 			cfg.DiscordWebhook,
@@ -81,14 +93,15 @@ func NewRuntime(cfg *config.Config, version string) *Runtime {
 	orchestrator := NewOrchestrator(bus, registry, state, logger, cfg.DryRun)
 
 	return &Runtime{
-		cfg:          cfg,
-		version:      version,
-		bus:          bus,
-		scheduler:    scheduler,
-		orchestrator: orchestrator,
-		cli:          NewCLI(state, scheduler),
-		webServer:    web.NewServer(cfg, state, registry, cfg.WebPort, web.StaticFiles()),
-		registry:     registry,
+		cfg:           cfg,
+		version:       version,
+		bus:           bus,
+		scheduler:     scheduler,
+		orchestrator:  orchestrator,
+		cli:           NewCLI(state, scheduler),
+		webServer:     web.NewServer(cfg, state, registry, cfg.WebPort, web.StaticFiles()),
+		registry:      registry,
+		dailyReporter: dailyReporter,
 	}
 }
 
@@ -121,6 +134,15 @@ func (r *Runtime) Start() {
 		r.cfg.DiskAlertThreshold,
 	)
 	fmt.Println()
+
+	if r.dailyReporter != nil {
+		go r.dailyReporter.Start(ctx)
+		jxlog.Info("JARVINX", fmt.Sprintf(
+			"Rapport quotidien activé — %02d:%02d",
+			r.cfg.DailyReportHour,
+			r.cfg.DailyReportMinute,
+		))
+	}
 
 	go r.orchestrator.Start(ctx)
 	go r.scheduler.Start(ctx)

@@ -93,6 +93,14 @@ func (c *Config) Validate() error {
 		ve.Add("Model ne peut pas être vide")
 	}
 
+	// ── Rapport daily ─────────────────────────────────────────────
+	if c.DailyReportHour < 0 || c.DailyReportHour > 23 {
+		ve.Add(fmt.Sprintf("DailyReportHour invalide : %d (doit être 0-23)", c.DailyReportHour))
+	}
+	if c.DailyReportMinute < 0 || c.DailyReportMinute > 59 {
+		ve.Add(fmt.Sprintf("DailyReportMinute invalide : %d (doit être 0-59)", c.DailyReportMinute))
+	}
+
 	if ve.HasErrors() {
 		return ve
 	}

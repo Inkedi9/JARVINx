@@ -144,6 +144,21 @@ func (c *Config) FromEnv() {
 		c.GotifyToken = v
 	}
 
+	// Rapport quotidien
+	if v := os.Getenv("JARVINX_DAILY_REPORT"); v == "true" {
+		c.DailyReportEnabled = true
+	}
+	if v := os.Getenv("JARVINX_REPORT_HOUR"); v != "" {
+		if i, err := strconv.Atoi(v); err == nil && i >= 0 && i <= 23 {
+			c.DailyReportHour = i
+		}
+	}
+	if v := os.Getenv("JARVINX_REPORT_MINUTE"); v != "" {
+		if i, err := strconv.Atoi(v); err == nil && i >= 0 && i <= 59 {
+			c.DailyReportMinute = i
+		}
+	}
+
 	// CORS origins supplémentaires
 	if v := os.Getenv("JARVINX_ALLOWED_ORIGINS"); v != "" {
 		for _, o := range strings.Split(v, ",") {

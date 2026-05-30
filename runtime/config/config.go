@@ -57,6 +57,11 @@ type Config struct {
 	FileEnabled    bool
 	FileWatchPaths []string
 	FileMaxSizeMB  int64
+
+	// Rapport quotidien
+	DailyReportEnabled bool
+	DailyReportHour    int // heure d'envoi (0-23)
+	DailyReportMinute  int // minute d'envoi
 }
 
 func Default() *Config {
@@ -78,17 +83,20 @@ func Default() *Config {
 			"http://localhost:3000", // Next.js dev
 			"http://localhost:8080", // dashboard servi par Go
 		},
-		LogMaxSizeBytes:   10 * 1024 * 1024, // 10 MB
-		LogMaxBackups:     3,
-		AlertMaxSizeBytes: 5 * 1024 * 1024, // 5 MB
-		AlertMaxBackups:   3,
-		DryRun:            false,
-		DockerEnabled:     true,
-		DockerWatchList:   []string{},
-		FileEnabled:       true,
-		FileWatchPaths:    []string{}, // vide = désactivé jusqu'à config
-		FileMaxSizeMB:     500,        // alerte si fichier > 500 MB
-		NtfyURL:           "https://ntfy.sh",
-		NtfyTopic:         "jarvinx",
+		LogMaxSizeBytes:    10 * 1024 * 1024, // 10 MB
+		LogMaxBackups:      3,
+		AlertMaxSizeBytes:  5 * 1024 * 1024, // 5 MB
+		AlertMaxBackups:    3,
+		DryRun:             false,
+		DockerEnabled:      true,
+		DockerWatchList:    []string{},
+		FileEnabled:        true,
+		FileWatchPaths:     []string{}, // vide = désactivé jusqu'à config
+		FileMaxSizeMB:      500,        // alerte si fichier > 500 MB
+		NtfyURL:            "https://ntfy.sh",
+		NtfyTopic:          "jarvinx",
+		DailyReportEnabled: false, // désactivé par défaut
+		DailyReportHour:    8,
+		DailyReportMinute:  0,
 	}
 }
