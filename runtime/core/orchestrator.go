@@ -97,7 +97,7 @@ func (o *Orchestrator) handleObserved(snap memory.Snapshot) {
 		jxlog.Error("ORCHESTRATOR", fmt.Sprintf("Log : %v", err))
 	}
 
-	// Exécuter commandes si décision execute
+	// Run command if action is execute
 	cycles := o.state.LastCycles(1)
 	if len(cycles) > 0 && cycles[0].Command != "" {
 		result := tools.ExecuteCommand(cycles[0].Command)

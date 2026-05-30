@@ -58,7 +58,7 @@ func (c *CLI) Start() {
 
 func (c *CLI) cmdHelp() {
 	fmt.Println()
-	fmt.Println("  Commandes disponibles :")
+	fmt.Println("  Commands disponibles :")
 	fmt.Println("  ─────────────────────────────────────────")
 	fmt.Println("  status              État du dernier cycle")
 	fmt.Println("  history [n]         Derniers N snapshots (défaut: 5)")

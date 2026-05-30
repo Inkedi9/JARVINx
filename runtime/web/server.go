@@ -130,7 +130,9 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.Write(data)
+	if _, err := w.Write(data); err != nil {
+		jxlog.Error("WEB", fmt.Sprintf("write index: %v", err))
+	}
 }
 
 func (s *Server) handleStatus(w http.ResponseWriter, r *http.Request) {

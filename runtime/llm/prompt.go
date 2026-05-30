@@ -40,7 +40,7 @@ Règles d'action :
 - "suggest" : tendance dégradée sur plusieurs cycles
 - "execute" : diagnostic nécessaire
 
-Commandes autorisées :
+Commands autorisées :
 - "docker ps"
 - "docker stats"
 - "uptime"

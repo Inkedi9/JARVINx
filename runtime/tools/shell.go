@@ -13,7 +13,7 @@ import (
 
 const defaultCommandTimeout = 10 * time.Second
 
-// CommandSpec — binaire + args directs, sans shell intermédiaire
+// CommandSpec — binary + direct args, no shell in between
 type CommandSpec struct {
 	bin  string
 	args []string
@@ -102,7 +102,7 @@ func ExecuteCommandWithTimeout(cmd string, timeout time.Duration) CommandResult 
 	}
 }
 
-// runDirect — exécution directe sans shell intermédiaire
+// runDirect — direct execution, no shell in between
 func runDirect(ctx context.Context, spec CommandSpec) (string, bool, error) {
 	command := exec.CommandContext(ctx, spec.bin, spec.args...)
 

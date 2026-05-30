@@ -95,7 +95,7 @@ func cleanLLMOutput(s string) string {
 
 // extractJSON cherche un bloc JSON valide avec une regex
 func extractJSON(s string) (string, error) {
-	// Cherche tout ce qui ressemble à un objet JSON
+	// Find anything that looks like a JSON object
 	re := regexp.MustCompile(`\{[^{}]*\}`)
 	matches := re.FindAllString(s, -1)
 

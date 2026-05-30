@@ -3,7 +3,6 @@ package memory
 import (
 	"encoding/json"
 	"fmt"
-	"math"
 	"os"
 	"sync"
 	"time"
@@ -23,11 +22,6 @@ type LogEntry struct {
 type Logger struct {
 	filepath string
 	mu       sync.Mutex
-}
-
-func round(v float64, decimals int) float64 {
-	pow := math.Pow(10, float64(decimals))
-	return math.Round(v*pow) / pow
 }
 
 func NewLogger(filepath string) *Logger {

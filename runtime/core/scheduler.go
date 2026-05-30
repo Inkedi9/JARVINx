@@ -38,7 +38,7 @@ func (s *Scheduler) getInterval() time.Duration {
 }
 
 func (s *Scheduler) Start(ctx context.Context) {
-	jxlog.Info("SCHEDULER", fmt.Sprintf("Démarrage — tick toutes les %v", s.getInterval()))
+	jxlog.Info("SCHEDULER", fmt.Sprintf("Starting — tick toutes les %v", s.getInterval()))
 
 	ticker := time.NewTicker(s.getInterval())
 	defer ticker.Stop()
