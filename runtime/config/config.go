@@ -41,6 +41,10 @@ type Config struct {
 	LogMaxBackups     int
 	AlertMaxSizeBytes int64
 	AlertMaxBackups   int
+
+	// Docker
+	DockerEnabled   bool
+	DockerWatchList []string
 }
 
 func Default() *Config {
@@ -67,5 +71,8 @@ func Default() *Config {
 		AlertMaxSizeBytes: 5 * 1024 * 1024, // 5 MB
 		AlertMaxBackups:   3,
 		DryRun:            false,
+
+		DockerEnabled:   true,
+		DockerWatchList: []string{},
 	}
 }

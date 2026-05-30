@@ -1,6 +1,7 @@
 package web
 
 import (
+	"context"
 	"embed"
 	"encoding/json"
 	"fmt"
@@ -12,6 +13,7 @@ import (
 	"github.com/Inkedi9/jarvinx/config"
 	"github.com/Inkedi9/jarvinx/jxlog"
 	"github.com/Inkedi9/jarvinx/memory"
+	"github.com/Inkedi9/jarvinx/tools"
 )
 
 type Server struct {
@@ -52,6 +54,14 @@ type ToggleResponse struct {
 	Message string `json:"message"`
 }
 
+type DockerResponse struct {
+	Available  bool                   `json:"available"`
+	Containers []tools.ContainerState `json:"containers"`
+	Total      int                    `json:"total"`
+	Running    int                    `json:"running"`
+	Exited     int                    `json:"exited"`
+}
+
 var startTime = time.Now()
 
 func NewServer(cfg *config.Config, state *memory.State, registry *agents.Registry, port int, files embed.FS) *Server {
@@ -85,6 +95,7 @@ func (s *Server) Start() {
 	mux.HandleFunc("/api/history", s.handleHistory)
 	mux.HandleFunc("/api/agents", s.handleAgents)
 	mux.HandleFunc("/api/agents/toggle", s.handleAgentToggle)
+	mux.HandleFunc("/api/docker", s.handleDocker)
 
 	// corsMiddleware est maintenant une méthode — accès à s.allowedOrigins
 	handler := s.corsMiddleware(mux)
@@ -234,4 +245,39 @@ func formatUptime(d time.Duration) string {
 		return fmt.Sprintf("%dh %dm %ds", h, m, sec)
 	}
 	return fmt.Sprintf("%dm %ds", m, sec)
+}
+
+func (s *Server) handleDocker(w http.ResponseWriter, r *http.Request) {
+	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+	defer cancel()
+
+	if !tools.DockerAvailable() {
+		s.writeJSON(w, DockerResponse{Available: false})
+		return
+	}
+
+	containers, err := tools.ListContainers(ctx)
+	if err != nil {
+		s.writeJSON(w, DockerResponse{Available: true})
+		return
+	}
+
+	running := 0
+	exited := 0
+	for _, c := range containers {
+		if c.Running {
+			running++
+		}
+		if c.Exited {
+			exited++
+		}
+	}
+
+	s.writeJSON(w, DockerResponse{
+		Available:  true,
+		Containers: containers,
+		Total:      len(containers),
+		Running:    running,
+		Exited:     exited,
+	})
 }

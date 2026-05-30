@@ -138,4 +138,12 @@ func (c *Config) FromEnv() {
 			}
 		}
 	}
+
+	// Docker
+	if v := os.Getenv("JARVINX_DOCKER_ENABLED"); v == "false" {
+		c.DockerEnabled = false
+	}
+	if v := os.Getenv("JARVINX_DOCKER_WATCH"); v != "" {
+		c.DockerWatchList = strings.Split(v, ",")
+	}
 }

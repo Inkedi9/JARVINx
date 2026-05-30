@@ -47,6 +47,13 @@ func NewRuntime(cfg *config.Config, version string) *Runtime {
 		cfg.DiscordWebhook,
 		cfg.DryRun,
 	))
+	if cfg.DockerEnabled {
+		registry.Register(agents.NewDockerAgent(
+			cfg.DiscordWebhook,
+			cfg.DryRun,
+			cfg.DockerWatchList...,
+		))
+	}
 
 	scheduler := NewScheduler(cfg.Interval, bus)
 	orchestrator := NewOrchestrator(bus, registry, state, logger, cfg.DryRun)
