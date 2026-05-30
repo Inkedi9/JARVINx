@@ -16,6 +16,7 @@ make run              # go run cmd/main.go (dev)
 make build            # compile for current OS
 make build-linux      # cross-compile linux/amd64
 make build-windows    # cross-compile windows/amd64
+go run cmd/main.go --dry-run   # simulation mode — no real alerts/notifications
 go test ./...                    # all tests
 go test ./llm/... -v             # single package, verbose
 go test -race ./... -coverprofile=coverage.out  # with race detector (matches CI)
@@ -36,15 +37,43 @@ npm start       # production server
 
 ### Environment
 
-Create `runtime/.env` with the following vars (no `.env.example` exists):
-- `OLLAMA_URL` — defaults to `http://localhost:11434`
-- `OLLAMA_MODEL` — e.g. `llama3`
-- `DISCORD_WEBHOOK` — optional; omit to disable Discord alerts
+Create `runtime/.env` with the following vars (no `.env.example` exists). All `JARVINX_*` vars are read before the `.env` file is loaded, so environment variables already set take priority.
+
+**Core**
+- `JARVINX_OLLAMA_URL` — defaults to `http://localhost:11434`
+- `JARVINX_MODEL` — e.g. `llama3.1:8b`
+- `JARVINX_INTERVAL` — Go duration string, e.g. `30s` (defaults to `15s`, valid: 5s–1h)
 - `JARVINX_DEBUG=true` — enables DEBUG-level logs
-- `WEB_PORT` — defaults to `8080`
-- `CPU_ALERT_THRESHOLD`, `RAM_ALERT_THRESHOLD`, `DISK_ALERT_THRESHOLD` — percentage floats
-- `ALERT_COOLDOWN`, `ALERT_MIN_CYCLES` — alert dampening
-- `ALLOWED_ORIGINS` — CORS origins (defaults include `localhost:3000`)
+- `JARVINX_PORT` — web API port, defaults to `8080`
+- `JARVINX_DRY_RUN=true` — simulates all notifications/commands (same as `--dry-run` CLI flag)
+- `JARVINX_ALLOWED_ORIGINS` — comma-separated extra CORS origins (defaults include `localhost:3000`)
+
+**Alerts**
+- `JARVINX_CPU_THRESHOLD`, `JARVINX_RAM_THRESHOLD`, `JARVINX_DISK_THRESHOLD` — percentage floats (defaults: 85, 90, 85)
+- `JARVINX_ALERT_COOLDOWN`, `JARVINX_ALERT_MIN_CYCLES` — alert dampening
+
+**Notifications** (any combination; omit to disable)
+- `DISCORD_WEBHOOK` — Discord webhook URL
+- `SLACK_WEBHOOK` — Slack incoming webhook URL
+- `NTFY_URL`, `NTFY_TOPIC` — ntfy.sh push notifications (defaults: `https://ntfy.sh`, `jarvinx`)
+- `GOTIFY_URL`, `GOTIFY_TOKEN` — Gotify push notifications
+
+**Log rotation**
+- `JARVINX_LOG_MAX_MB` — max size of `logs.jsonl` in MB before rotation (default: 10)
+- `JARVINX_LOG_MAX_BACKUPS` — number of rotated log files to keep (default: 3)
+
+**Docker agent**
+- `JARVINX_DOCKER_ENABLED=false` — disable Docker monitoring
+- `JARVINX_DOCKER_WATCH` — comma-separated container names to watch (empty = all)
+
+**File agent**
+- `JARVINX_FILE_WATCH` — comma-separated directory paths to monitor
+- `JARVINX_FILE_MAX_MB` — alert threshold per file in MB (default: 500)
+- `JARVINX_FILE_ENABLED=false` — disable file monitoring
+
+**Daily report**
+- `JARVINX_DAILY_REPORT=true` — enable daily digest (disabled by default)
+- `JARVINX_REPORT_HOUR`, `JARVINX_REPORT_MINUTE` — send time, 24h format (defaults: 8, 0)
 
 Dashboard: use `.env.local` (dev), `.env.homelab`, or `.env.tailscale` for network deployments. The only variable is `NEXT_PUBLIC_RUNTIME_URL` (defaults to `http://localhost:8080`).
 
@@ -60,12 +89,12 @@ GitHub Actions (`.github/workflows/ci.yml`) runs on push to `main`/`develop` and
 
 | Package | Role |
 |---------|------|
-| `cmd/` | Entry point; wires config, runtime, signals |
+| `cmd/` | Entry point; wires config, runtime, signals; `--dry-run` CLI flag |
 | `core/` | Runtime, Bus, Scheduler, Orchestrator, CLI |
-| `agents/` | Agent interface, BaseAgent, Registry, SystemAgent, AlertAgent |
-| `llm/` | OllamaClient, JSON parser, prompt builder, retry logic |
-| `memory/` | State (state.json), Logger (logs.jsonl / alerts.jsonl) |
-| `tools/` | System metrics via gopsutil, shell executor with whitelist |
+| `agents/` | Agent interface, BaseAgent, Registry, SystemAgent, AlertAgent, DockerAgent, FileAgent, DailyReporter, NotifierDispatcher |
+| `llm/` | OllamaClient, JSON parser, prompt builder, AdaptiveContext, retry logic |
+| `memory/` | State (state.json), Logger with rotation (logs.jsonl / alerts.jsonl) |
+| `tools/` | System metrics via gopsutil, shell executor with whitelist, Docker, filesystem scan |
 | `web/` | HTTP server, CORS, embedded dashboard via embed.FS |
 | `config/` | Config struct, .env loader, validation (interval 5s–1h) |
 | `jxlog/` | Structured logging with custom slog handler |
@@ -83,14 +112,18 @@ Scheduler → tools.Observe() → Bus(EventObserved)
                                      ↓
                          Agent Registry (each agent)
                                      ↓
-                     SystemAgent: Ollama LLM → JSON decision
-                     AlertAgent:  thresholds → Discord webhook
+                     SystemAgent:  Ollama LLM → JSON decision
+                     AlertAgent:   thresholds → NotifierDispatcher
+                     DockerAgent:  container state changes → NotifierDispatcher (30s interval)
+                     FileAgent:    large files / directory growth (5min interval)
                                      ↓
                          memory.State (state.json)   ← max 20 snapshots / 20 cycles
-                         memory.Logger (logs.jsonl)
+                         memory.Logger (logs.jsonl, alerts.jsonl, with rotation)
 ```
 
 **Bus** is a buffered channel (size 10) with fan-out: `Subscribe()` returns a dedicated channel per consumer, `Unsubscribe()` closes it cleanly. Publishing is non-blocking; a warning is logged if full. Event types: `EventObserved`, `EventDecided`, `EventExecuted`, `EventLogged`, `EventError`.
+
+**DailyReporter** runs as a standalone goroutine (not via the Registry): it ticks every minute and sends a 24h digest via the NotifierDispatcher at the configured hour:minute.
 
 ### Agent Pattern
 
@@ -98,9 +131,17 @@ All agents implement the `Agent` interface (`agents/agent.go`). Embed `BaseAgent
 
 To add a new agent: implement `Agent`, register in `core/runtime.go` via `registry.Register()`.
 
+### Notification System (`agents/notifier.go`)
+
+`NotifierDispatcher` fan-outs alerts to all registered `Notifier` implementations. Built-in channels: `DiscordNotifier`, `SlackNotifier`, `NtfyNotifier`, `GotifyNotifier`. Register via `dispatcher.Register()`. All channels respect `dryRun` mode — alerts are logged but not sent.
+
+`AlertAgent` calls `dispatcher.Dispatch(alert)`. `DailyReporter` re-uses the same dispatcher with a special `Alert{Metric: "DAILY REPORT"}`.
+
 ### LLM Integration (`llm/`)
 
 `OllamaClient` sends system + user prompts with retry (`DefaultRetryConfig`). The JSON parser (`parser.go`) strips markdown backticks, extracts embedded JSON from surrounding text, and falls back to a safe default decision on failure. Valid `action` values: `"log"`, `"alert"`, `"suggest"`, `"execute"`. The `ParseResult` struct exposes `Raw`, `Attempts`, and `Cleaned` for debugging.
+
+`BuildAdaptiveContext()` (`context_builder.go`) analyzes recent cycles and snapshots to produce CPU/RAM/Disk trend strings (`stable`, `rising`, `high`, `falling`) and alert rate. `BuildAdaptiveSystemPrompt()` appends this context to the base system prompt, making the LLM aware of historical patterns.
 
 ### Web API (`web/`)
 
@@ -128,3 +169,4 @@ Commands run directly (no `sh -c`). Exact whitelist: `docker ps`, `docker stats`
 - Ollama must be running locally before the runtime starts; a health check runs at startup and exits if Ollama is unreachable.
 - Alert cooldown and minimum consecutive-cycle logic live in `AlertAgent` — changes there affect alert frequency directly.
 - State is capped at **20 snapshots** and **20 cycles** in memory; older entries are dropped silently.
+- `DockerAgent` gracefully skips cycles when Docker is not available (`tools.DockerAvailable()` check). `FileAgent` is a no-op when `FileWatchPaths` is empty.
