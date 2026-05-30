@@ -110,6 +110,11 @@ func (c *Config) FromEnv() {
 		}
 	}
 
+	// Dry run
+	if v := os.Getenv("JARVINX_DRY_RUN"); v == "true" {
+		c.DryRun = true
+	}
+
 	// Web
 	if v := os.Getenv("JARVINX_PORT"); v != "" {
 		if i, err := strconv.Atoi(v); err == nil {

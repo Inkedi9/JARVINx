@@ -45,10 +45,11 @@ func NewRuntime(cfg *config.Config, version string) *Runtime {
 		cfg.AlertCooldown,
 		cfg.AlertFile,
 		cfg.DiscordWebhook,
+		cfg.DryRun,
 	))
 
 	scheduler := NewScheduler(cfg.Interval, bus)
-	orchestrator := NewOrchestrator(bus, registry, state, logger)
+	orchestrator := NewOrchestrator(bus, registry, state, logger, cfg.DryRun)
 
 	return &Runtime{
 		cfg:          cfg,

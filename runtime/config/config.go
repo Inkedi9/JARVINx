@@ -10,6 +10,7 @@ const (
 type Config struct {
 	// Runtime
 	Interval time.Duration
+	DryRun   bool
 
 	// LLM
 	OllamaURL string
@@ -65,5 +66,6 @@ func Default() *Config {
 		LogMaxBackups:     3,
 		AlertMaxSizeBytes: 5 * 1024 * 1024, // 5 MB
 		AlertMaxBackups:   3,
+		DryRun:            false,
 	}
 }

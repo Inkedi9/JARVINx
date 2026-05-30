@@ -214,3 +214,23 @@ func TestFromEnv_EmptyVarsKeepDefaults(t *testing.T) {
 		t.Errorf("empty env should keep default interval")
 	}
 }
+
+func TestFromEnv_DryRun(t *testing.T) {
+	t.Setenv("JARVINX_DRY_RUN", "true")
+
+	cfg := Default()
+	cfg.FromEnv()
+
+	if !cfg.DryRun {
+		t.Error("expected DryRun=true from env")
+	}
+}
+
+func TestFromEnv_DryRunFalseByDefault(t *testing.T) {
+	cfg := Default()
+	cfg.FromEnv()
+
+	if cfg.DryRun {
+		t.Error("expected DryRun=false by default")
+	}
+}

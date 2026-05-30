@@ -19,6 +19,7 @@ type Orchestrator struct {
 	mu       sync.Mutex
 	lastSnap memory.Snapshot
 	snapMu   sync.RWMutex
+	dryRun   bool
 }
 
 func NewOrchestrator(
@@ -26,12 +27,14 @@ func NewOrchestrator(
 	registry *agents.Registry,
 	state *memory.State,
 	logger *memory.Logger,
+	dryRun bool,
 ) *Orchestrator {
 	return &Orchestrator{
 		bus:      bus,
 		registry: registry,
 		state:    state,
 		logger:   logger,
+		dryRun:   dryRun,
 	}
 }
 
@@ -100,9 +103,15 @@ func (o *Orchestrator) handleObserved(snap memory.Snapshot) {
 	// Run command if action is execute
 	cycles := o.state.LastCycles(1)
 	if len(cycles) > 0 && cycles[0].Command != "" {
-		result := tools.ExecuteCommand(cycles[0].Command)
-		result.Display()
-		o.bus.Publish(Event{Type: EventExecuted, Payload: result})
+		if o.dryRun {
+			jxlog.Info("DRY-RUN", fmt.Sprintf("Commande '%s' simulée — non exécutée", cycles[0].Command))
+			result := tools.ExecuteCommandDryRun(cycles[0].Command)
+			result.Display()
+		} else {
+			result := tools.ExecuteCommand(cycles[0].Command)
+			result.Display()
+			o.bus.Publish(Event{Type: EventExecuted, Payload: result})
+		}
 	}
 
 	fmt.Println()

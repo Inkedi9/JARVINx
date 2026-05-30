@@ -50,6 +50,7 @@ type AlertAgent struct {
 	cooldown      int
 	alertLogger   *memory.Logger
 	webhookURL    string
+	dryRun        bool
 	state         AlertState
 	mu            sync.Mutex
 	httpClient    *http.Client
@@ -59,8 +60,10 @@ func NewAlertAgent(
 	cpuThreshold, ramThreshold, diskThreshold float64,
 	minCycles, cooldown int,
 	alertFile, webhookURL string,
+	dryRun bool,
 ) *AlertAgent {
 	return &AlertAgent{
+		dryRun:        dryRun,
 		BaseAgent:     NewBaseAgent("alert", 15*time.Second),
 		cpuThreshold:  cpuThreshold,
 		ramThreshold:  ramThreshold,
@@ -166,14 +169,20 @@ func (a *AlertAgent) Analyze(snap memory.Snapshot) []Alert {
 func (a *AlertAgent) Dispatch(alerts []Alert) {
 	for _, alert := range alerts {
 		a.logAlert(alert)
+		a.printAlert(alert)
 
 		if a.webhookURL != "" {
-			if err := a.sendDiscord(alert); err != nil {
-				fmt.Printf("[ ALERT ] Discord failed : %v\n", err)
+			if a.dryRun {
+				jxlog.Info("DRY-RUN", fmt.Sprintf(
+					"Discord alert simulée — %s : %s",
+					alert.Metric, alert.Message,
+				))
+			} else {
+				if err := a.sendDiscord(alert); err != nil {
+					jxlog.Error("ALERT", fmt.Sprintf("Discord failed : %v", err))
+				}
 			}
 		}
-
-		a.printAlert(alert)
 	}
 }
 

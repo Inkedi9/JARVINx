@@ -25,13 +25,14 @@ func makeSnap(cpu, ram, disk float64) memory.Snapshot {
 // helper — crée un AlertAgent préconfiguré pour les tests
 func makeAlertAgent() *AlertAgent {
 	return NewAlertAgent(
-		85.0, // CPU threshold
-		90.0, // RAM threshold
-		85.0, // Disk threshold
-		2,    // minCycles
-		5,    // cooldown
-		"",   // pas de fichier log pendant les tests
-		"",   // pas de webhook Discord pendant les tests
+		85.0,  // CPU threshold
+		90.0,  // RAM threshold
+		85.0,  // Disk threshold
+		2,     // minCycles
+		5,     // cooldown
+		"",    // pas de fichier log pendant les tests
+		"",    // pas de webhook Discord pendant les tests
+		false, // dry-run désactivé pour les tests
 	)
 }
 
@@ -253,7 +254,7 @@ func TestAlertAgent_Run_NoAlert(t *testing.T) {
 func TestAlertAgent_Run_WithAlert(t *testing.T) {
 	// Utilise un fichier temporaire pour éviter les erreurs d'écriture
 	tmpFile := t.TempDir() + "/alerts.jsonl"
-	a := NewAlertAgent(85.0, 90.0, 85.0, 2, 5, tmpFile, "")
+	a := NewAlertAgent(85.0, 90.0, 85.0, 2, 5, tmpFile, "", false)
 	a.state = AlertState{
 		LastAlertCPU: -999,
 		LastAlertRAM: -999,

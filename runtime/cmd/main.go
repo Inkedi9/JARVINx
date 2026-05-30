@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"os"
 
@@ -11,28 +12,41 @@ import (
 )
 
 // Version est injectée au build via -ldflags "-X main.Version=x.y.z"
-// Valeur par défaut pour le dev local
 var Version = "dev"
 
-// la fonction principale. C'est ici que tout commence quand tu lances le binaire.
 func main() {
-	// Logger en premier — avant tout le reste
+	// Flag --dry-run — doit être parsé avant tout
+	dryRun := flag.Bool("dry-run", false, "Mode simulation — aucune action réelle exécutée")
+	flag.Parse()
+
+	// Logger en premier
 	debug := os.Getenv("JARVINX_DEBUG") == "true"
 	jxlog.Init(debug)
-	// Charge .env juste apres le logger
+
 	config.LoadEnv(".env")
 
 	cfg := config.Default()
-	cfg.FromEnv() // surcharge depuis les variables d'environnement
+	cfg.FromEnv()
 
-	// Validation — on sort immédiatement si la config est invalide
+	// --dry-run CLI a priorité sur la variable d'env
+	if *dryRun {
+		cfg.DryRun = true
+	}
+
 	if err := cfg.Validate(); err != nil {
 		fmt.Fprintf(os.Stderr,
 			"\n\033[31m[ JARVINX ]\033[0m Configuration invalide :\n%v\n\n", err)
 		os.Exit(1)
 	}
 
-	// Affiche la config active
+	if cfg.DryRun {
+		fmt.Println("\033[33m╔══════════════════════════════════════════════╗\033[0m")
+		fmt.Println("\033[33m║         ⚠  MODE DRY-RUN ACTIVÉ  ⚠           ║\033[0m")
+		fmt.Println("\033[33m║   Aucune commande ni alerte ne sera exécutée ║\033[0m")
+		fmt.Println("\033[33m╚══════════════════════════════════════════════╝\033[0m")
+		fmt.Println()
+	}
+
 	jxlog.Info("JARVINX", fmt.Sprintf("Modèle : %s | Intervalle : %v | CPU : %.0f%% RAM : %.0f%% Disk : %.0f%%",
 		cfg.Model, cfg.Interval,
 		cfg.CPUAlertThreshold, cfg.RAMAlertThreshold, cfg.DiskAlertThreshold,

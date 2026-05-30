@@ -89,3 +89,25 @@ func TestExecuteCommand_NoShellInjection(t *testing.T) {
 		}
 	}
 }
+
+func TestExecuteCommandDryRun_Whitelisted(t *testing.T) {
+	result := ExecuteCommandDryRun("uptime")
+
+	if !result.Success {
+		t.Errorf("dry-run of whitelisted command should succeed, got: %s", result.Error)
+	}
+	if result.Output != "[dry-run] commande simulée" {
+		t.Errorf("expected dry-run output, got: %s", result.Output)
+	}
+	if result.Duration != 0 {
+		t.Error("dry-run duration should be 0")
+	}
+}
+
+func TestExecuteCommandDryRun_NotWhitelisted(t *testing.T) {
+	result := ExecuteCommandDryRun("rm -rf /")
+
+	if result.Success {
+		t.Error("dry-run of non-whitelisted command should fail")
+	}
+}

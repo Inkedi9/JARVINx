@@ -86,13 +86,13 @@ func (l *Logger) rotateIfNeeded() error {
 func (l *Logger) rotate() error {
 	// Supprime le backup le plus vieux si on atteint la limite
 	oldest := fmt.Sprintf("%s.%d", l.filepath, l.maxBackups)
-	os.Remove(oldest) // ignore l'erreur si n'existe pas
+	_ = os.Remove(oldest) // ignore l'erreur si n'existe pas
 
 	// Décale les backups existants : .2 → .3, .1 → .2
 	for i := l.maxBackups - 1; i >= 1; i-- {
 		src := fmt.Sprintf("%s.%d", l.filepath, i)
 		dst := fmt.Sprintf("%s.%d", l.filepath, i+1)
-		os.Rename(src, dst) // ignore l'erreur si src n'existe pas
+		_ = os.Rename(src, dst) // on ignore intentionnellement — fichier peut ne pas exister
 	}
 
 	// Archive le fichier courant : logs.jsonl → logs.jsonl.1

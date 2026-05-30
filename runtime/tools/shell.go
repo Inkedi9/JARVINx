@@ -44,6 +44,27 @@ type CommandResult struct {
 	TimedOut bool
 }
 
+// ExecuteCommandDryRun simule l'exécution sans rien faire
+func ExecuteCommandDryRun(cmd string) CommandResult {
+	cmd = strings.TrimSpace(cmd)
+
+	// Vérifie quand même la whitelist — signale si la commande serait bloquée
+	if _, ok := commandSpecs[cmd]; !ok {
+		return CommandResult{
+			Command: cmd,
+			Error:   fmt.Sprintf("commande non autorisée : '%s'", cmd),
+			Success: false,
+		}
+	}
+
+	return CommandResult{
+		Command:  cmd,
+		Output:   "[dry-run] commande simulée",
+		Duration: 0,
+		Success:  true,
+	}
+}
+
 func ExecuteCommand(cmd string) CommandResult {
 	return ExecuteCommandWithTimeout(cmd, defaultCommandTimeout)
 }
