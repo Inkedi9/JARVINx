@@ -9,24 +9,6 @@ import (
 	"github.com/Inkedi9/jarvinx/memory"
 )
 
-// mockAgent pour les tests orchestrateur
-type mockOrchestratorAgent struct {
-	agents.BaseAgent
-	runCount int
-	runErr   error
-}
-
-func newMockOrchestratorAgent(name string) *mockOrchestratorAgent {
-	return &mockOrchestratorAgent{
-		BaseAgent: agents.NewBaseAgent(name, 15*time.Second),
-	}
-}
-
-func (m *mockOrchestratorAgent) Run(_ context.Context, _ agents.AgentContext) error {
-	m.runCount++
-	return m.runErr
-}
-
 // makeTestOrchestrator — crée un orchestrateur avec des composants de test
 func makeTestOrchestrator() (*Orchestrator, *Bus, *agents.Registry, *memory.State) {
 	bus := NewBus(10)

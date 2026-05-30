@@ -92,16 +92,7 @@ func (o *Orchestrator) handleObserved(snap memory.Snapshot) {
 	o.snapMu.Unlock()
 
 	// Log
-	entry := memory.LogEntry{
-		Timestamp:   snap.Timestamp,
-		CPUPercent:  snap.CPUPercent,
-		MemUsed:     snap.MemUsed,
-		MemTotal:    snap.MemTotal,
-		MemPercent:  snap.MemPercent,
-		DiskUsed:    snap.DiskUsed,
-		DiskTotal:   snap.DiskTotal,
-		DiskPercent: snap.DiskPercent,
-	}
+	entry := memory.LogEntry(snap)
 	if err := o.logger.Write(entry); err != nil {
 		jxlog.Error("ORCHESTRATOR", fmt.Sprintf("Log : %v", err))
 	}

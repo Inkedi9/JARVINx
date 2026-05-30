@@ -74,7 +74,7 @@ func (r *Registry) Start(ctx context.Context, actxFn func() AgentContext) {
 }
 
 func (r *Registry) runAgent(ctx context.Context, a Agent, actxFn func() AgentContext) {
-	jxlog.Info("REGISTRY", fmt.Sprintf("Démarrage agent : %s", a.Name()))
+	jxlog.Info("REGISTRY", fmt.Sprintf("Starting agent : %s", a.Name()))
 
 	ticker := time.NewTicker(a.Schedule())
 	defer ticker.Stop()

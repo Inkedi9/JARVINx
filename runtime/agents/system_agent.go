@@ -74,8 +74,8 @@ func (a *SystemAgent) Run(ctx context.Context, actx AgentContext) error {
 	actx.State.AddCycle(record)
 	actx.State.Add(snap)
 
-	if err := actx.State.Save(); err != nil {
-		jxlog.Error("SYSTEM AGENT", fmt.Sprintf("State save : %v", err))
+	if saveErr := actx.State.Save(); saveErr != nil {
+		jxlog.Error("SYSTEM AGENT", fmt.Sprintf("State save : %v", saveErr))
 	}
 
 	jxlog.Info("STATE", fmt.Sprintf("Cycle #%d enregistré", actx.State.CycleNum))

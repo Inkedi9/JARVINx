@@ -103,7 +103,7 @@ func TestRegistry_DisabledAgentSkipped(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
 	defer cancel()
 
-	// Désactivé avant le démarrage
+	// Désactivé avant le lancement
 	r.Disable("skippable")
 
 	makeCtx := func() AgentContext {

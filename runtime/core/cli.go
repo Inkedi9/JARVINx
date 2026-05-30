@@ -25,7 +25,7 @@ func NewCLI(state *memory.State, scheduler *Scheduler) *CLI {
 }
 
 func (c *CLI) Start() {
-	jxlog.Info("CLI", "Prêt — tape 'help' pour les commandes")
+	jxlog.Info("CLI", "Prêt — tape 'help' pour les commands")
 
 	scanner := bufio.NewScanner(os.Stdin)
 

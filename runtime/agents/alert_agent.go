@@ -143,7 +143,7 @@ func (a *AlertAgent) Analyze(snap memory.Snapshot) []Alert {
 		a.state.RAMCycles = 0
 	}
 
-	// Disk — seuil persistant, pas besoin de N cycles
+	// Disk — seuil persistent, pas besoin de N cycles
 	if snap.DiskPercent >= a.diskThreshold &&
 		a.state.CurrentCycle-a.state.LastAlertDsk >= a.cooldown {
 		alert := Alert{
@@ -193,7 +193,9 @@ func (a *AlertAgent) logAlert(alert Alert) {
 		return
 	}
 	defer file.Close()
-	json.NewEncoder(file).Encode(alert)
+	if err := json.NewEncoder(file).Encode(alert); err != nil {
+		fmt.Printf("[ ALERT ] Encode failed : %v\n", err)
+	}
 }
 
 func (a *AlertAgent) sendDiscord(alert Alert) error {
