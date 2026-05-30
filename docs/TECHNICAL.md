@@ -283,6 +283,63 @@ Analyse les seuils, gère le cooldown anti-spam, envoie les embeds Discord.
 - Logique CPU/RAM : N cycles consécutifs requis (`AlertMinCycles`)
 - Logique Disk : alerte directe avec cooldown uniquement
 
+### DockerAgent (`agents/docker_agent.go`)
+
+Surveille les containers Docker via l'API REST Docker (socket Unix ou TCP Windows).
+Schedule : 30s. Pas de dépendance externe — `net/http` standard avec transport custom.
+
+- Détecte les transitions `running → exited` (crash)
+- Détecte les redémarrages `exited → running`
+- WatchList optionnelle — vide = surveille tout
+- Désactivable via `JARVINX_DOCKER_ENABLED=false`
+
+Windows : Docker Desktop doit exposer le port TCP 2375 dans ses settings.
+
+### FileAgent (`agents/file_agent.go`)
+
+Scanne les dossiers configurés via `filepath.Walk`.
+Schedule : 5 minutes.
+
+- Détecte les fichiers dépassant `FileMaxSizeMB`
+- Détecte la croissance rapide d'un dossier entre deux cycles
+- Nécessite `JARVINX_FILE_WATCH` — désactivé si vide
+
+### Multi-webhook (`agents/notifier.go`)
+
+Interface `Notifier` — `Name() string` + `Send(alert Alert) error`.
+`NotifierDispatcher` broadcast les alertes à tous les notifiers enregistrés.
+Un échec sur un notifier n'affecte pas les autres.
+
+Notifiers disponibles : `DiscordNotifier`, `SlackNotifier`, `NtfyNotifier`, `GotifyNotifier`.
+
+Ajouter un notifier custom :
+
+```go
+type MyNotifier struct{}
+func (n *MyNotifier) Name() string       { return "myservice" }
+func (n *MyNotifier) Send(a Alert) error { /* ... */ return nil }
+
+dispatcher.Register(&MyNotifier{})
+```
+
+### DailyReporter (`agents/daily_report.go`)
+
+Goroutine indépendante — tick toutes les minutes, envoie à l'heure configurée.
+Protection anti-double envoi via `lastSent` (cooldown 2 minutes).
+Activé via `JARVINX_DAILY_REPORT=true`.
+
+### Prompt adaptatif (`llm/context_builder.go`)
+
+`BuildAdaptiveContext(cycles, snapshots)` analyse les N derniers cycles et snapshots :
+
+- Action dominante sur la période
+- Taux d'alerte (%)
+- Tendances CPU/RAM/Disk : stable / en hausse / en baisse / critique
+- Dernières alertes déclenchées
+
+`BuildAdaptiveSystemPrompt(base, ctx)` enrichit le system prompt avec ce contexte.
+Utilisé automatiquement par `SystemAgent` — aucune config requise.
+
 ---
 
 ## Intégration LLM (Ollama)

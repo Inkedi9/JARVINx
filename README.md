@@ -340,23 +340,36 @@ func Default() *Config {
 
 ### Variables d'environnement
 
-| Variable                   | Description                             | Défaut                   |
-| -------------------------- | --------------------------------------- | ------------------------ |
-| `DISCORD_WEBHOOK`          | URL webhook Discord                     | —                        |
-| `JARVINX_DEBUG`            | Logs DEBUG (`true/false`)               | `false`                  |
-| `JARVINX_DRY_RUN`          | Mode simulation (`true/false`)          | `false`                  |
-| `JARVINX_ALLOWED_ORIGINS`  | Origins CORS supplémentaires (virgule)  | —                        |
-| `JARVINX_MODEL`            | Modèle Ollama                           | `llama3.1:8b`            |
-| `JARVINX_OLLAMA_URL`       | URL Ollama                              | `http://localhost:11434` |
-| `JARVINX_INTERVAL`         | Intervalle d'observation (`15s`, `1m`)  | `15s`                    |
-| `JARVINX_CPU_THRESHOLD`    | Seuil alerte CPU (%)                    | `85`                     |
-| `JARVINX_RAM_THRESHOLD`    | Seuil alerte RAM (%)                    | `90`                     |
-| `JARVINX_DISK_THRESHOLD`   | Seuil alerte Disk (%)                   | `85`                     |
-| `JARVINX_ALERT_COOLDOWN`   | Cycles entre deux alertes identiques    | `5`                      |
-| `JARVINX_ALERT_MIN_CYCLES` | Cycles consécutifs avant alerte CPU/RAM | `2`                      |
-| `JARVINX_PORT`             | Port dashboard web                      | `8080`                   |
-| `JARVINX_LOG_MAX_MB`       | Taille max logs.jsonl en MB             | `10`                     |
-| `JARVINX_LOG_MAX_BACKUPS`  | Nombre de backups logs                  | `3`                      |
+| Variable                   | Description                                | Défaut                   |
+| -------------------------- | ------------------------------------------ | ------------------------ |
+| `DISCORD_WEBHOOK`          | URL webhook Discord                        | —                        |
+| `JARVINX_DEBUG`            | Logs DEBUG (`true/false`)                  | `false`                  |
+| `JARVINX_DRY_RUN`          | Mode simulation (`true/false`)             | `false`                  |
+| `JARVINX_ALLOWED_ORIGINS`  | Origins CORS supplémentaires (virgule)     | —                        |
+| `JARVINX_MODEL`            | Modèle Ollama                              | `llama3.1:8b`            |
+| `JARVINX_OLLAMA_URL`       | URL Ollama                                 | `http://localhost:11434` |
+| `JARVINX_INTERVAL`         | Intervalle d'observation (`15s`, `1m`)     | `15s`                    |
+| `JARVINX_CPU_THRESHOLD`    | Seuil alerte CPU (%)                       | `85`                     |
+| `JARVINX_RAM_THRESHOLD`    | Seuil alerte RAM (%)                       | `90`                     |
+| `JARVINX_DISK_THRESHOLD`   | Seuil alerte Disk (%)                      | `85`                     |
+| `JARVINX_ALERT_COOLDOWN`   | Cycles entre deux alertes identiques       | `5`                      |
+| `JARVINX_ALERT_MIN_CYCLES` | Cycles consécutifs avant alerte CPU/RAM    | `2`                      |
+| `JARVINX_PORT`             | Port dashboard web                         | `8080`                   |
+| `JARVINX_LOG_MAX_MB`       | Taille max logs.jsonl en MB                | `10`                     |
+| `JARVINX_LOG_MAX_BACKUPS`  | Nombre de backups logs                     | `3`                      |
+| `JARVINX_DOCKER_ENABLED`   | Active le DockerAgent (`true/false`)       | `true`                   |
+| `JARVINX_DOCKER_WATCH`     | Containers à surveiller (virgule)          | tous                     |
+| `JARVINX_FILE_ENABLED`     | Active le FileAgent (`true/false`)         | `true`                   |
+| `JARVINX_FILE_WATCH`       | Dossiers à surveiller (virgule)            | —                        |
+| `JARVINX_FILE_MAX_MB`      | Taille max fichier avant alerte (MB)       | `500`                    |
+| `SLACK_WEBHOOK`            | URL webhook Slack                          | —                        |
+| `NTFY_URL`                 | URL serveur Ntfy                           | `https://ntfy.sh`        |
+| `NTFY_TOPIC`               | Topic Ntfy                                 | `jarvinx`                |
+| `GOTIFY_URL`               | URL serveur Gotify                         | —                        |
+| `GOTIFY_TOKEN`             | Token Gotify                               | —                        |
+| `JARVINX_DAILY_REPORT`     | Active le rapport quotidien (`true/false`) | `false`                  |
+| `JARVINX_REPORT_HOUR`      | Heure d'envoi du rapport (0-23)            | `8`                      |
+| `JARVINX_REPORT_MINUTE`    | Minute d'envoi du rapport (0-59)           | `0`                      |
 
 ---
 
@@ -376,16 +389,16 @@ go test ./... -cover
 
 | Package         | Tests                                                            | Couverture            |
 | --------------- | ---------------------------------------------------------------- | --------------------- |
-| `llm`           | 15 tests — parser JSON, markdown, fallback, uppercase, malformed | Parser robuste        |
-| `agents`        | 23 tests — seuils, cooldown, enable/disable, panic isolation     | AlertAgent + Registry |
+| `llm`           | 26 tests — parser JSON, markdown, fallback, uppercase, malformed | Parser robuste        |
+| `agents`        | 44 tests — seuils, cooldown, enable/disable, panic isolation     | AlertAgent + Registry |
 | `tools`         | 8 tests — whitelist, timeout, commandes valides                  | Shell executor        |
-| `config`        | 20 tests — seuils, intervalle, port, champs vides                | Validation config     |
+| `config`        | 22 tests — seuils, intervalle, port, champs vides                | Validation config     |
 | `jxlog`         | 9 tests — niveaux, filtrage debug, nil safety                    | Logger structuré      |
 | `memory`        | 8 tests                                                          |
 | `web`           | 12 tests                                                         |
 | `core`          | 17 tests                                                         |
 | `dashboard/lib` | 18 tests                                                         |
-| **Total**       | **130 tests**                                                    |
+| **Total**       | **150 tests**                                                    |
 
 **Ce qui est testé :**
 
@@ -445,7 +458,7 @@ JARVINx n'exécute **que** les commandes de cette liste — aucun shell arbitrai
 | Commande       | Description                     |
 | -------------- | ------------------------------- |
 | `docker ps`    | Liste les containers actifs     |
-| `docker stats` | Stats containers                |
+| `docker stats` | Stats containers (no-stream)    |
 | `uptime`       | Temps de fonctionnement système |
 | `df -h`        | Espace disque                   |
 | `free -h`      | Mémoire disponible              |
@@ -495,7 +508,7 @@ JARVINx envoie des embeds Discord structurés quand un seuil est dépassé.
 - [x] Shutdown propre — SIGINT/SIGTERM, context annulable
 - [x] README complet
 
-### v1.1 — Hardening v1
+### v1.1 — Hardening v1 ✅
 
 - [x] Fix race conditions (State + AlertAgent)
 - [x] Structured logging slog / jxlog
@@ -504,7 +517,7 @@ JARVINx envoie des embeds Discord structurés quand un seuil est dépassé.
 - [x] go test -race clean
 - [x] Health check Ollama au démarrage — fail fast avec message clair si le LLM est absent
 
-### V1.2 — Correction & Robustesse (pre V1.5)
+### V1.2 — Correction & Robustesse ✅
 
 - [x] Permissions 0600 — state.json + alerts.jsonl
 - [x] CORS whitelist explicite
@@ -522,18 +535,24 @@ JARVINx envoie des embeds Discord structurés quand un seuil est dépassé.
 - [x] Backoff exponentiel polling dashboard
 - [x] Tests dashboard hooks + composants
 
-### v1.5 — Intelligence & Mémoire
+### v1.5 — Intelligence & Mémoire ✅
 
 - [x] **Config via env vars** — (seuils overridables)
 - [x] **Rotation des logs** — logs.jsonl sans borne = disk full sur machine faible
 - [x] **Mode `--dry-run`** — pour tester sans que l'agent exécute des commandes réelles
-- [ ] **Mémoire contextuelle** — JARVINx se souvient des événements passés similaires et les cite dans ses décisions
-- [ ] **DockerAgent** — surveillance des containers, détection de crashes, suggestion de restarts
-- [ ] **FileAgent** — surveillance de dossiers, détection de fichiers lourds, analyse d'espace
-- [ ] **Multi-webhook** — support Slack, Ntfy, Gotify en plus de Discord
-- [ ] **Rapport quotidien** — résumé automatique envoyé à heure fixe
-- [ ] **Prompt adaptatif** — le system prompt évolue selon l'historique des décisions
+- [x] **DockerAgent** — surveillance des containers, détection de crashes, suggestion de restarts
+- [x] **FileAgent** — surveillance de dossiers, détection de fichiers lourds, analyse d'espace
+- [x] **Multi-webhook** — support Slack, Ntfy, Gotify en plus de Discord
+- [x] **Rapport quotidien** — résumé automatique envoyé à heure fixe
+- [x] **Prompt adaptatif** — le system prompt évolue selon l'historique des décisions
+
+### v1.6 — Mémoire sémantique
+
 - [ ] **Vector DB** — intégration Qdrant local pour mémoire sémantique longue durée
+- [ ] **Mémoire contextuelle** — JARVINx se souvient des événements passés similaires et les cite dans ses décisions
+- [ ] **Embedding** des décisions passées
+- [ ] **Recherche sémantique** — "qu'est-ce qui s'est passé la dernière fois que le CPU a spiké ?"
+- [ ] **Contexte enrichi pour le LLM** — événements similaires passés
 
 ### Vision v2.0 — Universal Agent Platform
 

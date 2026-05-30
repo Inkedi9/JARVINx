@@ -410,6 +410,43 @@ Efface le terminal. Utile quand les logs s'accumulent.
 
 ---
 
+## Agents disponibles
+
+### SystemAgent
+
+Actif par défaut. Envoie les métriques à Ollama toutes les 15s et prend une décision.
+Non désactivable — c'est le cerveau de JARVINx.
+
+### AlertAgent
+
+Surveille les seuils CPU/RAM/Disk. Envoie des alertes via les notifiers configurés.
+Configure les seuils via env vars : `JARVINX_CPU_THRESHOLD`, `JARVINX_RAM_THRESHOLD`, `JARVINX_DISK_THRESHOLD`.
+
+### DockerAgent
+
+Surveille tes containers Docker. Actif si Docker est accessible.
+
+```env
+# Surveille tous les containers
+JARVINX_DOCKER_ENABLED=true
+
+# Surveille seulement certains containers
+JARVINX_DOCKER_WATCH=nginx,postgres,redis
+```
+
+### FileAgent
+
+Surveille des dossiers et détecte les fichiers volumineux.
+
+```env
+JARVINX_FILE_WATCH=/var/log,/home/user/downloads
+JARVINX_FILE_MAX_MB=500
+```
+
+Désactivé si `JARVINX_FILE_WATCH` est vide.
+
+---
+
 ## Dashboard web
 
 Le dashboard est accessible à `http://localhost:8080` dès le démarrage de JARVINx.
@@ -489,6 +526,41 @@ Retourne les 10 derniers cycles, du plus récent au plus ancien.
   "total": 42
 }
 ```
+
+---
+
+## Notifications
+
+JARVINx supporte plusieurs canaux simultanément. Configure ceux dont tu as besoin dans `.env` :
+
+```env
+# Discord
+DISCORD_WEBHOOK=https://discord.com/api/webhooks/...
+
+# Slack
+SLACK_WEBHOOK=https://hooks.slack.com/services/...
+
+# Ntfy (self-hosted ou ntfy.sh)
+NTFY_URL=https://ntfy.sh
+NTFY_TOPIC=mon-jarvinx
+
+# Gotify (self-hosted)
+GOTIFY_URL=https://gotify.example.com
+GOTIFY_TOKEN=mon-token
+```
+
+Tous les canaux configurés reçoivent les alertes simultanément.
+Un échec sur un canal n'affecte pas les autres.
+
+### Rapport quotidien
+
+```env
+JARVINX_DAILY_REPORT=true
+JARVINX_REPORT_HOUR=8
+JARVINX_REPORT_MINUTE=0
+```
+
+Envoie un résumé quotidien via tous les notifiers configurés à l'heure définie.
 
 ---
 
