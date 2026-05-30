@@ -239,7 +239,7 @@ export default function AgentsPage() {
                 </div>
                 <div className="font-mono text-[11px] text-gray-500 leading-relaxed">
                     Toggle disponible depuis le dashboard ou la CLI.
-                    API d'administration complète prévue en v2.0.
+                    API d&apos;administration complète prévue en v2.0.
                 </div>
             </div>
 
