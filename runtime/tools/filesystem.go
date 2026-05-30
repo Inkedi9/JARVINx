@@ -16,7 +16,7 @@ type FileInfo struct {
 	Children  int // nombre de fichiers dans le dossier (si IsDir)
 }
 
-// DirStats représente les stats globales d'un dossier surveillé
+// DirStats represents the global stats of a monitored directory
 type DirStats struct {
 	Path       string
 	TotalBytes int64
