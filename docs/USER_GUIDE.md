@@ -148,6 +148,33 @@ func Default() *Config {
 }
 ```
 
+### Option A — Variables d'environnement (recommandé)
+
+Ajoute dans ton `.env` ce dont tu as besoin :
+
+```env
+# Modèle LLM
+JARVINX_MODEL=qwen2.5:7b
+
+# Fréquence d'observation
+JARVINX_INTERVAL=30s
+
+# Seuils d'alerte (%)
+JARVINX_CPU_THRESHOLD=80
+JARVINX_RAM_THRESHOLD=85
+JARVINX_DISK_THRESHOLD=85
+
+# Rotation des logs
+JARVINX_LOG_MAX_MB=10
+JARVINX_LOG_MAX_BACKUPS=3
+```
+
+Aucune recompilation nécessaire. Les valeurs invalides sont ignorées avec un warning.
+
+### Option B — Modifier config.go
+
+Pour des changements permanents ou des valeurs non exposées via env, modifie directement `runtime/config/config.go` et recompile.
+
 ### Paramètres importants expliqués
 
 **`Interval`** — Fréquence des cycles d'observation.
@@ -267,6 +294,24 @@ sudo systemctl enable jarvinx
 sudo systemctl start jarvinx
 sudo systemctl status jarvinx
 ```
+
+### Mode dry-run
+
+Lance JARVINx sans qu'il exécute de commandes ou envoie d'alertes Discord :
+
+```bash
+# Via flag
+go run cmd/main.go --dry-run
+
+# Via env
+JARVINX_DRY_RUN=true .\run.ps1
+```
+
+Tu verras une bannière jaune au démarrage. Utile pour :
+
+- Tester une nouvelle config de seuils
+- Valider un déploiement sur un nouveau serveur
+- Débugger sans risque
 
 ### Sortie attendue au démarrage
 
@@ -653,3 +698,27 @@ Ollama n'est pas lancé. Lance `ollama serve` dans un terminal séparé avant de
 ### Les métriques disque semblent fausses sur Windows
 
 Le chemin disque par défaut est `C:\`. Si ton disque principal est une autre lettre, modifie [tools/system.go](../tools/system.go) — cherche `diskPath`.
+
+### Les seuils d'alerte ne semblent pas pris en compte
+
+Vérifie l'ordre de priorité — une variable d'environnement système écrase le `.env` :
+
+```bash
+# Vérifie ce qui est actif
+echo $env:JARVINX_CPU_THRESHOLD  # PowerShell
+echo $JARVINX_CPU_THRESHOLD       # Linux/macOS
+```
+
+La config active est affichée au démarrage :
+[ JARVINX ] Modèle : llama3.1:8b | Intervalle : 15s | CPU : 85% RAM : 90% Disk : 85%
+
+### logs.jsonl grossit trop vite
+
+Configure la rotation dans `.env` :
+
+```env
+JARVINX_LOG_MAX_MB=5
+JARVINX_LOG_MAX_BACKUPS=2
+```
+
+Les anciens logs sont archivés en `logs.jsonl.1`, `logs.jsonl.2`.

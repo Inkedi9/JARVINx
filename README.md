@@ -7,7 +7,7 @@
 ██   ██║██╔══██║██╔══██╗╚██╗ ██╔╝██║██║╚██╗██║ ██╔██╗
 ╚█████╔╝██║  ██║██║  ██║ ╚████╔╝ ██║██║ ╚████║██╔╝ ██╗
  ╚════╝ ╚═╝  ╚═╝╚═╝  ╚═╝  ╚═══╝  ╚═╝╚═╝  ╚═══╝╚═╝  ╚═╝
-Version 1.2.0
+Version 1.5.0
 ```
 
 **Autonomous AI Runtime · Observing. Thinking. Acting. Evolving.**
@@ -340,11 +340,23 @@ func Default() *Config {
 
 ### Variables d'environnement
 
-| Variable                  | Description                            | Requis |
-| ------------------------- | -------------------------------------- | ------ |
-| `DISCORD_WEBHOOK`         | URL webhook Discord pour les alertes   | Non    |
-| `JARVINX_DEBUG`           | Active les logs DEBUG (`true/false`)   | Non    |
-| `JARVINX_ALLOWED_ORIGINS` | Origins CORS supplémentaires (virgule) | Non    |
+| Variable                   | Description                             | Défaut                   |
+| -------------------------- | --------------------------------------- | ------------------------ |
+| `DISCORD_WEBHOOK`          | URL webhook Discord                     | —                        |
+| `JARVINX_DEBUG`            | Logs DEBUG (`true/false`)               | `false`                  |
+| `JARVINX_DRY_RUN`          | Mode simulation (`true/false`)          | `false`                  |
+| `JARVINX_ALLOWED_ORIGINS`  | Origins CORS supplémentaires (virgule)  | —                        |
+| `JARVINX_MODEL`            | Modèle Ollama                           | `llama3.1:8b`            |
+| `JARVINX_OLLAMA_URL`       | URL Ollama                              | `http://localhost:11434` |
+| `JARVINX_INTERVAL`         | Intervalle d'observation (`15s`, `1m`)  | `15s`                    |
+| `JARVINX_CPU_THRESHOLD`    | Seuil alerte CPU (%)                    | `85`                     |
+| `JARVINX_RAM_THRESHOLD`    | Seuil alerte RAM (%)                    | `90`                     |
+| `JARVINX_DISK_THRESHOLD`   | Seuil alerte Disk (%)                   | `85`                     |
+| `JARVINX_ALERT_COOLDOWN`   | Cycles entre deux alertes identiques    | `5`                      |
+| `JARVINX_ALERT_MIN_CYCLES` | Cycles consécutifs avant alerte CPU/RAM | `2`                      |
+| `JARVINX_PORT`             | Port dashboard web                      | `8080`                   |
+| `JARVINX_LOG_MAX_MB`       | Taille max logs.jsonl en MB             | `10`                     |
+| `JARVINX_LOG_MAX_BACKUPS`  | Nombre de backups logs                  | `3`                      |
 
 ---
 
@@ -362,18 +374,18 @@ go test ./agents/... -v
 go test ./... -cover
 ```
 
-| Package         | Tests                                                           | Couverture            |
-| --------------- | --------------------------------------------------------------- | --------------------- |
-| `llm`           | 8 tests — parser JSON, markdown, fallback, uppercase, malformed | Parser robuste        |
-| `agents`        | 18 tests — seuils, cooldown, enable/disable, panic isolation    | AlertAgent + Registry |
-| `tools`         | 5 tests — whitelist, timeout, commandes valides                 | Shell executor        |
-| `config`        | 11 tests — seuils, intervalle, port, champs vides               | Validation config     |
-| `jxlog`         | 9 tests — niveaux, filtrage debug, nil safety                   | Logger structuré      |
-| `memory`        | 2 tests                                                         |
-| `web`           | 12 tests                                                        |
-| `core`          | 17 tests                                                        |
-| `dashboard/lib` | 18 tests                                                        |
-| **Total**       | **111 tests**                                                   |
+| Package         | Tests                                                            | Couverture            |
+| --------------- | ---------------------------------------------------------------- | --------------------- |
+| `llm`           | 15 tests — parser JSON, markdown, fallback, uppercase, malformed | Parser robuste        |
+| `agents`        | 23 tests — seuils, cooldown, enable/disable, panic isolation     | AlertAgent + Registry |
+| `tools`         | 8 tests — whitelist, timeout, commandes valides                  | Shell executor        |
+| `config`        | 20 tests — seuils, intervalle, port, champs vides                | Validation config     |
+| `jxlog`         | 9 tests — niveaux, filtrage debug, nil safety                    | Logger structuré      |
+| `memory`        | 8 tests                                                          |
+| `web`           | 12 tests                                                         |
+| `core`          | 17 tests                                                         |
+| `dashboard/lib` | 18 tests                                                         |
+| **Total**       | **130 tests**                                                    |
 
 **Ce qui est testé :**
 
@@ -512,16 +524,16 @@ JARVINx envoie des embeds Discord structurés quand un seuil est dépassé.
 
 ### v1.5 — Intelligence & Mémoire
 
-- [ ] **Vector DB** — intégration Qdrant local pour mémoire sémantique longue durée
+- [x] **Config via env vars** — (seuils overridables)
+- [x] **Rotation des logs** — logs.jsonl sans borne = disk full sur machine faible
+- [x] **Mode `--dry-run`** — pour tester sans que l'agent exécute des commandes réelles
 - [ ] **Mémoire contextuelle** — JARVINx se souvient des événements passés similaires et les cite dans ses décisions
 - [ ] **DockerAgent** — surveillance des containers, détection de crashes, suggestion de restarts
 - [ ] **FileAgent** — surveillance de dossiers, détection de fichiers lourds, analyse d'espace
 - [ ] **Multi-webhook** — support Slack, Ntfy, Gotify en plus de Discord
 - [ ] **Rapport quotidien** — résumé automatique envoyé à heure fixe
 - [ ] **Prompt adaptatif** — le system prompt évolue selon l'historique des décisions
-- [ ] **Config via env vars** — (seuils overridables)
-- [ ] **Rotation des logs** — logs.jsonl sans borne = disk full sur machine faible
-- [ ] **Mode `--dry-run`** — pour tester sans que l'agent exécute des commandes réelles
+- [ ] **Vector DB** — intégration Qdrant local pour mémoire sémantique longue durée
 
 ### Vision v2.0 — Universal Agent Platform
 

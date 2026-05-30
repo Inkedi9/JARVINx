@@ -719,6 +719,17 @@ func TestNetworkAgent_Failure(t *testing.T) {
 
 ### Build & version
 
+```bash
+# Dev normal
+go run cmd/main.go
+
+# Dev dry-run
+go run cmd/main.go --dry-run
+
+# Ou via env
+JARVINX_DRY_RUN=true go run cmd/main.go
+```
+
 La version est injectée au build via `-ldflags "-X main.Version=x.y.z"`.
 En dev (`go run`), la variable vaut `"dev"`.
 
@@ -777,7 +788,54 @@ Le seul prérequis sur la machine cible est **Ollama**.
 | `JARVINX_DEBUG`           | Active les logs DEBUG (`true/false`)   | Non                              |
 | `JARVINX_ALLOWED_ORIGINS` | Origins CORS supplémentaires (virgule) | Non                              |
 
-Toutes les autres configurations se font dans `config/config.go` avant compilation.
+## Configuration via variables d'environnement
+
+Toutes les valeurs de `config/config.go` sont surchargeables via env vars sans recompiler. Ordre de priorité :
+
+Valeur par défaut (config.go)
+↓ surchargée par .env
+↓ surchargée par variables d'environnement système
+↓ surchargée par flags CLI (--dry-run uniquement)
+
+`config.LoadEnv(".env")` charge le fichier `.env`.
+`cfg.FromEnv()` applique les variables d'environnement sur la config.
+Les valeurs invalides (ex: `JARVINX_CPU_THRESHOLD=abc`) sont ignorées avec un warning — jamais de crash.
+
+## Rotation des logs
+
+`memory.NewLoggerWithRotation(filepath, maxBytes, maxBackups)` — rotation automatique par taille.
+
+Comportement :
+
+- Quand `logs.jsonl` dépasse `maxBytes` → rotation avant l'écriture
+- `logs.jsonl` → `logs.jsonl.1` → `logs.jsonl.2` → `logs.jsonl.3` (max)
+- Le backup le plus vieux est supprimé quand `maxBackups` est atteint
+- `os.Rename` atomique — pas de corruption possible
+
+Configurable via env :
+
+```env
+JARVINX_LOG_MAX_MB=10
+JARVINX_LOG_MAX_BACKUPS=3
+```
+
+## Mode dry-run
+
+Activé via `--dry-run` flag ou `JARVINX_DRY_RUN=true`.
+
+Ce qui est simulé :
+
+- Exécution de commandes shell → log `[DRY-RUN] commande simulée`
+- Envoi d'alertes Discord → log `[DRY-RUN] Discord alert simulée`
+
+Ce qui tourne normalement en dry-run :
+
+- Observation système (CPU/RAM/Disk)
+- Appel LLM Ollama — décisions réelles
+- Écriture dans state.json et logs.jsonl
+- Dashboard web
+
+Utile pour : tester une nouvelle config de seuils, valider un déploiement, débugger sans effets de bord.
 
 ---
 
