@@ -1,11 +1,9 @@
 package agents
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
-	"net/http"
 	"os"
 	"sync"
 	"time"
@@ -49,21 +47,19 @@ type AlertAgent struct {
 	minCycles     int
 	cooldown      int
 	alertLogger   *memory.Logger
-	webhookURL    string
+	dispatcher    *NotifierDispatcher
 	dryRun        bool
 	state         AlertState
 	mu            sync.Mutex
-	httpClient    *http.Client
 }
 
 func NewAlertAgent(
 	cpuThreshold, ramThreshold, diskThreshold float64,
 	minCycles, cooldown int,
-	alertFile, webhookURL string,
-	dryRun bool,
+	alertFile string,
+	dispatcher *NotifierDispatcher,
 ) *AlertAgent {
 	return &AlertAgent{
-		dryRun:        dryRun,
 		BaseAgent:     NewBaseAgent("alert", 15*time.Second),
 		cpuThreshold:  cpuThreshold,
 		ramThreshold:  ramThreshold,
@@ -71,8 +67,8 @@ func NewAlertAgent(
 		minCycles:     minCycles,
 		cooldown:      cooldown,
 		alertLogger:   memory.NewLogger(alertFile),
-		webhookURL:    webhookURL,
-		httpClient:    &http.Client{Timeout: 10 * time.Second},
+		dispatcher:    dispatcher,
+		dryRun:        dispatcher.dryRun,
 		state: AlertState{
 			LastAlertCPU: -999,
 			LastAlertRAM: -999,
@@ -82,7 +78,6 @@ func NewAlertAgent(
 }
 
 func (a *AlertAgent) Run(ctx context.Context, actx AgentContext) error {
-
 	alerts := a.Analyze(actx.Snapshot)
 
 	if len(alerts) == 0 {
@@ -90,7 +85,6 @@ func (a *AlertAgent) Run(ctx context.Context, actx AgentContext) error {
 		return nil
 	}
 
-	// Des alertes déclenchées = succès du travail de l'agent
 	a.Dispatch(alerts)
 	a.recordAlert()
 	return nil
@@ -108,17 +102,16 @@ func (a *AlertAgent) Analyze(snap memory.Snapshot) []Alert {
 		a.state.CPUCycles++
 		if a.state.CPUCycles >= a.minCycles &&
 			a.state.CurrentCycle-a.state.LastAlertCPU >= a.cooldown {
-			alert := Alert{
+			alerts = append(alerts, Alert{
 				Timestamp:   snap.Timestamp,
 				Level:       AlertCritical,
 				Metric:      "CPU",
 				Value:       snap.CPUPercent,
 				Threshold:   a.cpuThreshold,
 				CyclesAbove: a.state.CPUCycles,
-				Message: fmt.Sprintf("CPU à %.1f%% depuis %d cycles consécutifs",
+				Message: fmt.Sprintf("CPU a %.1f%% depuis %d cycles consecutifs",
 					snap.CPUPercent, a.state.CPUCycles),
-			}
-			alerts = append(alerts, alert)
+			})
 			a.state.LastAlertCPU = a.state.CurrentCycle
 		}
 	} else {
@@ -130,36 +123,34 @@ func (a *AlertAgent) Analyze(snap memory.Snapshot) []Alert {
 		a.state.RAMCycles++
 		if a.state.RAMCycles >= a.minCycles &&
 			a.state.CurrentCycle-a.state.LastAlertRAM >= a.cooldown {
-			alert := Alert{
+			alerts = append(alerts, Alert{
 				Timestamp:   snap.Timestamp,
 				Level:       AlertCritical,
 				Metric:      "RAM",
 				Value:       snap.MemPercent,
 				Threshold:   a.ramThreshold,
 				CyclesAbove: a.state.RAMCycles,
-				Message: fmt.Sprintf("RAM à %.1f%% depuis %d cycles consécutifs",
+				Message: fmt.Sprintf("RAM a %.1f%% depuis %d cycles consecutifs",
 					snap.MemPercent, a.state.RAMCycles),
-			}
-			alerts = append(alerts, alert)
+			})
 			a.state.LastAlertRAM = a.state.CurrentCycle
 		}
 	} else {
 		a.state.RAMCycles = 0
 	}
 
-	// Disk — seuil persistent, pas besoin de N cycles
+	// Disk
 	if snap.DiskPercent >= a.diskThreshold &&
 		a.state.CurrentCycle-a.state.LastAlertDsk >= a.cooldown {
-		alert := Alert{
+		alerts = append(alerts, Alert{
 			Timestamp: snap.Timestamp,
 			Level:     AlertWarning,
 			Metric:    "DISK",
 			Value:     snap.DiskPercent,
 			Threshold: a.diskThreshold,
-			Message: fmt.Sprintf("Disque à %.1f%% — nettoyage recommandé",
+			Message: fmt.Sprintf("Disque a %.1f%% - nettoyage recommande",
 				snap.DiskPercent),
-		}
-		alerts = append(alerts, alert)
+		})
 		a.state.LastAlertDsk = a.state.CurrentCycle
 	}
 
@@ -170,36 +161,22 @@ func (a *AlertAgent) Dispatch(alerts []Alert) {
 	for _, alert := range alerts {
 		a.logAlert(alert)
 		a.printAlert(alert)
-
-		if a.webhookURL != "" {
-			if a.dryRun {
-				jxlog.Info("DRY-RUN", fmt.Sprintf(
-					"Discord alert simulée — %s : %s",
-					alert.Metric, alert.Message,
-				))
-			} else {
-				if err := a.sendDiscord(alert); err != nil {
-					jxlog.Error("ALERT", fmt.Sprintf("Discord failed : %v", err))
-				}
-			}
-		}
+		a.dispatcher.Dispatch(alert)
 	}
 }
 
 func (a *AlertAgent) printAlert(alert Alert) {
 	if alert.Level == AlertCritical {
-		fmt.Printf("\033[31m[ ALERT ] 🚨 CRITICAL — %s : %s\033[0m\n",
+		fmt.Printf("\033[31m[ ALERT ] CRITICAL - %s : %s\033[0m\n",
 			alert.Metric, alert.Message)
 	} else {
-		fmt.Printf("\033[33m[ ALERT ] ⚠️  WARNING — %s : %s\033[0m\n",
+		fmt.Printf("\033[33m[ ALERT ] WARNING - %s : %s\033[0m\n",
 			alert.Metric, alert.Message)
 	}
 }
 
 func (a *AlertAgent) logAlert(alert Alert) {
-	// Utilise le Logger avec rotation au lieu d'ouvrir le fichier directement
-	// On crée une LogEntry adaptée — ou on écrit directement en JSON
-	file, err := os.OpenFile(a.alertLogger.Filepath(), // ← ajoute un getter
+	file, err := os.OpenFile(a.alertLogger.Filepath(),
 		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
 	if err != nil {
 		jxlog.Error("ALERT", fmt.Sprintf("Log open failed: %v", err))
@@ -210,55 +187,4 @@ func (a *AlertAgent) logAlert(alert Alert) {
 	if err := json.NewEncoder(file).Encode(alert); err != nil {
 		jxlog.Error("ALERT", fmt.Sprintf("Log encode failed: %v", err))
 	}
-}
-
-func (a *AlertAgent) sendDiscord(alert Alert) error {
-	color := 16776960 // jaune warning
-	if alert.Level == AlertCritical {
-		color = 16711680 // rouge critical
-	}
-
-	emoji := "⚠️"
-	if alert.Level == AlertCritical {
-		emoji = "🚨"
-	}
-
-	payload := map[string]any{
-		"username":   "JARVINx",
-		"avatar_url": "",
-		"embeds": []map[string]any{
-			{
-				"title":       emoji + " " + string(alert.Level) + " — " + alert.Metric,
-				"description": alert.Message,
-				"color":       color,
-				"fields": []map[string]any{
-					{"name": "Valeur", "value": fmt.Sprintf("%.1f%%", alert.Value), "inline": true},
-					{"name": "Seuil", "value": fmt.Sprintf("%.1f%%", alert.Threshold), "inline": true},
-					{"name": "Cycles", "value": fmt.Sprintf("%d", alert.CyclesAbove), "inline": true},
-				},
-				"footer": map[string]any{
-					"text": "JARVINx · Autonomous Agent Runtime",
-				},
-				"timestamp": alert.Timestamp.Format(time.RFC3339),
-			},
-		},
-	}
-
-	body, err := json.Marshal(payload)
-	if err != nil {
-		return fmt.Errorf("marshal: %w", err)
-	}
-
-	resp, err := a.httpClient.Post(a.webhookURL, "application/json", bytes.NewBuffer(body))
-	if err != nil {
-		return fmt.Errorf("post: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusNoContent {
-		return fmt.Errorf("discord status: %d", resp.StatusCode)
-	}
-
-	fmt.Printf("[ ALERT ] Discord notifié — %s\n", alert.Metric)
-	return nil
 }

@@ -32,7 +32,14 @@ type Config struct {
 	AlertFile      string
 	AlertCooldown  int
 	AlertMinCycles int
+
+	// Notifications
 	DiscordWebhook string
+	SlackWebhook   string
+	NtfyURL        string
+	NtfyTopic      string
+	GotifyURL      string
+	GotifyToken    string
 
 	AllowedOrigins []string
 
@@ -81,5 +88,7 @@ func Default() *Config {
 		FileEnabled:       true,
 		FileWatchPaths:    []string{}, // vide = désactivé jusqu'à config
 		FileMaxSizeMB:     500,        // alerte si fichier > 500 MB
+		NtfyURL:           "https://ntfy.sh",
+		NtfyTopic:         "jarvinx",
 	}
 }

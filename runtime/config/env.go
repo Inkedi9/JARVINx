@@ -128,6 +128,21 @@ func (c *Config) FromEnv() {
 	if v := os.Getenv("DISCORD_WEBHOOK"); v != "" {
 		c.DiscordWebhook = v
 	}
+	if v := os.Getenv("SLACK_WEBHOOK"); v != "" {
+		c.SlackWebhook = v
+	}
+	if v := os.Getenv("NTFY_URL"); v != "" {
+		c.NtfyURL = v
+	}
+	if v := os.Getenv("NTFY_TOPIC"); v != "" {
+		c.NtfyTopic = v
+	}
+	if v := os.Getenv("GOTIFY_URL"); v != "" {
+		c.GotifyURL = v
+	}
+	if v := os.Getenv("GOTIFY_TOKEN"); v != "" {
+		c.GotifyToken = v
+	}
 
 	// CORS origins supplémentaires
 	if v := os.Getenv("JARVINX_ALLOWED_ORIGINS"); v != "" {

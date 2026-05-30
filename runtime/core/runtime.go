@@ -35,7 +35,21 @@ func NewRuntime(cfg *config.Config, version string) *Runtime {
 	)
 	registry := agents.NewRegistry()
 
-	// Enregistrement des agents
+	// Construit le dispatcher de notifications
+	dispatcher := agents.NewNotifierDispatcher(cfg.DryRun)
+	if cfg.DiscordWebhook != "" {
+		dispatcher.Register(agents.NewDiscordNotifier(cfg.DiscordWebhook))
+	}
+	if cfg.SlackWebhook != "" {
+		dispatcher.Register(agents.NewSlackNotifier(cfg.SlackWebhook))
+	}
+	if cfg.GotifyURL != "" && cfg.GotifyToken != "" {
+		dispatcher.Register(agents.NewGotifyNotifier(cfg.GotifyURL, cfg.GotifyToken))
+	}
+	if cfg.NtfyTopic != "" {
+		dispatcher.Register(agents.NewNtfyNotifier(cfg.NtfyURL, cfg.NtfyTopic))
+	}
+
 	registry.Register(agents.NewSystemAgent(cfg.OllamaURL, cfg.Model))
 	registry.Register(agents.NewAlertAgent(
 		cfg.CPUAlertThreshold,
@@ -44,9 +58,9 @@ func NewRuntime(cfg *config.Config, version string) *Runtime {
 		cfg.AlertMinCycles,
 		cfg.AlertCooldown,
 		cfg.AlertFile,
-		cfg.DiscordWebhook,
-		cfg.DryRun,
+		dispatcher,
 	))
+
 	if cfg.DockerEnabled {
 		registry.Register(agents.NewDockerAgent(
 			cfg.DiscordWebhook,
@@ -54,6 +68,7 @@ func NewRuntime(cfg *config.Config, version string) *Runtime {
 			cfg.DockerWatchList...,
 		))
 	}
+
 	if cfg.FileEnabled && len(cfg.FileWatchPaths) > 0 {
 		registry.Register(agents.NewFileAgent(
 			cfg.FileWatchPaths,
