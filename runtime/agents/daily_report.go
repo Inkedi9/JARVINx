@@ -148,7 +148,7 @@ func (r *DailyReporter) formatReport(d ReportData) string {
 			"RAM           : moy %.1f%% · pic %.1f%%\n"+
 			"Disk (max)    : %.1f%%\n\n"+
 			"Alertes       : %d\n"+
-			"Commandes     : %d",
+			"Commands     : %d",
 		d.Date,
 		d.TotalCycles,
 		d.Actions["log"],
