@@ -3,6 +3,7 @@ package config
 import (
 	"errors"
 	"fmt"
+	"net/url"
 	"strings"
 )
 
@@ -93,6 +94,20 @@ func (c *Config) Validate() error {
 		ve.Add("Model ne peut pas être vide")
 	}
 
+	// ── Webhooks ──────────────────────────────────────────────────
+	if err := validateWebhookURL("DISCORD_WEBHOOK", c.DiscordWebhook); err != nil {
+		ve.Add(err.Error())
+	}
+	if err := validateWebhookURL("SLACK_WEBHOOK", c.SlackWebhook); err != nil {
+		ve.Add(err.Error())
+	}
+	if err := validateWebhookURL("NTFY_URL", c.NtfyURL); err != nil {
+		ve.Add(err.Error())
+	}
+	if err := validateWebhookURL("GOTIFY_URL", c.GotifyURL); err != nil {
+		ve.Add(err.Error())
+	}
+
 	// ── Rapport daily ─────────────────────────────────────────────
 	if c.DailyReportHour < 0 || c.DailyReportHour > 23 {
 		ve.Add(fmt.Sprintf("DailyReportHour invalide : %d (doit être 0-23)", c.DailyReportHour))
@@ -104,6 +119,28 @@ func (c *Config) Validate() error {
 	if ve.HasErrors() {
 		return ve
 	}
+	return nil
+}
+
+// validateWebhookURL vérifie qu'une URL de webhook est valide et HTTPS
+func validateWebhookURL(name, rawURL string) error {
+	if rawURL == "" {
+		return nil // optionnel — pas d'erreur si absent
+	}
+
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		return fmt.Errorf("%s URL invalide : %v", name, err)
+	}
+
+	if u.Scheme != "https" && u.Scheme != "http" {
+		return fmt.Errorf("%s URL doit commencer par http:// ou https://, got '%s'", name, u.Scheme)
+	}
+
+	if u.Host == "" {
+		return fmt.Errorf("%s URL manque un host valide : '%s'", name, rawURL)
+	}
+
 	return nil
 }
 

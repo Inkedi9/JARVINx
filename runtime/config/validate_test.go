@@ -234,3 +234,75 @@ func TestFromEnv_DryRunFalseByDefault(t *testing.T) {
 		t.Error("expected DryRun=false by default")
 	}
 }
+
+func TestValidate_InvalidDiscordWebhook(t *testing.T) {
+	cfg := Default()
+	cfg.DiscordWebhook = "http//malformed"
+
+	err := cfg.Validate()
+	if err == nil {
+		t.Fatal("expected error for malformed Discord webhook URL")
+	}
+}
+
+func TestValidate_ValidDiscordWebhook(t *testing.T) {
+	cfg := Default()
+	cfg.DiscordWebhook = "https://discord.com/api/webhooks/123/abc"
+
+	err := cfg.Validate()
+	if err != nil {
+		t.Fatalf("expected no error for valid Discord webhook, got: %v", err)
+	}
+}
+
+func TestValidate_EmptyWebhookAllowed(t *testing.T) {
+	cfg := Default()
+	cfg.DiscordWebhook = ""
+	cfg.SlackWebhook = ""
+
+	err := cfg.Validate()
+	if err != nil {
+		t.Fatalf("empty webhook should be valid (optional), got: %v", err)
+	}
+}
+
+func TestValidate_InvalidSlackWebhook(t *testing.T) {
+	cfg := Default()
+	cfg.SlackWebhook = "not-a-url"
+
+	err := cfg.Validate()
+	if err == nil {
+		t.Fatal("expected error for invalid Slack webhook")
+	}
+}
+
+func TestValidate_MissingHostWebhook(t *testing.T) {
+	cfg := Default()
+	cfg.DiscordWebhook = "https://"
+
+	err := cfg.Validate()
+	if err == nil {
+		t.Fatal("expected error for URL missing host")
+	}
+}
+
+func TestValidate_NtfyURLValid(t *testing.T) {
+	cfg := Default()
+	cfg.NtfyURL = "https://ntfy.sh"
+
+	err := cfg.Validate()
+	if err != nil {
+		t.Fatalf("expected no error for valid Ntfy URL, got: %v", err)
+	}
+}
+
+func TestValidate_GotifyInvalidScheme(t *testing.T) {
+	cfg := Default()
+	cfg.GotifyURL = "ftp://gotify.example.com"
+	cfg.GotifyToken = "token123"
+
+	err := cfg.Validate()
+	if err == nil {
+		t.Fatal("expected error for invalid Gotify URL scheme")
+	}
+}
