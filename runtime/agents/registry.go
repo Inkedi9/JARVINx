@@ -7,6 +7,7 @@ import (
 	"time"
 
 	jxlog "github.com/Inkedi9/jarvinx/jxlog"
+	"github.com/Inkedi9/jarvinx/llm"
 )
 
 type Registry struct {
@@ -24,6 +25,20 @@ func (r *Registry) Register(a Agent) {
 	r.agents = append(r.agents, a)
 	jxlog.Info("REGISTRY", fmt.Sprintf("Agent enregistré : %s (schedule: %v)",
 		a.Name(), a.Schedule()))
+}
+
+// CircuitStats retourne les stats LLM du SystemAgent si présent
+func (r *Registry) CircuitStats() *llm.CircuitStats {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	for _, a := range r.agents {
+		if sa, ok := a.(*SystemAgent); ok {
+			stats := sa.client.CircuitStats()
+			return &stats
+		}
+	}
+	return nil
 }
 
 func (r *Registry) Get(name string) (Agent, bool) {

@@ -28,13 +28,14 @@ type Server struct {
 }
 
 type StatusResponse struct {
-	Online    bool                `json:"online"`
-	Model     string              `json:"model"`
-	Interval  string              `json:"interval"`
-	CycleNum  int                 `json:"cycle_num"`
-	Uptime    string              `json:"uptime"`
-	DryRun    bool                `json:"dry_run"`
-	LastCycle *memory.CycleRecord `json:"last_cycle,omitempty"`
+	Online       bool                `json:"online"`
+	Model        string              `json:"model"`
+	Interval     string              `json:"interval"`
+	CycleNum     int                 `json:"cycle_num"`
+	Uptime       string              `json:"uptime"`
+	DryRun       bool                `json:"dry_run"`
+	CircuitState string              `json:"circuit_state"`
+	LastCycle    *memory.CycleRecord `json:"last_cycle,omitempty"`
 }
 
 type HistoryResponse struct {
@@ -167,6 +168,12 @@ func (s *Server) handleStatus(w http.ResponseWriter, r *http.Request) {
 		CycleNum: s.state.CycleNum,
 		Uptime:   formatUptime(time.Since(startTime)),
 		DryRun:   s.cfg.DryRun,
+	}
+
+	if stats := s.registry.CircuitStats(); stats != nil {
+		resp.CircuitState = stats.State
+	} else {
+		resp.CircuitState = "unknown"
 	}
 
 	if len(cycles) > 0 {

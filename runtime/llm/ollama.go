@@ -8,12 +8,15 @@ import (
 	"io"
 	"net/http"
 	"time"
+
+	"github.com/Inkedi9/jarvinx/jxlog"
 )
 
 type OllamaClient struct {
 	baseURL    string
 	model      string
 	httpClient *http.Client
+	circuit    *CircuitBreaker
 }
 
 type ollamaRequest struct {
@@ -51,6 +54,7 @@ func NewOllamaClient(baseURL, model string) *OllamaClient {
 		httpClient: &http.Client{
 			Timeout: 90 * time.Second,
 		},
+		circuit: DefaultCircuitBreaker(),
 	}
 }
 
@@ -112,12 +116,19 @@ func (c *OllamaClient) ThinkWithDecision(
 	retry RetryConfig,
 ) (Decision, int, error) {
 
+	// Vérifie le circuit breaker avant tout
+	if err := c.circuit.Allow(); err != nil {
+		jxlog.Warn("LLM", fmt.Sprintf("Circuit breaker %s — appel bloqué", c.circuit.State()))
+		return fallbackDecision("circuit breaker open"), 0, err
+	}
+
 	var lastErr error
 
 	for attempt := 1; attempt <= retry.MaxAttempts; attempt++ {
 		// Vérifie si le context est annulé avant chaque tentative
 		select {
 		case <-ctx.Done():
+			c.circuit.RecordFailure()
 			return fallbackDecision("context cancelled"), attempt, ctx.Err()
 		default:
 		}
@@ -125,8 +136,9 @@ func (c *OllamaClient) ThinkWithDecision(
 		raw, err := c.Think(ctx, systemPrompt, userPrompt)
 		if err != nil {
 			lastErr = fmt.Errorf("attempt %d: %w", attempt, err)
-			fmt.Printf("[ LLM ] Tentative %d/%d échouée : %v\n",
-				attempt, retry.MaxAttempts, err)
+			c.circuit.RecordFailure()
+			jxlog.Warn("LLM", fmt.Sprintf("Tentative %d/%d échouée : %v",
+				attempt, retry.MaxAttempts, err))
 
 			if attempt < retry.MaxAttempts {
 				time.Sleep(retry.Delay)
@@ -137,8 +149,8 @@ func (c *OllamaClient) ThinkWithDecision(
 		decision, err := ParseDecision(raw)
 		if err != nil {
 			lastErr = fmt.Errorf("attempt %d parse: %w", attempt, err)
-			fmt.Printf("[ LLM ] Tentative %d/%d — JSON invalide, on retente...\n",
-				attempt, retry.MaxAttempts)
+			jxlog.Warn("LLM", fmt.Sprintf("Tentative %d/%d — JSON invalide, on retente...",
+				attempt, retry.MaxAttempts))
 
 			if attempt < retry.MaxAttempts {
 				time.Sleep(retry.Delay)
@@ -147,13 +159,20 @@ func (c *OllamaClient) ThinkWithDecision(
 		}
 
 		// Succès
+		c.circuit.RecordSuccess()
 		if attempt > 1 {
-			fmt.Printf("[ LLM ] Succès à la tentative %d\n", attempt)
+			jxlog.Info("LLM", fmt.Sprintf("Succès à la tentative %d", attempt))
 		}
 		return decision, attempt, nil
 	}
 
 	// Toutes les tentatives ont échoué — fallback
-	fmt.Printf("[ LLM ] Toutes les tentatives échouées — fallback décision\n")
+	c.circuit.RecordFailure()
+	jxlog.Warn("LLM", "Toutes les tentatives échouées — fallback décision")
 	return fallbackDecision("all attempts failed"), retry.MaxAttempts, lastErr
+}
+
+// CircuitStats expose les stats du circuit breaker
+func (c *OllamaClient) CircuitStats() CircuitStats {
+	return c.circuit.Stats()
 }
