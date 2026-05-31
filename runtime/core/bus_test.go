@@ -111,10 +111,8 @@ func TestBus_UnsubscribeStopsGoroutine(t *testing.T) {
 	// Canal doit être fermé — range doit se terminer
 	timeout := time.After(500 * time.Millisecond)
 	select {
-	case _, ok := <-ch:
-		if ok {
-			// Canal encore ouvert — pas d'erreur, juste un événement résiduel
-		}
+	case <-ch:
+		// événement résiduel avant fermeture — normal
 	case <-timeout:
 		t.Error("channel should be closed after Unsubscribe")
 	}

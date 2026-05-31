@@ -210,7 +210,7 @@ func TestFromEnv_EmptyVarsKeepDefaults(t *testing.T) {
 	t.Setenv("JARVINX_DISK_THRESHOLD", "")
 	t.Setenv("JARVINX_PORT", "")
 
-	cfg      := Default()
+	cfg := Default()
 	defaults := Default()
 	cfg.FromEnv()
 
