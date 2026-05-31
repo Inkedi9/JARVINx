@@ -546,7 +546,21 @@ JARVINx envoie des embeds Discord structurés quand un seuil est dépassé.
 - [x] **Rapport quotidien** — résumé automatique envoyé à heure fixe
 - [x] **Prompt adaptatif** — le system prompt évolue selon l'historique des décisions
 
-### v1.6 — Mémoire sémantique
+### v1.6 — Robustesse runtime
+
+- [ ] **Supprimer** webhookURL mort DockerAgent
+- [ ] **Documenter Docker socket** README + TECHNICAL
+- [ ] **Validation** URLs webhooks au démarrage
+- [ ] **Validation** paths FileAgent
+- [ ] **Exposer** dry_run dans StatusResponse
+- [ ] **GET** /api/logs/status
+- [ ] **Circuit breaker** OllamaClient
+- [ ] **Bus dispatcher** goroutine dédiée
+- [ ] Race conditions CLAUDE.md
+- [ ] **Test intégration** end-to-end
+- [ ] **Store mémoire** longue durée SQLite vs BBolt design doc
+
+### v1.8 — Mémoire sémantique
 
 - [ ] **Vector DB** — intégration Qdrant local pour mémoire sémantique longue durée
 - [ ] **Mémoire contextuelle** — JARVINx se souvient des événements passés similaires et les cite dans ses décisions
