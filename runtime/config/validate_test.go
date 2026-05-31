@@ -202,16 +202,23 @@ func TestFromEnv_OverridesPort(t *testing.T) {
 }
 
 func TestFromEnv_EmptyVarsKeepDefaults(t *testing.T) {
-	// Aucune variable définie → tout reste par défaut
-	cfg := Default()
+	// Force toutes les variables à vide pour ce test
+	t.Setenv("JARVINX_MODEL", "")
+	t.Setenv("JARVINX_INTERVAL", "")
+	t.Setenv("JARVINX_CPU_THRESHOLD", "")
+	t.Setenv("JARVINX_RAM_THRESHOLD", "")
+	t.Setenv("JARVINX_DISK_THRESHOLD", "")
+	t.Setenv("JARVINX_PORT", "")
+
+	cfg      := Default()
 	defaults := Default()
 	cfg.FromEnv()
 
 	if cfg.Model != defaults.Model {
-		t.Errorf("empty env should keep default model")
+		t.Errorf("empty env should keep default model, got '%s'", cfg.Model)
 	}
 	if cfg.Interval != defaults.Interval {
-		t.Errorf("empty env should keep default interval")
+		t.Errorf("empty env should keep default interval, got %v", cfg.Interval)
 	}
 }
 
