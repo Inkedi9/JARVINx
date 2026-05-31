@@ -1,6 +1,6 @@
 APP=jarvinx
 CMD=cmd/main.go
-VERSION = 1.2.0
+VERSION = 1.4.0
 
 LDFLAGS = -ldflags "-s -w -X main.Version=$(VERSION)"
 
