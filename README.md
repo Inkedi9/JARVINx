@@ -518,6 +518,19 @@ JARVINx envoie des embeds Discord structurés quand un seuil est dépassé.
 
 ---
 
+## Changelog
+
+| Version | Theme                     | Status         |
+| ------- | ------------------------- | -------------- |
+| V1.0    | Stable & Deployable       | ✅ Released    |
+| V1.1    | Hardening & Corrections   | ✅ Released    |
+| V1.2    | Correction & Robustesse   | ✅ Released    |
+| V1.3    | Intelligence & Mémoire    | ✅ Released    |
+| V1.4    | Robustesse Runtime        | 🔄 In progress |
+| V1.5    | Dashboard                 | 📋 Planned     |
+| V1.6    | Couche décisionnelle      | 📋 Planned     |
+| V1.x    | Mémoire sémantique Qdrant | 🔮 Future      |
+
 ## Roadmap
 
 ### v1.0 — Stable & Deployable ✅
@@ -559,7 +572,7 @@ JARVINx envoie des embeds Discord structurés quand un seuil est dépassé.
 - [x] Backoff exponentiel polling dashboard
 - [x] Tests dashboard hooks + composants
 
-### v1.5 — Intelligence & Mémoire ✅
+### v1.3 — Intelligence & Mémoire ✅
 
 - [x] **Config via env vars** — (seuils overridables)
 - [x] **Rotation des logs** — logs.jsonl sans borne = disk full sur machine faible
@@ -570,7 +583,7 @@ JARVINx envoie des embeds Discord structurés quand un seuil est dépassé.
 - [x] **Rapport quotidien** — résumé automatique envoyé à heure fixe
 - [x] **Prompt adaptatif** — le system prompt évolue selon l'historique des décisions
 
-### v1.6 — Robustesse runtime
+### v1.4 — Robustesse runtime
 
 - [ ] **Supprimer** webhookURL mort DockerAgent
 - [ ] **Documenter Docker socket** README + TECHNICAL
@@ -580,9 +593,19 @@ JARVINx envoie des embeds Discord structurés quand un seuil est dépassé.
 - [ ] **GET** /api/logs/status
 - [ ] **Circuit breaker** OllamaClient
 - [ ] **Bus dispatcher** goroutine dédiée
-- [ ] Race conditions CLAUDE.md
+- [ ] **Race conditions** CLAUDE.md
 - [ ] **Test intégration** end-to-end
 - [ ] **Store mémoire** longue durée SQLite vs BBolt design doc
+
+### V1.5 — Dashboard
+
+- [ ] **Quick win** badge header Brancher `/api/docker` — page Agents ou widget
+- [ ] **Nouveau endpoint** `GET /api/file` - FileAgent status + paths + tailles - `GET /api/daily-report` + `POST /api/daily-report/send`
+- [ ] **Features Dashboard** Page "LLM Context" — tendances + prompt adaptatif - Widget DailyReporter — last_sent + trigger manuel - `GET /api/llm-context` — expose `BuildAdaptiveContext()`
+
+### V1.6 — Couche décisionnelle
+
+[ 📋 Planned ]
 
 ### v1.8 — Mémoire sémantique
 
