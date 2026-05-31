@@ -475,6 +475,22 @@ Pour ajouter une commande : `tools/shell.go` → `allowedCommands`.
 
 ---
 
+## Sécurité — Docker socket
+
+Le `DockerAgent` communique avec Docker via son socket Unix `/var/run/docker.sock` sur Linux/macOS, ou via TCP `localhost:2375` sur Windows (Docker Desktop).
+
+**⚠️ Avertissement important :** accéder au socket Docker équivaut à avoir les droits `root` sur l'hôte. Sur Linux, l'utilisateur qui lance JARVINx doit appartenir au groupe `docker` :
+
+```bash
+sudo usermod -aG docker $USER
+```
+
+En contexte containerisé, monter `/var/run/docker.sock` donne un accès root effectif au host — ne jamais faire ça en production multi-tenant.
+
+**Windows :** Docker Desktop doit exposer le daemon sur TCP. Dans Docker Desktop → Settings → General → coche "Expose daemon on tcp://localhost:2375 without TLS".
+
+---
+
 ## Alertes Discord
 
 JARVINx envoie des embeds Discord structurés quand un seuil est dépassé.

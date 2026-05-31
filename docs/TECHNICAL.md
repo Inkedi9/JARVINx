@@ -295,6 +295,15 @@ Schedule : 30s. Pas de dépendance externe — `net/http` standard avec transpor
 
 Windows : Docker Desktop doit exposer le port TCP 2375 dans ses settings.
 
+**Sécurité socket Docker**
+
+`tools/docker.go` se connecte à Docker via :
+
+- Linux/macOS : `unix:///var/run/docker.sock`
+- Windows : `tcp://localhost:2375` (Docker Desktop, TCP non-TLS)
+
+Accéder au socket Docker = privilèges root effectifs sur l'hôte. À documenter explicitement dans toute politique de déploiement. Ne jamais exposer JARVINx sur un réseau public sans auth si DockerAgent est actif.
+
 ### FileAgent (`agents/file_agent.go`)
 
 Scanne les dossiers configurés via `filepath.Walk`.
