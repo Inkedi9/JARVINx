@@ -29,6 +29,7 @@ export interface StatusResponse {
     interval: string
     cycle_num: number
     uptime: string
+    dry_run: boolean
     last_cycle?: CycleRecord
 }
 

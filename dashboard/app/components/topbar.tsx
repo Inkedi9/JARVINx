@@ -64,6 +64,13 @@ export default function Topbar() {
                         </div>
                     </>
                 )}
+                {status?.dry_run && (
+                    <div className="flex items-center gap-2 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-1.5">
+                        <span className="font-mono text-[10px] text-amber-400 font-semibold">
+                            DRY-RUN
+                        </span>
+                    </div>
+                )}
             </div>
 
             <div className="flex items-center gap-4">

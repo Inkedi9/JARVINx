@@ -246,3 +246,40 @@ func TestToggle_InvalidJSON(t *testing.T) {
 		t.Errorf("expected 400, got %d", w.Code)
 	}
 }
+
+func TestStatus_DryRunField(t *testing.T) {
+	srv := makeTestServer([]string{"http://localhost:3000"})
+	srv.cfg.DryRun = true
+
+	req := httptest.NewRequest("GET", "/api/status", nil)
+	w := httptest.NewRecorder()
+
+	srv.handleStatus(w, req)
+
+	var resp StatusResponse
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("invalid response: %v", err)
+	}
+
+	if !resp.DryRun {
+		t.Error("expected dry_run=true in status response")
+	}
+}
+
+func TestStatus_DryRunFalseByDefault(t *testing.T) {
+	srv := makeTestServer([]string{"http://localhost:3000"})
+
+	req := httptest.NewRequest("GET", "/api/status", nil)
+	w := httptest.NewRecorder()
+
+	srv.handleStatus(w, req)
+
+	var resp StatusResponse
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("invalid response: %v", err)
+	}
+
+	if resp.DryRun {
+		t.Error("expected dry_run=false by default")
+	}
+}

@@ -31,6 +31,7 @@ type StatusResponse struct {
 	Interval  string              `json:"interval"`
 	CycleNum  int                 `json:"cycle_num"`
 	Uptime    string              `json:"uptime"`
+	DryRun    bool                `json:"dry_run"`
 	LastCycle *memory.CycleRecord `json:"last_cycle,omitempty"`
 }
 
@@ -155,6 +156,7 @@ func (s *Server) handleStatus(w http.ResponseWriter, r *http.Request) {
 		Interval: s.cfg.Interval.String(),
 		CycleNum: s.state.CycleNum,
 		Uptime:   formatUptime(time.Since(startTime)),
+		DryRun:   s.cfg.DryRun,
 	}
 
 	if len(cycles) > 0 {
