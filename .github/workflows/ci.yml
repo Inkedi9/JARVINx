@@ -13,23 +13,22 @@ jobs:
   go:
     name: Go — Lint & Test
     runs-on: ubuntu-latest
-
     defaults:
       run:
         working-directory: runtime
-
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version-file: runtime/go.mod
           cache: true
+          cache-dependency-path: runtime/go.sum
 
       - name: Lint
-        uses: golangci/golangci-lint-action@v6
+        uses: golangci/golangci-lint-action@v7
         with:
           version: latest
           working-directory: runtime
@@ -47,17 +46,15 @@ jobs:
   dashboard:
     name: Dashboard — Lint, Test & Build
     runs-on: ubuntu-latest
-
     defaults:
       run:
         working-directory: dashboard
-
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: 20
           cache: npm
