@@ -54,6 +54,39 @@ export interface AgentsResponse {
     total: number
 }
 
+export interface ContainerState {
+    id: string
+    name: string
+    image: string
+    status: string
+    running: boolean
+    exited: boolean
+}
+
+export interface DockerResponse {
+    available: boolean
+    containers: ContainerState[]
+    total: number
+    running: number
+    exited: number
+}
+
+export interface LogStatus {
+    filepath: string
+    size_bytes: number
+    size_mb: number
+    max_bytes: number
+    max_mb: number
+    used_percent: number
+    backups: string[]
+    backup_count: number
+}
+
+export interface LogsStatusResponse {
+    main_log: LogStatus
+    alert_log: LogStatus
+}
+
 // ── Client ───────────────────────────────────────────────────────────────────
 
 async function fetchAPI<T>(endpoint: string): Promise<T> {
@@ -68,6 +101,8 @@ export const api = {
     status: () => fetchAPI<StatusResponse>('/api/status'),
     history: () => fetchAPI<HistoryResponse>('/api/history'),
     agents: () => fetchAPI<AgentsResponse>('/api/agents'),
+    docker: () => fetchAPI<DockerResponse>('/api/docker'),
+    logsStatus: () => fetchAPI<LogsStatusResponse>('/api/logs/status'),
 }
 
 // ── Toggle  ───────────────────────────────────────────────────────────────────

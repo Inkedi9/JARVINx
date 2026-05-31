@@ -136,3 +136,58 @@ func TestLogger_ConcurrentWrites(t *testing.T) {
 		t.Error("expected non-empty file after concurrent writes")
 	}
 }
+
+func TestLogger_Status_NoFile(t *testing.T) {
+	path := t.TempDir() + "/nonexistent.jsonl"
+	l := NewLoggerWithRotation(path, 10*1024*1024, 3)
+
+	status := l.Status()
+
+	if status.SizeBytes != 0 {
+		t.Errorf("expected 0 size for nonexistent file, got %d", status.SizeBytes)
+	}
+	if status.Filepath != path {
+		t.Errorf("expected filepath '%s', got '%s'", path, status.Filepath)
+	}
+}
+
+func TestLogger_Status_WithFile(t *testing.T) {
+	path := t.TempDir() + "/test.jsonl"
+	l := NewLoggerWithRotation(path, 10*1024*1024, 3)
+
+	l.Write(makeEntry())
+
+	status := l.Status()
+
+	if status.SizeBytes == 0 {
+		t.Error("expected non-zero size after write")
+	}
+	if status.SizeMB <= 0 {
+		t.Error("expected positive SizeMB")
+	}
+	if status.UsedPercent <= 0 {
+		t.Error("expected positive UsedPercent after write")
+	}
+}
+
+func TestLogger_Status_BackupCount(t *testing.T) {
+	dir := t.TempDir()
+	path := dir + "/test.jsonl"
+	l := NewLoggerWithRotation(path, 50, 3)
+
+	// Force plusieurs rotations
+	entry := makeEntry()
+	for i := 0; i < 50; i++ {
+		l.Write(entry)
+	}
+
+	status := l.Status()
+
+	if status.BackupCount == 0 {
+		t.Error("expected at least 1 backup after multiple rotations")
+	}
+	if len(status.Backups) != status.BackupCount {
+		t.Errorf("Backups slice length %d != BackupCount %d",
+			len(status.Backups), status.BackupCount)
+	}
+}

@@ -20,6 +20,8 @@ type Server struct {
 	cfg            *config.Config
 	state          *memory.State
 	registry       *agents.Registry
+	mainLogger     *memory.Logger
+	alertLogger    *memory.Logger
 	port           int
 	files          embed.FS
 	allowedOrigins map[string]bool
@@ -63,9 +65,14 @@ type DockerResponse struct {
 	Exited     int                    `json:"exited"`
 }
 
+type LogsStatusResponse struct {
+	MainLog  memory.LogStatus `json:"main_log"`
+	AlertLog memory.LogStatus `json:"alert_log"`
+}
+
 var startTime = time.Now()
 
-func NewServer(cfg *config.Config, state *memory.State, registry *agents.Registry, port int, files embed.FS) *Server {
+func NewServer(cfg *config.Config, state *memory.State, registry *agents.Registry, mainLogger *memory.Logger, alertLogger *memory.Logger, port int, files embed.FS) *Server {
 	// Construit une map pour lookup O(1)
 	origins := make(map[string]bool, len(cfg.AllowedOrigins))
 	for _, o := range cfg.AllowedOrigins {
@@ -76,6 +83,8 @@ func NewServer(cfg *config.Config, state *memory.State, registry *agents.Registr
 		cfg:            cfg,
 		state:          state,
 		registry:       registry,
+		mainLogger:     mainLogger,
+		alertLogger:    alertLogger,
 		port:           port,
 		files:          files,
 		allowedOrigins: origins,
@@ -97,6 +106,7 @@ func (s *Server) Start() {
 	mux.HandleFunc("/api/agents", s.handleAgents)
 	mux.HandleFunc("/api/agents/toggle", s.handleAgentToggle)
 	mux.HandleFunc("/api/docker", s.handleDocker)
+	mux.HandleFunc("/api/logs/status", s.handleLogsStatus)
 
 	// corsMiddleware est maintenant une méthode — accès à s.allowedOrigins
 	handler := s.corsMiddleware(mux)
@@ -237,6 +247,19 @@ func (s *Server) handleAgentToggle(w http.ResponseWriter, r *http.Request) {
 		Enabled: agent.IsEnabled(),
 		Message: msg,
 	})
+}
+
+func (s *Server) handleLogsStatus(w http.ResponseWriter, r *http.Request) {
+	resp := LogsStatusResponse{}
+
+	if s.mainLogger != nil {
+		resp.MainLog = s.mainLogger.Status()
+	}
+	if s.alertLogger != nil {
+		resp.AlertLog = s.alertLogger.Status()
+	}
+
+	s.writeJSON(w, resp)
 }
 
 func formatUptime(d time.Duration) string {

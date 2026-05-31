@@ -26,6 +26,18 @@ type Logger struct {
 	mu         sync.Mutex
 }
 
+// LogStatus représente l'état observable d'un fichier de log
+type LogStatus struct {
+	Filepath    string   `json:"filepath"`
+	SizeBytes   int64    `json:"size_bytes"`
+	SizeMB      float64  `json:"size_mb"`
+	MaxBytes    int64    `json:"max_bytes"`
+	MaxMB       float64  `json:"max_mb"`
+	UsedPercent float64  `json:"used_percent"`
+	Backups     []string `json:"backups"`
+	BackupCount int      `json:"backup_count"`
+}
+
 func NewLogger(filepath string) *Logger {
 	return NewLoggerWithRotation(filepath, 10*1024*1024, 3)
 }
@@ -117,4 +129,37 @@ func (l *Logger) Size() int64 {
 
 func (l *Logger) Filepath() string {
 	return l.filepath
+}
+
+func (l *Logger) Status() LogStatus {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
+	status := LogStatus{
+		Filepath: l.filepath,
+		MaxBytes: l.maxBytes,
+		MaxMB:    float64(l.maxBytes) / 1024 / 1024,
+	}
+
+	// Taille du fichier courant
+	if info, err := os.Stat(l.filepath); err == nil {
+		status.SizeBytes = info.Size()
+		status.SizeMB = float64(info.Size()) / 1024 / 1024
+	}
+
+	// Calcule le pourcentage d'utilisation
+	if l.maxBytes > 0 && status.SizeBytes > 0 {
+		status.UsedPercent = float64(status.SizeBytes) / float64(l.maxBytes) * 100
+	}
+
+	// Liste les backups existants
+	for i := 1; i <= l.maxBackups; i++ {
+		bak := fmt.Sprintf("%s.%d", l.filepath, i)
+		if _, err := os.Stat(bak); err == nil {
+			status.Backups = append(status.Backups, bak)
+		}
+	}
+	status.BackupCount = len(status.Backups)
+
+	return status
 }

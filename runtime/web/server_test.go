@@ -283,3 +283,38 @@ func TestStatus_DryRunFalseByDefault(t *testing.T) {
 		t.Error("expected dry_run=false by default")
 	}
 }
+
+func TestLogsStatus_Endpoint(t *testing.T) {
+	srv := makeTestServer([]string{"http://localhost:3000"})
+	srv.mainLogger = memory.NewLogger("")
+	srv.alertLogger = memory.NewLogger("")
+
+	req := httptest.NewRequest("GET", "/api/logs/status", nil)
+	w := httptest.NewRecorder()
+
+	srv.handleLogsStatus(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", w.Code)
+	}
+
+	var resp LogsStatusResponse
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("invalid response JSON: %v", err)
+	}
+}
+
+func TestLogsStatus_NilLoggers(t *testing.T) {
+	srv := makeTestServer([]string{"http://localhost:3000"})
+	// mainLogger et alertLogger nil par défaut dans makeTestServer
+
+	req := httptest.NewRequest("GET", "/api/logs/status", nil)
+	w := httptest.NewRecorder()
+
+	srv.handleLogsStatus(w, req)
+
+	// Ne doit pas crasher avec des loggers nil
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", w.Code)
+	}
+}

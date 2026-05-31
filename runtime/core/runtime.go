@@ -24,6 +24,7 @@ type Runtime struct {
 	webServer     *web.Server
 	registry      *agents.Registry
 	dailyReporter *agents.DailyReporter
+	alertLogger   *memory.Logger
 }
 
 func NewRuntime(cfg *config.Config, version string) *Runtime {
@@ -33,6 +34,11 @@ func NewRuntime(cfg *config.Config, version string) *Runtime {
 		cfg.LogFile,
 		cfg.LogMaxSizeBytes,
 		cfg.LogMaxBackups,
+	)
+	alertLogger := memory.NewLoggerWithRotation(
+		cfg.AlertFile,
+		cfg.AlertMaxSizeBytes,
+		cfg.AlertMaxBackups,
 	)
 	registry := agents.NewRegistry()
 
@@ -62,17 +68,6 @@ func NewRuntime(cfg *config.Config, version string) *Runtime {
 		dispatcher,
 	))
 
-	var dailyReporter *agents.DailyReporter
-	if cfg.DailyReportEnabled {
-		dailyReporter = agents.NewDailyReporter(
-			dispatcher,
-			state,
-			cfg.DailyReportHour,
-			cfg.DailyReportMinute,
-			cfg.DryRun,
-		)
-	}
-
 	if cfg.DockerEnabled {
 		registry.Register(agents.NewDockerAgent(
 			cfg.DryRun,
@@ -91,6 +86,17 @@ func NewRuntime(cfg *config.Config, version string) *Runtime {
 	scheduler := NewScheduler(cfg.Interval, bus)
 	orchestrator := NewOrchestrator(bus, registry, state, logger, cfg.DryRun)
 
+	var dailyReporter *agents.DailyReporter
+	if cfg.DailyReportEnabled {
+		dailyReporter = agents.NewDailyReporter(
+			dispatcher,
+			state,
+			cfg.DailyReportHour,
+			cfg.DailyReportMinute,
+			cfg.DryRun,
+		)
+	}
+
 	return &Runtime{
 		cfg:           cfg,
 		version:       version,
@@ -98,7 +104,8 @@ func NewRuntime(cfg *config.Config, version string) *Runtime {
 		scheduler:     scheduler,
 		orchestrator:  orchestrator,
 		cli:           NewCLI(state, scheduler),
-		webServer:     web.NewServer(cfg, state, registry, cfg.WebPort, web.StaticFiles()),
+		webServer:     web.NewServer(cfg, state, registry, logger, alertLogger, cfg.WebPort, web.StaticFiles()),
+		alertLogger:   alertLogger,
 		registry:      registry,
 		dailyReporter: dailyReporter,
 	}
