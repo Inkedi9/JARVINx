@@ -624,7 +624,7 @@ Le projet est en développement actif. Les PRs sont bienvenues sur :
 
 ## License
 
-MIT — fais-en ce que tu veux, crédite si tu partages.
+Apache 2.0 License
 
 ---
 
