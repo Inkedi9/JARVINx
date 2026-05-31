@@ -108,6 +108,13 @@ func (c *Config) Validate() error {
 		ve.Add(err.Error())
 	}
 
+	// ── FileAgent paths ───────────────────────────────────────────
+	for _, p := range c.FileWatchPaths {
+		if err := validateFilePath(p); err != nil {
+			ve.Add(fmt.Sprintf("FileWatchPaths: %v", err))
+		}
+	}
+
 	// ── Rapport daily ─────────────────────────────────────────────
 	if c.DailyReportHour < 0 || c.DailyReportHour > 23 {
 		ve.Add(fmt.Sprintf("DailyReportHour invalide : %d (doit être 0-23)", c.DailyReportHour))
@@ -139,6 +146,28 @@ func validateWebhookURL(name, rawURL string) error {
 
 	if u.Host == "" {
 		return fmt.Errorf("%s URL manque un host valide : '%s'", name, rawURL)
+	}
+
+	return nil
+}
+
+// validateFilePath vérifie qu'un path de surveillance est sûr
+func validateFilePath(path string) error {
+	path = strings.TrimSpace(path)
+	if path == "" {
+		return fmt.Errorf("path vide non autorisé")
+	}
+
+	// Chemins sensibles bloqués
+	blocked := []string{
+		"/", "/etc", "/sys", "/proc", "/dev", "/boot",
+		"C:\\", "C:\\Windows", "C:\\System32",
+	}
+	normalized := strings.ToLower(strings.TrimRight(path, "/\\"))
+	for _, b := range blocked {
+		if normalized == strings.ToLower(strings.TrimRight(b, "/\\")) {
+			return fmt.Errorf("path '%s' non autorisé — trop sensible", path)
+		}
 	}
 
 	return nil

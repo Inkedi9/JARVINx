@@ -306,3 +306,63 @@ func TestValidate_GotifyInvalidScheme(t *testing.T) {
 		t.Fatal("expected error for invalid Gotify URL scheme")
 	}
 }
+
+func TestValidate_FilePathRoot(t *testing.T) {
+	cfg := Default()
+	cfg.FileWatchPaths = []string{"/"}
+
+	err := cfg.Validate()
+	if err == nil {
+		t.Fatal("expected error for root path /")
+	}
+}
+
+func TestValidate_FilePathEtc(t *testing.T) {
+	cfg := Default()
+	cfg.FileWatchPaths = []string{"/etc"}
+
+	err := cfg.Validate()
+	if err == nil {
+		t.Fatal("expected error for /etc path")
+	}
+}
+
+func TestValidate_FilePathWindowsRoot(t *testing.T) {
+	cfg := Default()
+	cfg.FileWatchPaths = []string{"C:\\"}
+
+	err := cfg.Validate()
+	if err == nil {
+		t.Fatal("expected error for C:\\ path")
+	}
+}
+
+func TestValidate_FilePathEmpty(t *testing.T) {
+	cfg := Default()
+	cfg.FileWatchPaths = []string{""}
+
+	err := cfg.Validate()
+	if err == nil {
+		t.Fatal("expected error for empty path")
+	}
+}
+
+func TestValidate_FilePathValid(t *testing.T) {
+	cfg := Default()
+	cfg.FileWatchPaths = []string{"/home/user/logs", "/var/app/data"}
+
+	err := cfg.Validate()
+	if err != nil {
+		t.Fatalf("expected no error for valid paths, got: %v", err)
+	}
+}
+
+func TestValidate_FilePathWindowsValid(t *testing.T) {
+	cfg := Default()
+	cfg.FileWatchPaths = []string{"C:\\Users\\user\\logs"}
+
+	err := cfg.Validate()
+	if err != nil {
+		t.Fatalf("expected no error for valid Windows path, got: %v", err)
+	}
+}
