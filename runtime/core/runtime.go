@@ -75,7 +75,6 @@ func NewRuntime(cfg *config.Config, version string) *Runtime {
 
 	if cfg.DockerEnabled {
 		registry.Register(agents.NewDockerAgent(
-			cfg.DiscordWebhook,
 			cfg.DryRun,
 			cfg.DockerWatchList...,
 		))

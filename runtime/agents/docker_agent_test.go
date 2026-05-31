@@ -10,7 +10,7 @@ import (
 )
 
 func makeDockerAgent() *DockerAgent {
-	return NewDockerAgent("", false)
+	return NewDockerAgent(false)
 }
 
 func TestDockerAgent_Name(t *testing.T) {
@@ -75,7 +75,7 @@ func TestDockerAgent_NoAlertIfStable(t *testing.T) {
 }
 
 func TestDockerAgent_FilterWatchList(t *testing.T) {
-	a := NewDockerAgent("", false, "nginx", "postgres")
+	a := NewDockerAgent(false, "nginx", "postgres")
 
 	all := []tools.ContainerState{
 		{Name: "nginx", Status: "running"},
@@ -90,7 +90,7 @@ func TestDockerAgent_FilterWatchList(t *testing.T) {
 }
 
 func TestDockerAgent_WatchListCaseInsensitive(t *testing.T) {
-	a := NewDockerAgent("", false, "NGINX")
+	a := NewDockerAgent(false, "NGINX")
 
 	containers := []tools.ContainerState{
 		{Name: "nginx", Status: "running"},
@@ -103,7 +103,7 @@ func TestDockerAgent_WatchListCaseInsensitive(t *testing.T) {
 }
 
 func TestDockerAgent_DryRunNoDiscord(t *testing.T) {
-	a := NewDockerAgent("https://discord.com/fake-webhook", true) // dry-run = true
+	a := NewDockerAgent(true) // dry-run = true
 
 	ctx := context.Background()
 	actx := AgentContext{

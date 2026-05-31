@@ -16,16 +16,14 @@ type DockerAgent struct {
 	dryRun     bool
 	watchList  []string // containers à surveiller — vide = tous
 	prevStates map[string]string
-	webhookURL string
 }
 
-func NewDockerAgent(webhookURL string, dryRun bool, watchList ...string) *DockerAgent {
+func NewDockerAgent(dryRun bool, watchList ...string) *DockerAgent {
 	return &DockerAgent{
 		BaseAgent:  NewBaseAgent("docker", 30*time.Second),
 		dryRun:     dryRun,
 		watchList:  watchList,
 		prevStates: make(map[string]string),
-		webhookURL: webhookURL,
 	}
 }
 
@@ -53,10 +51,7 @@ func (a *DockerAgent) Run(ctx context.Context, actx AgentContext) error {
 
 	for _, alert := range alerts {
 		jxlog.Warn("DOCKER AGENT", alert)
-		if !a.dryRun && a.webhookURL != "" {
-			// Réutilise le même pattern d'alerte Discord
-			jxlog.Info("DOCKER AGENT", fmt.Sprintf("Discord notifié : %s", alert))
-		} else if a.dryRun {
+		if a.dryRun {
 			jxlog.Info("DRY-RUN", fmt.Sprintf("Docker alert simulée : %s", alert))
 		}
 	}
