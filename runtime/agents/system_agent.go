@@ -87,6 +87,11 @@ func (a *SystemAgent) Run(ctx context.Context, actx AgentContext) error {
 		decision.Reason,
 		decision.Command,
 	)
+	if decision.Action == "execute" {
+		record.TriggerCPU = snap.CPUPercent
+		record.TriggerRAM = snap.MemPercent
+		record.TriggerDisk = snap.DiskPercent
+	}
 	actx.State.AddCycle(record)
 	actx.State.Add(snap)
 

@@ -168,7 +168,7 @@ func TestIntegration_DryRunNoExecution(t *testing.T) {
 		resp := map[string]any{
 			"message": map[string]any{
 				"role":    "assistant",
-				"content": `{"analysis":"test","action":"execute","command":"uptime","reason":"test"}`,
+				"content": `{"analysis":"test","action":"execute","command":"uptime","reason":"test","confidence":0.9}`,
 			},
 		}
 		w.Header().Set("Content-Type", "application/json")

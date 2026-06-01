@@ -106,6 +106,34 @@ func (o *Orchestrator) Start(ctx context.Context) {
 	}
 }
 
+// shouldExecute vérifie que la condition ayant motivé l'action est toujours active.
+// Si tous les triggers sont à 0 (record ancien sans ces champs), retourne true pour la rétro-compatibilité.
+func (o *Orchestrator) shouldExecute(cycle memory.CycleRecord, current memory.Snapshot) bool {
+	const margin = 5.0
+
+	if cycle.TriggerCPU == 0 && cycle.TriggerRAM == 0 && cycle.TriggerDisk == 0 {
+		return true
+	}
+
+	if cycle.TriggerCPU > 0 && current.CPUPercent < cycle.TriggerCPU-margin {
+		jxlog.Info("VERIFY", fmt.Sprintf("CPU normalisé (%.1f%% → %.1f%%) — execute annulé",
+			cycle.TriggerCPU, current.CPUPercent))
+		return false
+	}
+	if cycle.TriggerRAM > 0 && current.MemPercent < cycle.TriggerRAM-margin {
+		jxlog.Info("VERIFY", fmt.Sprintf("RAM normalisée (%.1f%% → %.1f%%) — execute annulé",
+			cycle.TriggerRAM, current.MemPercent))
+		return false
+	}
+	if cycle.TriggerDisk > 0 && current.DiskPercent < cycle.TriggerDisk-margin {
+		jxlog.Info("VERIFY", fmt.Sprintf("Disk normalisé (%.1f%% → %.1f%%) — execute annulé",
+			cycle.TriggerDisk, current.DiskPercent))
+		return false
+	}
+
+	return true
+}
+
 func (o *Orchestrator) handleObserved(snap memory.Snapshot) {
 	if !o.mu.TryLock() {
 		jxlog.Debug("ORCHESTRATOR", "Cycle précédent en cours — tick ignoré")
@@ -128,7 +156,9 @@ func (o *Orchestrator) handleObserved(snap memory.Snapshot) {
 	cycles := o.state.LastCycles(1)
 	if len(cycles) > 0 && cycles[0].Command != "" {
 		cmd := cycles[0].Command
-		if !o.execGuard.Allow(cmd) {
+		if !o.shouldExecute(cycles[0], snap) {
+			// annulation loguée dans shouldExecute
+		} else if !o.execGuard.Allow(cmd) {
 			jxlog.Info("EXEC-GUARD", fmt.Sprintf("cooldown actif — '%s' ignorée", cmd))
 		} else if o.dryRun {
 			jxlog.Info("DRY-RUN", fmt.Sprintf("Commande '%s' simulée — non exécutée", cmd))

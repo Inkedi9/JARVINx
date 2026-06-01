@@ -29,6 +29,11 @@ type CycleRecord struct {
 	Command   string    `json:"command,omitempty"`
 	CycleNum  int       `json:"cycle_num"`
 	Timestamp time.Time `json:"timestamp"`
+
+	// Métriques au moment de la décision "execute" — pour le verify N+1
+	TriggerCPU  float64 `json:"trigger_cpu,omitempty"`
+	TriggerRAM  float64 `json:"trigger_ram,omitempty"`
+	TriggerDisk float64 `json:"trigger_disk,omitempty"`
 }
 
 type State struct {

@@ -17,10 +17,11 @@ type ParseResult struct {
 
 // Decision est le schema attendu — on valide chaque champ
 type Decision struct {
-	Analysis string `json:"analysis"`
-	Action   string `json:"action"`
-	Command  string `json:"command,omitempty"`
-	Reason   string `json:"reason"`
+	Analysis   string  `json:"analysis"`
+	Action     string  `json:"action"`
+	Command    string  `json:"command,omitempty"`
+	Reason     string  `json:"reason"`
+	Confidence float64 `json:"confidence"`
 }
 
 // Actions valides — whitelist stricte
@@ -119,21 +120,32 @@ func parseAndValidate(s string) (Decision, error) {
 	// Normaliser l'action AVANT validation
 	d.Action = strings.ToLower(strings.TrimSpace(d.Action))
 
-	if err := validateDecision(d); err != nil {
+	// Confidence absente (0) → traiter comme 0.5
+	if d.Confidence == 0 {
+		d.Confidence = 0.5
+	}
+
+	if err := validateDecision(&d); err != nil {
 		return Decision{}, err
 	}
 
 	return d, nil
 }
 
-// validateDecision vérifie que la décision est cohérente
-func validateDecision(d Decision) error {
+// validateDecision vérifie que la décision est cohérente et applique les règles de sécurité
+func validateDecision(d *Decision) error {
 	if strings.TrimSpace(d.Analysis) == "" {
 		return fmt.Errorf("missing analysis field")
 	}
 
 	if !validActions[d.Action] {
 		return fmt.Errorf("invalid action '%s' — must be: log, alert, suggest, execute", d.Action)
+	}
+
+	// Confidence insuffisante pour execute → déclasser en suggest
+	if d.Action == "execute" && d.Confidence < 0.75 {
+		d.Action = "suggest"
+		d.Command = ""
 	}
 
 	return nil

@@ -18,7 +18,8 @@ Format de réponse obligatoire :
   "analysis": "description courte de l'état et des tendances observées",
   "action": "log" | "alert" | "suggest" | "execute",
   "command": "commande à exécuter (seulement si action=execute)",
-  "reason": "explication de ta décision basée sur les tendances"
+  "reason": "explication de ta décision basée sur les tendances",
+  "confidence": ta certitude sur la décision, float entre 0.0 et 1.0
 }
 
 Rules:
