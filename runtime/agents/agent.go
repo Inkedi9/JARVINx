@@ -11,8 +11,8 @@ import (
 // AgentContext est passé à chaque Run() — tout ce dont un agent peut avoir besoin
 type AgentContext struct {
 	Snapshot memory.Snapshot
-	State    *memory.State
-	Logger   *memory.Logger
+	State    memory.Store
+	Logger   memory.EventLog
 }
 
 // AgentStatus représente l'état observable d'un agent

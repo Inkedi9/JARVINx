@@ -50,8 +50,8 @@ func (o *Orchestrator) ExecGuardStatus() (string, time.Duration) {
 type Orchestrator struct {
 	bus       *Bus
 	registry  *agents.Registry
-	state     *memory.State
-	logger    *memory.Logger
+	state     memory.Store
+	logger    memory.EventLog
 	mu        sync.Mutex
 	lastSnap  memory.Snapshot
 	snapMu    sync.RWMutex
@@ -62,8 +62,8 @@ type Orchestrator struct {
 func NewOrchestrator(
 	bus *Bus,
 	registry *agents.Registry,
-	state *memory.State,
-	logger *memory.Logger,
+	state memory.Store,
+	logger memory.EventLog,
 	dryRun bool,
 	execCooldown time.Duration,
 ) *Orchestrator {

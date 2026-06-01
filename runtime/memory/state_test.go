@@ -14,7 +14,9 @@ func TestState_FilePermissions(t *testing.T) {
 
 	path := t.TempDir() + "/test_state.json"
 	s := NewState(path)
-	s.Add(Snapshot{Timestamp: time.Now(), CPUPercent: 10.0})
+	if err := s.Add(Snapshot{Timestamp: time.Now(), CPUPercent: 10.0}); err != nil {
+		t.Fatalf("Add() failed: %v", err)
+	}
 
 	if err := s.Save(); err != nil {
 		t.Fatalf("Save() failed: %v", err)

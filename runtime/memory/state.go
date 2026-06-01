@@ -53,7 +53,7 @@ func NewState(filepath string) *State {
 	return s
 }
 
-func (s *State) Add(snap Snapshot) {
+func (s *State) Add(snap Snapshot) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -61,9 +61,10 @@ func (s *State) Add(snap Snapshot) {
 	if len(s.History) > maxHistory {
 		s.History = s.History[len(s.History)-maxHistory:]
 	}
+	return nil
 }
 
-func (s *State) AddCycle(record CycleRecord) {
+func (s *State) AddCycle(record CycleRecord) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -73,6 +74,13 @@ func (s *State) AddCycle(record CycleRecord) {
 	if len(s.Cycles) > maxHistory {
 		s.Cycles = s.Cycles[len(s.Cycles)-maxHistory:]
 	}
+	return nil
+}
+
+func (s *State) CurrentCycle() int {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.CycleNum
 }
 
 func (s *State) Last(n int) []Snapshot {

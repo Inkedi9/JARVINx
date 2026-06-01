@@ -26,7 +26,7 @@ type ReportData struct {
 // DailyReporter envoie un rapport quotidien via le dispatcher
 type DailyReporter struct {
 	dispatcher *NotifierDispatcher
-	state      *memory.State
+	state      memory.Store
 	hour       int
 	minute     int
 	dryRun     bool
@@ -35,7 +35,7 @@ type DailyReporter struct {
 
 func NewDailyReporter(
 	dispatcher *NotifierDispatcher,
-	state *memory.State,
+	state memory.Store,
 	hour, minute int,
 	dryRun bool,
 ) *DailyReporter {
