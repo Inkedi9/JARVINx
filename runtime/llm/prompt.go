@@ -37,7 +37,7 @@ Commands autorisées :
 
 	if goos == "windows" {
 		sb.WriteString(`
-Note OS : Windows détecté. Les commandes sont auto-traduites à l'exécution :
+Note OS : Windows detected. Commands are auto-translated at runtime :
 - "df -h"   → wmic logicaldisk get size,freespace,caption
 - "free -h" → wmic OS get FreePhysicalMemory,TotalVisibleMemorySize
 - "uptime"  → net statistics workstation
