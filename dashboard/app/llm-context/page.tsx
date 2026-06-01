@@ -121,7 +121,7 @@ export default function LLMContextPage() {
                                     <ActionBadge action={data.dominant_action} />
                                 </div>
                                 <div className="flex items-center justify-between">
-                                    <span className="font-mono text-xs text-gray-400">Taux d'alerte</span>
+                                    <span className="font-mono text-xs text-gray-400">Taux d&apos;alerte</span>
                                     <span className={cn('font-mono text-xs font-semibold', alertRateColor)}>
                                         {data.alert_rate.toFixed(1)}%
                                     </span>
@@ -212,7 +212,7 @@ export default function LLMContextPage() {
                             <div className="space-y-2">
                                 <div className="font-mono text-[10px] text-gray-500 leading-relaxed">
                                     Le prompt système est enrichi automatiquement à chaque cycle avec ce contexte.
-                                    L'agent LLM reçoit les tendances et l'historique d'alertes pour affiner ses décisions.
+                                    L&apos;agent LLM reçoit les tendances et l&apos;historique d&apos;alertes pour affiner ses décisions.
                                 </div>
                                 <div className="mt-3 pt-3 border-t border-border">
                                     <div className="flex items-center justify-between">
