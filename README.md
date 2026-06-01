@@ -619,7 +619,12 @@ JARVINx envoie des embeds Discord structurés quand un seuil est dépassé.
 
 ### V1.6 — Couche décisionnelle
 
-[ 📋 Planned ]
+- [ ] **P0 Cooldown execute** Empêche la même commande de s'exécuter en boucle (défaut 5min, JARVINX_EXEC_COOLDOWN)
+- [ ] **P1 Seuils dynamiques** Les seuils configurés (CPU/RAM/Disk) sont transmis au LLM au lieu de valeurs fixes internes
+- [ ] **P2 Score de confiance** Une décision execute sous le seuil de confiance est rétrogradée en suggest automatiquement
+- [ ] **P2 Verify avant execute** La condition ayant motivé une commande est re-vérifiée avant exécution ; annulation si normalisée
+- [ ] **P3 OS dans le prompt** Le LLM est informé de l'OS cible pour éviter des suggestions de commandes inadaptées
+- [ ] **Doc Pipeline N-1** Clarification CLAUDE.md : l'exécution au cycle suivant est un choix d'architecture, pas un bug
 
 ### v1.8 — Mémoire sémantique
 

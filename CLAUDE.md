@@ -125,6 +125,8 @@ Scheduler → tools.Observe() → Bus(EventObserved)
 
 **DailyReporter** runs as a standalone goroutine (not via the Registry): it ticks every minute and sends a 24h digest via the NotifierDispatcher at the configured hour:minute.
 
+**Orchestrator execute cycle** — The Orchestrator reads `LastCycles(1)` on each tick and executes the command from the **previous** cycle's LLM decision (N-1 pattern). This is intentional: observe and act are decoupled across cycles so the LLM never blocks the metrics pipeline. An `executeGuard` (default cooldown: 5min, configurable via `JARVINX_EXEC_COOLDOWN`) prevents the same command from re-running on consecutive cycles.
+
 ### Agent Pattern
 
 All agents implement the `Agent` interface (`agents/agent.go`). Embed `BaseAgent` for common state (lastRun, errorCount, enabled flag, RWMutex). `Run()` receives an `AgentContext` with snapshot, state, and logger. The Registry runs each agent in its own goroutine and isolates panics — a crashing agent is disabled, not fatal.
