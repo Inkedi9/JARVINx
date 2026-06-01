@@ -21,6 +21,10 @@ export interface CycleRecord {
     analysis: string
     reason: string
     command?: string
+    confidence?: number
+    trigger_cpu?: number
+    trigger_ram?: number
+    trigger_disk?: number
 }
 
 export interface StatusResponse {
@@ -31,6 +35,10 @@ export interface StatusResponse {
     uptime: string
     dry_run: boolean
     last_cycle?: CycleRecord
+    exec_guard?: {
+        last_cmd: string
+        cooldown_remaining_seconds: number
+    }
 }
 
 export interface HistoryResponse {
