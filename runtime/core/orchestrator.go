@@ -116,17 +116,17 @@ func (o *Orchestrator) shouldExecute(cycle memory.CycleRecord, current memory.Sn
 	}
 
 	if cycle.TriggerCPU > 0 && current.CPUPercent < cycle.TriggerCPU-margin {
-		jxlog.Info("VERIFY", fmt.Sprintf("CPU normalisé (%.1f%% → %.1f%%) — execute annulé",
+		jxlog.Info("VERIFY", fmt.Sprintf("CPU normals (%.1f%% → %.1f%%) — execute annulé",
 			cycle.TriggerCPU, current.CPUPercent))
 		return false
 	}
 	if cycle.TriggerRAM > 0 && current.MemPercent < cycle.TriggerRAM-margin {
-		jxlog.Info("VERIFY", fmt.Sprintf("RAM normalisée (%.1f%% → %.1f%%) — execute annulé",
+		jxlog.Info("VERIFY", fmt.Sprintf("RAM normals (%.1f%% → %.1f%%) — execute annulé",
 			cycle.TriggerRAM, current.MemPercent))
 		return false
 	}
 	if cycle.TriggerDisk > 0 && current.DiskPercent < cycle.TriggerDisk-margin {
-		jxlog.Info("VERIFY", fmt.Sprintf("Disk normalisé (%.1f%% → %.1f%%) — execute annulé",
+		jxlog.Info("VERIFY", fmt.Sprintf("Disk normals (%.1f%% → %.1f%%) — execute annulé",
 			cycle.TriggerDisk, current.DiskPercent))
 		return false
 	}
