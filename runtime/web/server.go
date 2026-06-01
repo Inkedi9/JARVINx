@@ -12,6 +12,7 @@ import (
 	"github.com/Inkedi9/jarvinx/agents"
 	"github.com/Inkedi9/jarvinx/config"
 	"github.com/Inkedi9/jarvinx/jxlog"
+	"github.com/Inkedi9/jarvinx/llm"
 	"github.com/Inkedi9/jarvinx/memory"
 	"github.com/Inkedi9/jarvinx/tools"
 )
@@ -22,6 +23,7 @@ type Server struct {
 	registry       *agents.Registry
 	mainLogger     *memory.Logger
 	alertLogger    *memory.Logger
+	dailyReporter  *agents.DailyReporter
 	port           int
 	files          embed.FS
 	allowedOrigins map[string]bool
@@ -71,9 +73,58 @@ type LogsStatusResponse struct {
 	AlertLog memory.LogStatus `json:"alert_log"`
 }
 
+// ── /api/file ────────────────────────────────────────────────────────────────
+
+type FileAgentResponse struct {
+	Enabled    bool     `json:"enabled"`
+	WatchPaths []string `json:"watch_paths"`
+	MaxSizeMB  int64    `json:"max_size_mb"`
+	LastRun    string   `json:"last_run,omitempty"`
+	RunCount   int      `json:"run_count"`
+	AlertCount int      `json:"alert_count"`
+	LastError  string   `json:"last_error,omitempty"`
+}
+
+// ── /api/daily-report ────────────────────────────────────────────────────────
+
+type DailyReportResponse struct {
+	Enabled     bool   `json:"enabled"`
+	ScheduledAt string `json:"scheduled_at"` // "08:00"
+	LastSent    string `json:"last_sent,omitempty"`
+	NextSend    string `json:"next_send,omitempty"`
+}
+
+// ── /api/daily-report/send ───────────────────────────────────────────────────
+
+type SendReportResponse struct {
+	Sent    bool   `json:"sent"`
+	Message string `json:"message"`
+}
+
+// ── /api/llm-context ─────────────────────────────────────────────────────────
+
+type LLMContextResponse struct {
+	CycleCount     int      `json:"cycle_count"`
+	DominantAction string   `json:"dominant_action"`
+	AlertRate      float64  `json:"alert_rate"`
+	CPUTrend       string   `json:"cpu_trend"`
+	RAMTrend       string   `json:"ram_trend"`
+	DiskTrend      string   `json:"disk_trend"`
+	RecentAlerts   []string `json:"recent_alerts"`
+}
+
 var startTime = time.Now()
 
-func NewServer(cfg *config.Config, state *memory.State, registry *agents.Registry, mainLogger *memory.Logger, alertLogger *memory.Logger, port int, files embed.FS) *Server {
+func NewServer(
+	cfg *config.Config,
+	state *memory.State,
+	registry *agents.Registry,
+	mainLogger *memory.Logger,
+	alertLogger *memory.Logger,
+	dailyReporter *agents.DailyReporter,
+	port int,
+	files embed.FS,
+) *Server {
 	// Construit une map pour lookup O(1)
 	origins := make(map[string]bool, len(cfg.AllowedOrigins))
 	for _, o := range cfg.AllowedOrigins {
@@ -86,6 +137,7 @@ func NewServer(cfg *config.Config, state *memory.State, registry *agents.Registr
 		registry:       registry,
 		mainLogger:     mainLogger,
 		alertLogger:    alertLogger,
+		dailyReporter:  dailyReporter,
 		port:           port,
 		files:          files,
 		allowedOrigins: origins,
@@ -108,6 +160,10 @@ func (s *Server) Start() {
 	mux.HandleFunc("/api/agents/toggle", s.handleAgentToggle)
 	mux.HandleFunc("/api/docker", s.handleDocker)
 	mux.HandleFunc("/api/logs/status", s.handleLogsStatus)
+	mux.HandleFunc("/api/file", s.handleFile)
+	mux.HandleFunc("/api/daily-report", s.handleDailyReport)
+	mux.HandleFunc("/api/daily-report/send", s.handleDailyReportSend)
+	mux.HandleFunc("/api/llm-context", s.handleLLMContext)
 
 	// corsMiddleware est maintenant une méthode — accès à s.allowedOrigins
 	handler := s.corsMiddleware(mux)
@@ -142,6 +198,99 @@ func (s *Server) corsMiddleware(next http.Handler) http.Handler {
 		}
 
 		next.ServeHTTP(w, r)
+	})
+}
+
+// ── /api/file ────────────────────────────────────────────────────────────────
+
+func (s *Server) handleFile(w http.ResponseWriter, r *http.Request) {
+	resp := FileAgentResponse{
+		Enabled:    false,
+		WatchPaths: s.cfg.FileWatchPaths,
+		MaxSizeMB:  s.cfg.FileMaxSizeMB,
+	}
+
+	if a, ok := s.registry.Get("file"); ok {
+		status := a.Status()
+		resp.Enabled = status.Enabled
+		resp.RunCount = status.RunCount
+		resp.AlertCount = status.AlertCount
+		resp.LastError = status.LastError
+		if !status.LastRun.IsZero() {
+			resp.LastRun = status.LastRun.Format(time.RFC3339)
+		}
+	}
+
+	s.writeJSON(w, resp)
+}
+
+// ── /api/daily-report ────────────────────────────────────────────────────────
+
+func (s *Server) handleDailyReport(w http.ResponseWriter, r *http.Request) {
+	resp := DailyReportResponse{
+		Enabled:     s.cfg.DailyReportEnabled,
+		ScheduledAt: fmt.Sprintf("%02d:%02d", s.cfg.DailyReportHour, s.cfg.DailyReportMinute),
+	}
+
+	if s.dailyReporter != nil {
+		lastSent := s.dailyReporter.LastSent()
+		if !lastSent.IsZero() {
+			resp.LastSent = lastSent.Format(time.RFC3339)
+		}
+
+		// Calcule le prochain envoi
+		now := time.Now()
+		next := time.Date(now.Year(), now.Month(), now.Day(),
+			s.cfg.DailyReportHour, s.cfg.DailyReportMinute, 0, 0, now.Location())
+		if next.Before(now) {
+			next = next.Add(24 * time.Hour)
+		}
+		resp.NextSend = next.Format(time.RFC3339)
+	}
+
+	s.writeJSON(w, resp)
+}
+
+// ── /api/daily-report/send ───────────────────────────────────────────────────
+
+func (s *Server) handleDailyReportSend(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	if s.dailyReporter == nil || !s.cfg.DailyReportEnabled {
+		s.writeJSON(w, SendReportResponse{
+			Sent:    false,
+			Message: "DailyReporter non configuré — active JARVINX_DAILY_REPORT=true",
+		})
+		return
+	}
+
+	go s.dailyReporter.SendNow()
+
+	s.writeJSON(w, SendReportResponse{
+		Sent:    true,
+		Message: "Rapport en cours d'envoi",
+	})
+}
+
+// ── /api/llm-context ─────────────────────────────────────────────────────────
+
+func (s *Server) handleLLMContext(w http.ResponseWriter, r *http.Request) {
+	cycles := s.state.LastCycles(20)
+	snapshots := s.state.Last(10)
+
+	ctx := llm.BuildAdaptiveContext(cycles, snapshots)
+
+	s.writeJSON(w, LLMContextResponse{
+		CycleCount:     ctx.CycleCount,
+		DominantAction: ctx.DominantAction,
+		AlertRate:      ctx.AlertRate,
+		CPUTrend:       ctx.CPUTrend,
+		RAMTrend:       ctx.RAMTrend,
+		DiskTrend:      ctx.DiskTrend,
+		RecentAlerts:   ctx.RecentAlerts,
 	})
 }
 

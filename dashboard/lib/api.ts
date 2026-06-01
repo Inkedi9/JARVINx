@@ -87,6 +87,38 @@ export interface LogsStatusResponse {
     alert_log: LogStatus
 }
 
+export interface FileAgentResponse {
+    enabled: boolean
+    watch_paths: string[]
+    max_size_mb: number
+    last_run?: string
+    run_count: number
+    alert_count: number
+    last_error?: string
+}
+
+export interface DailyReportResponse {
+    enabled: boolean
+    scheduled_at: string
+    last_sent?: string
+    next_send?: string
+}
+
+export interface SendReportResponse {
+    sent: boolean
+    message: string
+}
+
+export interface LLMContextResponse {
+    cycle_count: number
+    dominant_action: string
+    alert_rate: number
+    cpu_trend: string
+    ram_trend: string
+    disk_trend: string
+    recent_alerts: string[]
+}
+
 // ── Client ───────────────────────────────────────────────────────────────────
 
 async function fetchAPI<T>(endpoint: string): Promise<T> {
@@ -103,6 +135,17 @@ export const api = {
     agents: () => fetchAPI<AgentsResponse>('/api/agents'),
     docker: () => fetchAPI<DockerResponse>('/api/docker'),
     logsStatus: () => fetchAPI<LogsStatusResponse>('/api/logs/status'),
+    file: () => fetchAPI<FileAgentResponse>('/api/file'),
+    dailyReport: () => fetchAPI<DailyReportResponse>('/api/daily-report'),
+    llmContext: () => fetchAPI<LLMContextResponse>('/api/llm-context'),
+    sendDailyReport: async (): Promise<SendReportResponse> => {
+        const res = await fetch(`${RUNTIME_URL}/api/daily-report/send`, {
+            method: 'POST',
+            cache: 'no-store',
+        })
+        if (!res.ok) throw new Error(`API ${res.status}`)
+        return res.json()
+    },
 }
 
 // ── Toggle  ───────────────────────────────────────────────────────────────────

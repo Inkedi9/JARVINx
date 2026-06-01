@@ -162,3 +162,12 @@ func (r *DailyReporter) formatReport(d ReportData) string {
 		d.ExecuteCount,
 	)
 }
+
+func (r *DailyReporter) LastSent() time.Time {
+	return r.lastSent
+}
+
+func (r *DailyReporter) SendNow() {
+	r.send()
+	r.lastSent = time.Now()
+}

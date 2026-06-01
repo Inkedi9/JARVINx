@@ -43,6 +43,9 @@ func makeTestServer(origins []string) *Server {
 		cfg:            cfg,
 		state:          memory.NewState(""),
 		registry:       agents.NewRegistry(),
+		mainLogger:     nil,
+		alertLogger:    nil,
+		dailyReporter:  nil, // ← ajoute ça
 		allowedOrigins: originMap,
 	}
 }
@@ -316,5 +319,98 @@ func TestLogsStatus_NilLoggers(t *testing.T) {
 	// Ne doit pas crasher avec des loggers nil
 	if w.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d", w.Code)
+	}
+}
+
+func TestHandleFile_NoAgent(t *testing.T) {
+	srv := makeTestServer([]string{"http://localhost:3000"})
+
+	req := httptest.NewRequest("GET", "/api/file", nil)
+	w := httptest.NewRecorder()
+
+	srv.handleFile(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", w.Code)
+	}
+
+	var resp FileAgentResponse
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("invalid JSON: %v", err)
+	}
+	if resp.Enabled {
+		t.Error("expected disabled when no file agent registered")
+	}
+}
+
+func TestHandleDailyReport_Disabled(t *testing.T) {
+	srv := makeTestServer([]string{"http://localhost:3000"})
+	srv.cfg.DailyReportEnabled = false
+
+	req := httptest.NewRequest("GET", "/api/daily-report", nil)
+	w := httptest.NewRecorder()
+
+	srv.handleDailyReport(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", w.Code)
+	}
+
+	var resp DailyReportResponse
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("invalid JSON: %v", err)
+	}
+	if resp.Enabled {
+		t.Error("expected enabled=false")
+	}
+}
+
+func TestHandleDailyReportSend_MethodNotAllowed(t *testing.T) {
+	srv := makeTestServer([]string{"http://localhost:3000"})
+
+	req := httptest.NewRequest("GET", "/api/daily-report/send", nil)
+	w := httptest.NewRecorder()
+
+	srv.handleDailyReportSend(w, req)
+
+	if w.Code != http.StatusMethodNotAllowed {
+		t.Errorf("expected 405, got %d", w.Code)
+	}
+}
+
+func TestHandleDailyReportSend_NoReporter(t *testing.T) {
+	srv := makeTestServer([]string{"http://localhost:3000"})
+	srv.dailyReporter = nil
+
+	req := httptest.NewRequest("POST", "/api/daily-report/send", nil)
+	w := httptest.NewRecorder()
+
+	srv.handleDailyReportSend(w, req)
+
+	var resp SendReportResponse
+	json.NewDecoder(w.Body).Decode(&resp)
+	if resp.Sent {
+		t.Error("expected sent=false when no reporter configured")
+	}
+}
+
+func TestHandleLLMContext_Empty(t *testing.T) {
+	srv := makeTestServer([]string{"http://localhost:3000"})
+
+	req := httptest.NewRequest("GET", "/api/llm-context", nil)
+	w := httptest.NewRecorder()
+
+	srv.handleLLMContext(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", w.Code)
+	}
+
+	var resp LLMContextResponse
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("invalid JSON: %v", err)
+	}
+	if resp.CycleCount != 0 {
+		t.Errorf("expected 0 cycles for empty state, got %d", resp.CycleCount)
 	}
 }

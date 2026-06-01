@@ -98,13 +98,19 @@ func NewRuntime(cfg *config.Config, version string) *Runtime {
 	}
 
 	return &Runtime{
-		cfg:           cfg,
-		version:       version,
-		bus:           bus,
-		scheduler:     scheduler,
-		orchestrator:  orchestrator,
-		cli:           NewCLI(state, scheduler),
-		webServer:     web.NewServer(cfg, state, registry, logger, alertLogger, cfg.WebPort, web.StaticFiles()),
+		cfg:          cfg,
+		version:      version,
+		bus:          bus,
+		scheduler:    scheduler,
+		orchestrator: orchestrator,
+		cli:          NewCLI(state, scheduler),
+		webServer: web.NewServer(
+			cfg, state, registry,
+			logger, alertLogger,
+			dailyReporter, // ← nouveau
+			cfg.WebPort,
+			web.StaticFiles(),
+		),
 		alertLogger:   alertLogger,
 		registry:      registry,
 		dailyReporter: dailyReporter,
