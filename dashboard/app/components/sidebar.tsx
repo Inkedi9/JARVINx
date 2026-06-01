@@ -10,12 +10,16 @@ import {
     History,
     Settings,
     Terminal,
+    Container,
+    Brain,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const nav = [
     { href: '/', label: 'Overview', icon: LayoutDashboard },
     { href: '/agents', label: 'Agents', icon: Bot },
+    { href: '/containers', label: 'Containers', icon: Container },
+    { href: '/llm-context', label: 'LLM Context', icon: Brain },
     { href: '/memory', label: 'Memory', icon: Database },
     { href: '/tools', label: 'Tools', icon: Wrench },
     { href: '/history', label: 'History', icon: History },

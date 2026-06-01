@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useRef } from 'react'
-import { api, StatusResponse, HistoryResponse, AgentsResponse } from './api'
+import { api, StatusResponse, HistoryResponse, AgentsResponse, DockerResponse } from './api'
 
 const MAX_BACKOFF_MS = 30_000  // 30s max
 const BASE_BACKOFF_MS = 1_000   // 1s initial
@@ -59,4 +59,12 @@ export function useHistory() {
 
 export function useAgents() {
     return usePolling<AgentsResponse>(api.agents, 10_000, { agents: [], total: 0 })
+}
+
+export function useDocker() {
+    return usePolling<DockerResponse>(
+        api.docker,
+        15_000,
+        { available: false, containers: [], total: 0, running: 0, exited: 0 }
+    )
 }
