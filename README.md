@@ -431,29 +431,29 @@ go test ./... -cover
 
 **Pages :**
 
-| Page | URL | Description |
-|------|-----|-------------|
-| Overview | `/` | Métriques live, cycle agent, feed décisions, analyse IA, statut execute guard |
-| Agents | `/agents` | Registry — health, runs, erreurs, enable/disable à chaud |
-| Containers | `/containers` | Tableau Docker live, filtres All/Running/Exited, badge topbar |
-| History | `/history` | Tableau cycles — badge confiance coloré (execute/suggest), trigger info, métriques |
-| LLM Context | `/llm-context` | Tendances CPU/RAM/Disk, action dominante, taux d'alerte |
-| Settings | `/settings` | Config runtime, seuils, endpoints API cliquables |
+| Page        | URL            | Description                                                                        |
+| ----------- | -------------- | ---------------------------------------------------------------------------------- |
+| Overview    | `/`            | Métriques live, cycle agent, feed décisions, analyse IA, statut execute guard      |
+| Agents      | `/agents`      | Registry — health, runs, erreurs, enable/disable à chaud                           |
+| Containers  | `/containers`  | Tableau Docker live, filtres All/Running/Exited, badge topbar                      |
+| History     | `/history`     | Tableau cycles — badge confiance coloré (execute/suggest), trigger info, métriques |
+| LLM Context | `/llm-context` | Tendances CPU/RAM/Disk, action dominante, taux d'alerte                            |
+| Settings    | `/settings`    | Config runtime, seuils, endpoints API cliquables                                   |
 
 **Endpoints API :**
 
-| Méthode | Endpoint | Description |
-|---------|----------|-------------|
-| GET | `/api/status` | État runtime, uptime, circuit breaker, dernier cycle, exec_guard |
-| GET | `/api/history` | 10 derniers cycles (plus récent en premier) |
-| GET | `/api/agents` | Liste agents avec runs/erreurs/enabled |
-| POST | `/api/agents/toggle` | Active/désactive un agent — body: `{"name": "..."}` |
-| GET | `/api/docker` | Containers avec running/exited counts |
-| GET | `/api/logs/status` | Taille et état des fichiers de logs |
-| GET | `/api/file` | Status FileAgent + chemins surveillés |
-| GET | `/api/daily-report` | Horaire rapport + dernier/prochain envoi |
-| POST | `/api/daily-report/send` | Déclenche un rapport immédiat |
-| GET | `/api/llm-context` | Contexte adaptatif transmis au LLM |
+| Méthode | Endpoint                 | Description                                                      |
+| ------- | ------------------------ | ---------------------------------------------------------------- |
+| GET     | `/api/status`            | État runtime, uptime, circuit breaker, dernier cycle, exec_guard |
+| GET     | `/api/history`           | 10 derniers cycles (plus récent en premier)                      |
+| GET     | `/api/agents`            | Liste agents avec runs/erreurs/enabled                           |
+| POST    | `/api/agents/toggle`     | Active/désactive un agent — body: `{"name": "..."}`              |
+| GET     | `/api/docker`            | Containers avec running/exited counts                            |
+| GET     | `/api/logs/status`       | Taille et état des fichiers de logs                              |
+| GET     | `/api/file`              | Status FileAgent + chemins surveillés                            |
+| GET     | `/api/daily-report`      | Horaire rapport + dernier/prochain envoi                         |
+| POST    | `/api/daily-report/send` | Déclenche un rapport immédiat                                    |
+| GET     | `/api/llm-context`       | Contexte adaptatif transmis au LLM                               |
 
 ---
 
@@ -532,16 +532,17 @@ JARVINx envoie des embeds Discord structurés quand un seuil est dépassé.
 
 ## Changelog
 
-| Version | Theme                     | Status         |
-| ------- | ------------------------- | -------------- |
-| V1.0    | Stable & Deployable       | ✅ Released    |
-| V1.1    | Hardening & Corrections   | ✅ Released    |
-| V1.2    | Correction & Robustesse   | ✅ Released    |
-| V1.3    | Intelligence & Mémoire    | ✅ Released    |
-| V1.4    | Robustesse Runtime        | ✅ Released    |
-| V1.5    | Dashboard                 | ✅ Released    |
-| V1.6    | Couche décisionnelle      | ✅ Released    |
-| V1.x    | Mémoire sémantique Qdrant | 🔮 Future      |
+| Version | Theme                     | Status      |
+| ------- | ------------------------- | ----------- |
+| V1.0    | Stable & Deployable       | ✅ Released |
+| V1.1    | Hardening & Corrections   | ✅ Released |
+| V1.2    | Correction & Robustesse   | ✅ Released |
+| V1.3    | Intelligence & Mémoire    | ✅ Released |
+| V1.4    | Robustesse Runtime        | ✅ Released |
+| V1.5    | Dashboard                 | ✅ Released |
+| V1.6    | Couche décisionnelle      | ✅ Released |
+| V1.7    | Mémoire historique SQLite | 🔮 Future   |
+| V1.8    | Mémoire sémantique Qdrant | 🔮 Future   |
 
 ## Roadmap
 
@@ -630,13 +631,32 @@ JARVINx envoie des embeds Discord structurés quand un seuil est dépassé.
 - [x] **Dashboard Overview** Statut execute guard en temps réel — cooldown actif ou disponible
 - [x] **API exec_guard** `last_cmd` + `cooldown_remaining_seconds` dans `GET /api/status`
 
-### v1.8 — Mémoire sémantique
+## 🗄️ V1.7 — Mémoire historique SQLite
 
-- [ ] **Vector DB** — intégration Qdrant local pour mémoire sémantique longue durée
-- [ ] **Mémoire contextuelle** — JARVINx se souvient des événements passés similaires et les cite dans ses décisions
-- [ ] **Embedding** des décisions passées
-- [ ] **Recherche sémantique** — "qu'est-ce qui s'est passé la dernière fois que le CPU a spiké ?"
-- [ ] **Contexte enrichi pour le LLM** — événements similaires passés
+> JARVINx se souvient. Les métriques persistent au-delà des 20 cycles en mémoire.
+
+### Phase 0 — Interface Store _(pré-requis)_
+
+- [ ] Créer `memory/store.go` — interfaces `Store` et `EventLog`, découpler `AgentContext` des types concrets
+- [ ] `Add()` / `AddCycle()` retournent `error` — mettre à jour appelants et tests
+
+### Phase 1 — SQLite double write
+
+- [ ] `SQLiteStore` + `DoubleWriteStore` — JSON reste source de vérité, SQLite en secondary fail-silencieux
+- [ ] Config `JARVINX_SQLITE_PATH` — chemin configurable, défaut `jarvinx.db`
+
+### Phase 2 — Bascule lecture + Dashboard
+
+- [ ] Lecture depuis SQLite — benchmarker `LastCycles` à 5760 items avant livraison
+- [ ] Graphes temporels dashboard — courbes CPU/RAM/Disk par conteneur sur 7j / 30j / 90j
+
+## 🧠 V1.8 — Mémoire sémantique Qdrant
+
+> Les décisions passées alimentent les décisions futures.
+
+- [ ] `QdrantAgent` dans le Registry — vectorise chaque décision LLM via Ollama embeddings
+- [ ] Contexte enrichi — décisions similaires passées injectées dans le prompt LLM
+- [ ] Activation opt-in via `JARVINX_QDRANT_URL` — runtime non impacté si absent
 
 ### Vision v2.0 — Universal Agent Platform
 
