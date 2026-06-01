@@ -75,6 +75,19 @@ export default function Overview() {
           accent
         />
       </div>
+      {/* Execute Guard */}
+      {status?.exec_guard && (
+        <div className="font-mono text-[10px] flex items-center gap-1.5">
+          {status.exec_guard.cooldown_remaining_seconds > 0 ? (
+            <span className="text-amber-400">
+              ⏸ Cooldown actif — {status.exec_guard.last_cmd} — reprend dans {Math.ceil(status.exec_guard.cooldown_remaining_seconds)}s
+            </span>
+          ) : (
+            <span className="text-emerald-600">✅ Execute disponible</span>
+          )}
+        </div>
+      )}
+
       <AIAnalysis />
 
       {/* Runtime cycle + Agents */}

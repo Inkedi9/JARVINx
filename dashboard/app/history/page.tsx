@@ -15,6 +15,20 @@ function ActionBadge({ action }: { action: string }) {
     )
 }
 
+function ConfidenceBadge({ confidence }: { confidence: number }) {
+    const pct = Math.round(confidence * 100)
+    const color = confidence >= 0.75
+        ? 'text-emerald-400 border-emerald-400/30 bg-emerald-400/5'
+        : confidence >= 0.5
+            ? 'text-amber-400 border-amber-400/30 bg-amber-400/5'
+            : 'text-red-400 border-red-400/30 bg-red-400/5'
+    return (
+        <span className={cn('font-mono text-[9px] px-1.5 py-0.5 rounded border', color)}>
+            Confiance {pct}%
+        </span>
+    )
+}
+
 function StatPill({
     label,
     value,
@@ -153,11 +167,23 @@ export default function HistoryPage() {
                                             </span>
                                         </div>
                                     )}
+                                    {(cycle.trigger_cpu || cycle.trigger_ram || cycle.trigger_disk) && (
+                                        <div className="font-mono text-[9px] text-gray-600 mt-0.5">
+                                            {`Déclenché à ${[
+                                                cycle.trigger_cpu ? `CPU ${cycle.trigger_cpu.toFixed(0)}%` : null,
+                                                cycle.trigger_ram ? `RAM ${cycle.trigger_ram.toFixed(0)}%` : null,
+                                                cycle.trigger_disk ? `Disk ${cycle.trigger_disk.toFixed(0)}%` : null,
+                                            ].filter(Boolean).join(' / ')}`}
+                                        </div>
+                                    )}
                                 </div>
 
                                 {/* Action */}
-                                <div className="flex items-center justify-end">
+                                <div className="flex flex-col items-end gap-1">
                                     <ActionBadge action={cycle.action} />
+                                    {(cycle.action === 'execute' || cycle.action === 'suggest') && cycle.confidence !== undefined && (
+                                        <ConfidenceBadge confidence={cycle.confidence} />
+                                    )}
                                 </div>
                             </div>
                         )
