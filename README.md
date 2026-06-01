@@ -596,10 +596,10 @@ JARVINx envoie des embeds Discord structurés quand un seuil est dépassé.
 - [x] **Bus dispatcher** Bus goroutine dédiée — `Publish()` non-bloquant hors verrou
 - [x] CI `-race` clean — 0 data race détectée
 - [x] **Test intégration** end-to-end — 6 nouveaux tests
+- [x] **Store mémoire** longue durée SQLite vs BBolt design doc
 
 ### V1.5 — Dashboard
 
-- [ ] **Store mémoire** longue durée SQLite vs BBolt design doc
 - [ ] **Quick win** badge header Brancher `/api/docker` — page Agents ou widget
 - [ ] **Nouveau endpoint** `GET /api/file` - FileAgent status + paths + tailles - `GET /api/daily-report` + `POST /api/daily-report/send`
 - [ ] **Features Dashboard** Page "LLM Context" — tendances + prompt adaptatif - Widget DailyReporter — last_sent + trigger manuel - `GET /api/llm-context` — expose `BuildAdaptiveContext()`
