@@ -37,6 +37,7 @@ _Your system. My mission._
 | -------------------------------------------- | ------------------------------------------------------------------- |
 | [Manuel Utilisateur](docs/USER_GUIDE.md)     | Installation, configuration, CLI, dashboard, alertes, dépannage     |
 | [Documentation Technique](docs/TECHNICAL.md) | Architecture, écrire un agent, API, tests, build, roadmap technique |
+| [SQLite Store](docs/ADR-001-sqlite-store.md) | SQLite comme store mémoire longue durée, plan de migration          |
 
 ---
 
