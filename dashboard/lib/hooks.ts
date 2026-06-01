@@ -6,7 +6,7 @@ import { api, StatusResponse, HistoryResponse, AgentsResponse, DockerResponse } 
 const MAX_BACKOFF_MS = 30_000  // 30s max
 const BASE_BACKOFF_MS = 1_000   // 1s initial
 
-function usePolling<T>(
+export function usePolling<T>(
     fetcher: () => Promise<T>,
     interval: number,
     initial: T

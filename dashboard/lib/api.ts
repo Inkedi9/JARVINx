@@ -137,7 +137,13 @@ export const api = {
     logsStatus: () => fetchAPI<LogsStatusResponse>('/api/logs/status'),
     file: () => fetchAPI<FileAgentResponse>('/api/file'),
     dailyReport: () => fetchAPI<DailyReportResponse>('/api/daily-report'),
-    llmContext: () => fetchAPI<LLMContextResponse>('/api/llm-context'),
+    llmContext: async () => {
+        const res = await fetchAPI<LLMContextResponse>('/api/llm-context')
+        return {
+            ...res,
+            recent_alerts: res.recent_alerts ?? [],
+        }
+    },
     sendDailyReport: async (): Promise<SendReportResponse> => {
         const res = await fetch(`${RUNTIME_URL}/api/daily-report/send`, {
             method: 'POST',

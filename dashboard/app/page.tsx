@@ -6,6 +6,8 @@ import RuntimeCycle from './components/runtime-cycle'
 import AgentList from './components/agent-list'
 import DecisionFeed from './components/decision-feed'
 import MetricsBar from './components/metrics-bar'
+import AIAnalysis from './components/ai-analysis'
+import DailyReporter from './components/daily-reporter'
 
 export default function Overview() {
   const { data: status } = useStatus()
@@ -73,6 +75,7 @@ export default function Overview() {
           accent
         />
       </div>
+      <AIAnalysis />
 
       {/* Runtime cycle + Agents */}
       <div className="grid grid-cols-[1fr_340px] gap-4">
@@ -119,6 +122,7 @@ export default function Overview() {
             </div>
           )}
         </div>
+        <DailyReporter />
       </div>
 
     </div>
