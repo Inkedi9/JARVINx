@@ -93,11 +93,11 @@ func (a *SystemAgent) Run(ctx context.Context, actx AgentContext) error {
 		record.TriggerRAM = snap.MemPercent
 		record.TriggerDisk = snap.DiskPercent
 	}
-	if err := actx.State.AddCycle(record); err != nil {
-		jxlog.Error("SYSTEM AGENT", fmt.Sprintf("AddCycle : %v", err))
+	if storeErr := actx.State.AddCycle(record); storeErr != nil {
+		jxlog.Error("SYSTEM AGENT", fmt.Sprintf("AddCycle : %v", storeErr))
 	}
-	if err := actx.State.Add(snap); err != nil {
-		jxlog.Error("SYSTEM AGENT", fmt.Sprintf("Add : %v", err))
+	if storeErr := actx.State.Add(snap); storeErr != nil {
+		jxlog.Error("SYSTEM AGENT", fmt.Sprintf("Add : %v", storeErr))
 	}
 
 	if saveErr := actx.State.Save(); saveErr != nil {
