@@ -162,7 +162,7 @@ func TestIntegration_SchedulerPublishes(t *testing.T) {
 	}
 }
 
-// TestIntegration_DryRunNoExecution — dry-run n'exécute pas les commandes
+// TestIntegration_DryRunNoExecution — dry-run n'exécute pas les commands
 func TestIntegration_DryRunNoExecution(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		resp := map[string]any{
@@ -201,9 +201,12 @@ func TestIntegration_DryRunNoExecution(t *testing.T) {
 		return
 	}
 
-	if cycles[0].Action == "execute" && cycles[0].Command == "uptime" {
-		// Cycle enregistré — en dry-run l'orchestrateur ne l'exécute pas
-		// On vérifie juste que le cycle est bien enregistré
+	// Vérifie que le cycle est bien enregistré avec l'action correcte
+	if cycles[0].Action != "execute" {
+		t.Errorf("expected action 'execute', got '%s'", cycles[0].Action)
+	}
+	if cycles[0].Command != "uptime" {
+		t.Errorf("expected command 'uptime', got '%s'", cycles[0].Command)
 	}
 }
 
