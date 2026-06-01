@@ -7,7 +7,7 @@
 ██   ██║██╔══██║██╔══██╗╚██╗ ██╔╝██║██║╚██╗██║ ██╔██╗
 ╚█████╔╝██║  ██║██║  ██║ ╚████╔╝ ██║██║ ╚████║██╔╝ ██╗
  ╚════╝ ╚═╝  ╚═╝╚═╝  ╚═╝  ╚═══╝  ╚═╝╚═╝  ╚═══╝╚═╝  ╚═╝
-Version 1.5.0
+Version 1.6.0
 ```
 
 **Autonomous AI Runtime · Observing. Thinking. Acting. Evolving.**
@@ -15,7 +15,7 @@ Version 1.5.0
 ![Go](https://img.shields.io/badge/Go-1.26.3-00ADD8?style=flat-square&logo=go&logoColor=white)
 ![Ollama](https://img.shields.io/badge/Ollama-local%20LLM-black?style=flat-square)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
-![Status](https://img.shields.io/badge/status-v1.5%20stable-00E5FF?style=flat-square)
+![Status](https://img.shields.io/badge/status-v1.6%20stable-00E5FF?style=flat-square)
 
 _Your system. My mission._
 
@@ -381,6 +381,7 @@ func Default() *Config {
 | `JARVINX_DAILY_REPORT`     | Active le rapport quotidien (`true/false`) | `false`                  |
 | `JARVINX_REPORT_HOUR`      | Heure d'envoi du rapport (0-23)            | `8`                      |
 | `JARVINX_REPORT_MINUTE`    | Minute d'envoi du rapport (0-59)           | `0`                      |
+| `JARVINX_EXEC_COOLDOWN`    | Cooldown entre deux exécutions identiques  | `5m`                     |
 
 ---
 
@@ -432,10 +433,10 @@ go test ./... -cover
 
 | Page | URL | Description |
 |------|-----|-------------|
-| Overview | `/` | Métriques live, cycle agent, feed décisions, analyse IA |
+| Overview | `/` | Métriques live, cycle agent, feed décisions, analyse IA, statut execute guard |
 | Agents | `/agents` | Registry — health, runs, erreurs, enable/disable à chaud |
 | Containers | `/containers` | Tableau Docker live, filtres All/Running/Exited, badge topbar |
-| History | `/history` | Tableau cycles avec badges d'action et métriques colorées |
+| History | `/history` | Tableau cycles — badge confiance coloré (execute/suggest), trigger info, métriques |
 | LLM Context | `/llm-context` | Tendances CPU/RAM/Disk, action dominante, taux d'alerte |
 | Settings | `/settings` | Config runtime, seuils, endpoints API cliquables |
 
@@ -443,7 +444,7 @@ go test ./... -cover
 
 | Méthode | Endpoint | Description |
 |---------|----------|-------------|
-| GET | `/api/status` | État runtime, uptime, circuit breaker, dernier cycle |
+| GET | `/api/status` | État runtime, uptime, circuit breaker, dernier cycle, exec_guard |
 | GET | `/api/history` | 10 derniers cycles (plus récent en premier) |
 | GET | `/api/agents` | Liste agents avec runs/erreurs/enabled |
 | POST | `/api/agents/toggle` | Active/désactive un agent — body: `{"name": "..."}` |
@@ -539,7 +540,7 @@ JARVINx envoie des embeds Discord structurés quand un seuil est dépassé.
 | V1.3    | Intelligence & Mémoire    | ✅ Released    |
 | V1.4    | Robustesse Runtime        | ✅ Released    |
 | V1.5    | Dashboard                 | ✅ Released    |
-| V1.6    | Couche décisionnelle      | 📋 Planned     |
+| V1.6    | Couche décisionnelle      | ✅ Released    |
 | V1.x    | Mémoire sémantique Qdrant | 🔮 Future      |
 
 ## Roadmap
@@ -617,14 +618,17 @@ JARVINx envoie des embeds Discord structurés quand un seuil est dépassé.
 - [x] **Bloc Analyse IA** — résumé LLM de l'état global, affiché si Ollama connecté
 - [x] **Nouveaux endpoints** — `/api/file`, `/api/daily-report`, `/api/daily-report/send`, `/api/llm-context`
 
-### V1.6 — Couche décisionnelle
+### V1.6 — Couche décisionnelle ✅
 
-- [ ] **P0 Cooldown execute** Empêche la même commande de s'exécuter en boucle (défaut 5min, JARVINX_EXEC_COOLDOWN)
-- [ ] **P1 Seuils dynamiques** Les seuils configurés (CPU/RAM/Disk) sont transmis au LLM au lieu de valeurs fixes internes
-- [ ] **P2 Score de confiance** Une décision execute sous le seuil de confiance est rétrogradée en suggest automatiquement
-- [ ] **P2 Verify avant execute** La condition ayant motivé une commande est re-vérifiée avant exécution ; annulation si normalisée
-- [ ] **P3 OS dans le prompt** Le LLM est informé de l'OS cible pour éviter des suggestions de commandes inadaptées
-- [ ] **Doc Pipeline N-1** Clarification CLAUDE.md : l'exécution au cycle suivant est un choix d'architecture, pas un bug
+- [x] **P0 Cooldown execute** `executeGuard` empêche la même commande de s'exécuter en boucle (défaut 5min, `JARVINX_EXEC_COOLDOWN`)
+- [x] **P1 Seuils dynamiques** `BuildSystemPrompt` reçoit les seuils réels de config — plus de valeurs hardcodées dans le prompt LLM
+- [x] **P2 Score de confiance** `Decision.Confidence` : `execute` rétrogradé en `suggest` si confidence < 0.75 ; absent = 0.5
+- [x] **P2 Verify avant execute** `shouldExecute()` re-vérifie les métriques trigger avant d'agir ; annulation si normalisé (±5pt)
+- [x] **P2 Audit trail** `TriggerCPU/RAM/Disk` + `Confidence` persistés dans `CycleRecord` / `state.json`
+- [x] **P3 OS dans le prompt** `runtime.GOOS` injecté dans `BuildSystemPrompt` ; note traduction automatique Windows
+- [x] **Dashboard History** Badge confiance coloré (vert ≥ 0.75 / orange ≥ 0.5 / rouge) + sous-texte "Déclenché à CPU X%"
+- [x] **Dashboard Overview** Statut execute guard en temps réel — cooldown actif ou disponible
+- [x] **API exec_guard** `last_cmd` + `cooldown_remaining_seconds` dans `GET /api/status`
 
 ### v1.8 — Mémoire sémantique
 

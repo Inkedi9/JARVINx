@@ -141,6 +141,7 @@ Tableau Docker live avec filtres All / Running / Exited. Badge dans la topbar in
 
 ### History `/history`
 Tableau des cycles avec métriques colorées (vert/amber/rouge selon seuils), action badge, analyse LLM et commande exécutée. Stats globales en haut.
+Pour `execute` et `suggest` : badge confiance coloré (vert ≥ 75% / orange ≥ 50% / rouge) et sous-texte "Déclenché à CPU X% / RAM Y%" si des champs trigger sont présents.
 
 ### LLM Context `/llm-context`
 Visualise le contexte adaptatif transmis au LLM : tendances CPU/RAM/Disk, action dominante, taux d'alerte, dernières alertes déclenchées.
@@ -188,7 +189,13 @@ Fonts : **Inter** pour le texte, **JetBrains Mono** pour les métriques, labels 
 - [x] Bloc Analyse IA — résumé LLM depuis `/api/llm-context`
 - [x] Badge Docker topbar — running/total, rouge si containers down
 
-### v1.6 — Couche décisionnelle
+### v1.6 — Couche décisionnelle ✅
+- [x] History — badge confiance coloré (execute/suggest) + sous-texte trigger
+- [x] Overview — statut execute guard temps réel (cooldown actif / disponible)
+- [x] Types TypeScript `CycleRecord` + champs `confidence`, `trigger_cpu/ram/disk`
+- [x] Types TypeScript `StatusResponse` + champ `exec_guard`
+
+### v1.7 — Dashboard améliorations
 - [ ] Graphiques sparkline CPU/RAM sur l'historique
 - [ ] WebSocket — remplace le polling pour les mises à jour temps réel
 

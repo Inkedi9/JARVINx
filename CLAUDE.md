@@ -75,6 +75,9 @@ Create `runtime/.env` with the following vars (no `.env.example` exists). All `J
 - `JARVINX_DAILY_REPORT=true` — enable daily digest (disabled by default)
 - `JARVINX_REPORT_HOUR`, `JARVINX_REPORT_MINUTE` — send time, 24h format (defaults: 8, 0)
 
+**Execute guard**
+- `JARVINX_EXEC_COOLDOWN` — Go duration string, cooldown between identical execute commands (default: `5m`)
+
 Dashboard: use `.env.local` (dev), `.env.homelab`, or `.env.tailscale` for network deployments. The only variable is `NEXT_PUBLIC_RUNTIME_URL` (defaults to `http://localhost:8080`).
 
 ## CI/CD

@@ -1,6 +1,6 @@
 # JARVINx — Manuel Utilisateur
 
-> Version 1.5 | Pour les questions : ouvre une issue sur [GitHub](https://github.com/Inkeki9/JARVINx)
+> Version 1.6 | Pour les questions : ouvre une issue sur [GitHub](https://github.com/Inkeki9/JARVINx)
 
 ---
 
@@ -167,6 +167,9 @@ JARVINX_DISK_THRESHOLD=85
 # Rotation des logs
 JARVINX_LOG_MAX_MB=10
 JARVINX_LOG_MAX_BACKUPS=3
+
+# Cooldown entre deux exécutions identiques (format Go duration : 5m, 10m, 30m...)
+JARVINX_EXEC_COOLDOWN=5m
 ```
 
 Aucune recompilation nécessaire. Les valeurs invalides sont ignorées avec un warning.
@@ -462,6 +465,7 @@ npm run dev
 
 **Overview `/`**
 4 stat cards (health, agents actifs, décisions, intervalle), cycle agent visuel (Observe → Think → Decide → Act), liste agents, feed décisions LLM, bloc Analyse IA, métriques live CPU/RAM/Disk.
+Affiche l'état de l'execute guard : "⏸ Cooldown actif — [commande] — reprend dans Xs" en orange, ou "✅ Execute disponible" quand aucun cooldown n'est actif.
 
 **Agents `/agents`**
 Registry complet — une card par agent avec health %, runs, erreurs, bouton enable/disable à chaud.
@@ -471,6 +475,7 @@ Tableau Docker live avec filtres All / Running / Exited. Le badge dans la topbar
 
 **History `/history`**
 Tableau des cycles avec métriques colorées (vert/amber/rouge selon seuils), action badge, analyse LLM. Stats globales en haut (total, log/suggest/alert/execute).
+Pour les actions `execute` et `suggest` : badge confiance coloré (vert ≥ 75%, orange ≥ 50%, rouge en dessous). Si une commande a été déclenchée par un pic de métrique, sous-texte "Déclenché à CPU 91% / RAM 78%".
 
 **LLM Context `/llm-context`**
 Visualise le contexte adaptatif transmis au LLM : tendances CPU/RAM/Disk (`stable` / `rising` / `high` / `falling`), action dominante, taux d'alerte, dernières alertes.
@@ -613,7 +618,17 @@ Historique des cycles + snapshots. Persiste entre les redémarrages — JARVINx 
       "action": "log",
       "analysis": "Système stable",
       "reason": "Métriques dans les normes",
-      "command": ""
+      "confidence": 0.9
+    },
+    {
+      "cycle_num": 43,
+      "timestamp": "2025-05-20T14:32:32Z",
+      "action": "execute",
+      "command": "df -h",
+      "confidence": 0.85,
+      "trigger_cpu": 91.3,
+      "trigger_ram": 0,
+      "trigger_disk": 0
     }
   ]
 }

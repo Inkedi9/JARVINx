@@ -179,15 +179,28 @@ func (s *Scheduler) SetInterval(d time.Duration) {
 
 Reçoit les événements du bus et coordonne les agents. `TryLock()` sur le mutex principal garantit qu'un seul cycle tourne à la fois — si le cycle précédent n'est pas terminé, le tick est ignoré.
 
+**Pattern N-1 (intentionnel) :** l'Orchestrateur lit `LastCycles(1)` et exécute la commande de la décision du cycle *précédent*, pas du cycle courant. Ce découplage observe/act est un choix d'architecture — le LLM décide au cycle N, l'action se produit au cycle N+1.
+
+**`executeGuard`** — protège contre l'exécution répétée de la même commande :
+
 ```go
-func (o *Orchestrator) handleObserved(snap memory.Snapshot) {
-    if !o.mu.TryLock() {
-        fmt.Println("[ ORCHESTRATOR ] Cycle précédent en cours — tick ignoré")
-        return
-    }
-    defer o.mu.Unlock()
-    // ...
+type executeGuard struct {
+    mu         sync.Mutex
+    LastCmd    string
+    lastExecAt time.Time
+    cooldown   time.Duration    // défaut 5min, JARVINX_EXEC_COOLDOWN
 }
+
+func (g *executeGuard) CooldownRemaining() time.Duration // max(0, cooldown - elapsed)
+func (o *Orchestrator) ExecGuardStatus() (string, time.Duration) // thread-safe
+```
+
+**`shouldExecute()`** — vérifie que la condition ayant motivé l'action est toujours active avant d'exécuter :
+
+```go
+func (o *Orchestrator) shouldExecute(cycle memory.CycleRecord, current memory.Snapshot) bool
+// Rétro-compatible : si TriggerCPU/RAM/Disk == 0 (ancien record), retourne true
+// Annule si la métrique trigger est redescendue de plus de 5 points
 ```
 
 `AgentContext()` expose un snapshot thread-safe aux agents via `snapMu RWMutex`.
@@ -284,6 +297,9 @@ Appelle Ollama avec les métriques + historique, parse la décision JSON, persis
 - Schedule : 15s (suit l'intervalle global)
 - Timeout : 60s (context timeout sur l'appel LLM)
 - Fallback : action `"log"` si le LLM ne répond pas ou retourne un JSON invalide
+- Passe les seuils configurés (`CPUThreshold`, `RAMThreshold`, `DiskThreshold`) et `runtime.GOOS` au `SystemContext` pour que le prompt LLM reflète la config réelle
+- Si `action == "execute"` : remplit `TriggerCPU/RAM/Disk` dans le `CycleRecord` avec les métriques du snapshot courant
+- Copie `decision.Confidence` dans le `CycleRecord` (persisté dans `state.json`)
 
 #### `AlertAgent` (`agents/alert_agent.go`)
 
@@ -350,15 +366,20 @@ Activé via `JARVINX_DAILY_REPORT=true`.
 
 ### Prompt adaptatif (`llm/context_builder.go`)
 
-`BuildAdaptiveContext(cycles, snapshots)` analyse les N derniers cycles et snapshots :
+`BuildAdaptiveContext(cycles, snapshots, cpuT, ramT, diskT)` analyse les N derniers cycles et snapshots :
 
 - Action dominante sur la période
 - Taux d'alerte (%)
-- Tendances CPU/RAM/Disk : stable / en hausse / en baisse / critique
+- Tendances CPU/RAM/Disk via `trendWithThreshold(threshold)` — les seuils réels de config remplacent les valeurs hardcodées
 - Dernières alertes déclenchées
 
 `BuildAdaptiveSystemPrompt(base, ctx)` enrichit le system prompt avec ce contexte.
 Utilisé automatiquement par `SystemAgent` — aucune config requise.
+
+`BuildSystemPrompt(cpuT, ramT, diskT float64, goos string)` — depuis v1.6, le system prompt est dynamique :
+- Les seuils d'alerte reflètent la config réelle (plus de `CPU >85%` hardcodé)
+- Si `goos == "windows"` : note explicative sur la traduction automatique des commandes (`df -h` → `wmic`, etc.)
+- Le champ `confidence` est documenté dans le format JSON attendu du LLM
 
 ## Circuit Breaker (`llm/circuit_breaker.go`)
 
@@ -409,14 +430,17 @@ Le LLM ne retourne pas toujours un JSON propre. Le parser gère :
 
 ```go
 type Decision struct {
-    Analysis string `json:"analysis"`
-    Action   string `json:"action"`   // "log" | "alert" | "suggest" | "execute"
-    Command  string `json:"command"`  // seulement si action=execute
-    Reason   string `json:"reason"`
+    Analysis   string  `json:"analysis"`
+    Action     string  `json:"action"`      // "log" | "alert" | "suggest" | "execute"
+    Command    string  `json:"command"`     // seulement si action=execute
+    Reason     string  `json:"reason"`
+    Confidence float64 `json:"confidence"` // 0.0–1.0 ; absent → normalisé à 0.5
 }
 ```
 
 Actions valides : `log`, `alert`, `suggest`, `execute`. Toute autre valeur est normalisée vers `log`.
+
+**Règle de confiance (v1.6)** : si `action == "execute"` et `confidence < 0.75`, l'action est rétrogradée en `"suggest"` et la commande effacée. Un LLM qui omet le champ `confidence` est traité comme confiance 0.5 — insuffisant pour déclencher une exécution.
 
 > **Limite actuelle :** la regex `\{[^{}]*\}` ne gère pas le JSON imbriqué. Si un futur agent retourne une structure nested, le parser échouera et tombera sur le fallback.
 
@@ -464,14 +488,20 @@ type Snapshot struct {
 
 ```go
 type CycleRecord struct {
-    CycleNum  int
-    Timestamp time.Time
-    Action    string
-    Analysis  string
-    Reason    string
-    Command   string
+    CycleNum   int
+    Timestamp  time.Time
+    Action     string
+    Analysis   string
+    Reason     string
+    Command    string    `json:",omitempty"`
+    Confidence float64   `json:",omitempty"` // score LLM, 0.5 si absent
+    TriggerCPU float64   `json:",omitempty"` // métriques au moment de la décision execute
+    TriggerRAM float64   `json:",omitempty"`
+    TriggerDisk float64  `json:",omitempty"`
 }
 ```
+
+Les champs `omitempty` garantissent la rétro-compatibilité avec les `state.json` générés avant v1.6 — un `CycleRecord` sans ces champs se désérialise sans erreur (valeur zéro Go).
 
 Méthodes principales :
 
@@ -530,6 +560,11 @@ GET /api/llm-context            → LLMContextResponse — tendances, dominant_a
 ### `GET /api/status` — Réponse complète
 
 ```go
+type ExecGuardStatus struct {
+    LastCmd                  string  `json:"last_cmd"`
+    CooldownRemainingSeconds float64 `json:"cooldown_remaining_seconds"`
+}
+
 type StatusResponse struct {
     Online       bool                `json:"online"`
     Model        string              `json:"model"`
@@ -539,8 +574,11 @@ type StatusResponse struct {
     DryRun       bool                `json:"dry_run"`
     CircuitState string              `json:"circuit_state"` // "closed" | "open" | "half-open"
     LastCycle    *memory.CycleRecord `json:"last_cycle,omitempty"`
+    ExecGuard    ExecGuardStatus     `json:"exec_guard"`
 }
 ```
+
+`exec_guard.cooldown_remaining_seconds` vaut `0` quand aucun cooldown n'est actif (execute disponible).
 
 ### Frontend (`dashboard/`)
 
@@ -1012,6 +1050,21 @@ Utile pour : tester une nouvelle config de seuils, valider un déploiement, déb
 [x] Bloc Analyse IA — résumé depuis /api/llm-context
 [x] Badge Docker topbar — running/total, rouge si containers down
 [x] Nouveaux endpoints API — /api/file, /api/daily-report, /api/daily-report/send, /api/llm-context
+```
+
+### Roadmap technique v1.6 ✅
+
+```
+[x] executeGuard — cooldown sur execute (JARVINX_EXEC_COOLDOWN, défaut 5min)
+[x] shouldExecute — verify N+1 : re-vérification des métriques trigger avant exécution
+[x] Seuils dynamiques — BuildSystemPrompt/trendWithThreshold utilisent les seuils réels de config
+[x] Confidence — Decision.Confidence + règle déclassement execute→suggest si < 0.75
+[x] TriggerCPU/RAM/Disk — persistés dans CycleRecord pour shouldExecute + dashboard
+[x] OS-aware prompt — runtime.GOOS injecté, note traduction Windows
+[x] ExecGuardStatus exposé via /api/status (last_cmd + cooldown_remaining_seconds)
+[x] Dashboard History — badge confiance coloré + sous-texte trigger
+[x] Dashboard Overview — statut exec_guard temps réel
+[x] Interface execGuardProvider dans web/ — évite l'import cycle core↔web
 ```
 
 ### Roadmap technique v2.0
