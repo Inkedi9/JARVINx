@@ -603,6 +603,8 @@ JARVINx envoie des embeds Discord structurés quand un seuil est dépassé.
 - [ ] **Quick win** badge header Brancher `/api/docker` — page Agents ou widget
 - [ ] **Nouveau endpoint** `GET /api/file` - FileAgent status + paths + tailles - `GET /api/daily-report` + `POST /api/daily-report/send`
 - [ ] **Features Dashboard** Page "LLM Context" — tendances + prompt adaptatif - Widget DailyReporter — last_sent + trigger manuel - `GET /api/llm-context` — expose `BuildAdaptiveContext()`
+- [ ] **Vue conteneurs live** — tableau CPU%/RAM/statut par conteneur, rafraîchissement WebSocket - Basé sur `DockerGraph.tsx` existant, branché sur `/api/docker` en temps réel - Badge "nouvelle image disponible" si UpdateAgent détecte une mise à jour
+- [ ] **Bloc "Analyse IA"** — résumé LLM de l'état global de l'infra, affiché si Ollama connecté - Alimente le bloc depuis `/api/llm-context`
 
 ### V1.6 — Couche décisionnelle
 
