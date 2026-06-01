@@ -1,6 +1,6 @@
 # JARVINx Dashboard
 
-> Interface web du runtime agentique JARVINx — Next.js 14, Tailwind v4, TypeScript.
+> Interface web du runtime agentique JARVINx — Next.js 16, React 19, Tailwind v4, TypeScript.
 
 ---
 
@@ -8,17 +8,18 @@
 
 | Outil | Usage |
 |-------|-------|
-| Next.js 14 (App Router) | Framework React |
-| Tailwind CSS v4 | Styling |
+| Next.js 16 (App Router) | Framework React |
+| React 19 | UI |
+| Tailwind CSS v4 | Styling (CSS custom properties) |
 | TypeScript | Typage |
-| Recharts | Graphiques (prévu v1.5) |
 | Lucide React | Icônes |
+| Jest | Tests unitaires |
 
 ---
 
 ## Prérequis
 
-- Node.js 18+
+- Node.js 20+
 - Le runtime Go JARVINx qui tourne sur `localhost:8080`
 
 ---
@@ -81,61 +82,71 @@ Dashboard accessible sur `http://localhost:3000`.
 dashboard/
 │
 ├── app/
-│   ├── layout.tsx          # Layout principal — sidebar + topbar + alert banner
-│   ├── page.tsx            # Overview
-│   ├── agents/
-│   │   └── page.tsx        # Registry des agents
-│   ├── history/
-│   │   └── page.tsx        # Historique des cycles
-│   └── settings/
-│       └── page.tsx        # Configuration runtime + workspace viewer
+│   ├── layout.tsx              # Layout principal — sidebar + topbar + alert banner
+│   ├── page.tsx                # Overview
+│   ├── agents/page.tsx         # Registry des agents
+│   ├── containers/page.tsx     # Containers Docker live — filtres All/Running/Exited
+│   ├── history/page.tsx        # Historique des cycles
+│   ├── llm-context/page.tsx    # Tendances + contexte adaptatif LLM
+│   └── settings/page.tsx       # Configuration runtime + endpoints API
 │
 ├── components/
-│   ├── sidebar.tsx         # Navigation latérale
-│   ├── topbar.tsx          # Barre supérieure — status runtime, heure
-│   ├── alert-banner.tsx    # Bannière d'alerte — apparaît si action=alert
-│   ├── runtime-cycle.tsx   # Visualisation OBSERVE→THINK→DECIDE→ACT→LEARN
-│   ├── agent-list.tsx      # Liste compacte des agents avec health
-│   ├── decision-feed.tsx   # Feed des dernières décisions LLM
-│   ├── metrics-bar.tsx     # Barre de métrique CPU/RAM/Disk
-│   └── ui/
-│       └── stat-card.tsx   # Card de statistique générique
+│   ├── sidebar.tsx             # Navigation latérale
+│   ├── topbar.tsx              # Barre supérieure — status, badge Docker running/total
+│   ├── alert-banner.tsx        # Bannière si action=alert
+│   ├── runtime-cycle.tsx       # Visualisation OBSERVE→THINK→DECIDE→ACT
+│   ├── agent-list.tsx          # Liste agents avec health
+│   ├── decision-feed.tsx       # Feed décisions LLM
+│   ├── metrics-bar.tsx         # Jauges CPU/RAM/Disk
+│   ├── ai-analysis.tsx         # Bloc analyse IA (depuis /api/llm-context)
+│   ├── daily-reporter.tsx      # Widget DailyReporter — last_sent + trigger
+│   └── ui/stat-card.tsx        # Card statistique générique
 │
 └── lib/
-    ├── api.ts              # Client typé vers le runtime Go
-    ├── hooks.ts            # useStatus, useHistory, useAgents — polling
-    └── utils.ts            # cn(), formatTime(), metricColor()...
+    ├── api.ts                  # Types TypeScript miroir des structs Go
+    ├── hooks.ts                # useStatus (5s), useHistory (15s), useAgents (10s)
+    └── utils.ts                # cn(), formatTime(), metricColor()...
 ```
 
 ---
 
 ## API consommée
 
-Le dashboard consomme l'API REST du runtime Go.
+Le dashboard consomme l'API REST du runtime Go. Les types TypeScript correspondants sont dans `lib/api.ts`.
 
-| Endpoint | Intervalle de polling | Description |
-|----------|----------------------|-------------|
-| `GET /api/status` | 5s | Dernier cycle + métriques live |
-| `GET /api/history` | 15s | 10 derniers cycles |
-| `GET /api/agents` | 10s | État du registry d'agents |
-
-Les types TypeScript correspondants sont dans `lib/api.ts`.
+| Endpoint | Polling | Utilisé par |
+|----------|---------|-------------|
+| `GET /api/status` | 5s | Overview — métriques, cycle, circuit state |
+| `GET /api/history` | 15s | History — tableau des cycles |
+| `GET /api/agents` | 10s | Agents — registry et health |
+| `GET /api/docker` | 5s | Containers — tableau live + badge topbar |
+| `GET /api/llm-context` | 15s | LLM Context + bloc Analyse IA |
+| `GET /api/daily-report` | 30s | Widget DailyReporter |
+| `POST /api/daily-report/send` | on-demand | Trigger rapport immédiat |
+| `GET /api/file` | 30s | Settings — status FileAgent |
+| `GET /api/logs/status` | 30s | Settings — état logs |
 
 ---
 
 ## Pages
 
 ### Overview `/`
-Vue d'ensemble du runtime — 4 stat cards (health, agents actifs, décisions, intervalle), visualisation du cycle agent, liste des agents, feed de décisions, métriques live CPU/RAM/Disk.
+Vue d'ensemble — 4 stat cards, cycle agent visuel, liste agents, feed décisions LLM, bloc Analyse IA, métriques CPU/RAM/Disk live.
 
 ### Agents `/agents`
-Registry complet — une card par agent avec health %, runs, erreurs, schedule, dernière exécution. Affiche les erreurs actives si présentes.
+Registry complet — une card par agent avec health %, runs, erreurs, schedule, dernière exécution, bouton enable/disable à chaud.
+
+### Containers `/containers`
+Tableau Docker live avec filtres All / Running / Exited. Badge dans la topbar indique running/total en rouge si des containers sont down.
 
 ### History `/history`
-Tableau de tous les cycles enregistrés avec métriques colorées (vert/amber/rouge selon seuils), action badge, analyse LLM et commande exécutée si applicable. Stats globales en haut (total, log/suggest/alert/execute).
+Tableau des cycles avec métriques colorées (vert/amber/rouge selon seuils), action badge, analyse LLM et commande exécutée. Stats globales en haut.
+
+### LLM Context `/llm-context`
+Visualise le contexte adaptatif transmis au LLM : tendances CPU/RAM/Disk, action dominante, taux d'alerte, dernières alertes déclenchées.
 
 ### Settings `/settings`
-Configuration runtime live (modèle, intervalle, cycle, uptime), seuils d'alerte, notifications Discord, endpoints API cliquables, et viewer workspace.yml avec syntax highlighting et badge VALID.
+Configuration runtime live (modèle, intervalle, uptime), seuils d'alerte, widget DailyReporter (dernier envoi + trigger manuel), endpoints API cliquables.
 
 ---
 
@@ -170,15 +181,18 @@ Fonts : **Inter** pour le texte, **JetBrains Mono** pour les métriques, labels 
 
 ## Roadmap
 
-### v1.5 — Intelligence & Mémoire
-- [ ] Page Memory — vector DB, historique sémantique
-- [ ] Page Tools — whitelist commandes, logs d'exécution
+### v1.5 — Dashboard ✅
+- [x] Page Containers — tableau Docker live, filtres, badge topbar
+- [x] Page LLM Context — tendances + contexte adaptatif
+- [x] Widget DailyReporter — last_sent + trigger manuel
+- [x] Bloc Analyse IA — résumé LLM depuis `/api/llm-context`
+- [x] Badge Docker topbar — running/total, rouge si containers down
+
+### v1.6 — Couche décisionnelle
 - [ ] Graphiques sparkline CPU/RAM sur l'historique
 - [ ] WebSocket — remplace le polling pour les mises à jour temps réel
-- [ ] Page Workflows — configuration agents à chaud
 
 ### v2.0 — Universal Platform
-- [ ] API d'administration — enable/disable agents depuis le dashboard
 - [ ] Multi-instance — surveiller plusieurs runtimes depuis une interface
 - [ ] Auth — protection du dashboard en prod
 - [ ] TLS — HTTPS natif

@@ -406,7 +406,6 @@ Le LLM ne retourne pas toujours un JSON propre. Le parser gère :
 4. **Action en majuscules** — `"LOG"` → `"log"`
 5. **Champs manquants** — `analysis` et `reason` ont des valeurs par défaut
 6. **Fallback total** — si rien ne marche, retourne `action: "log"` avec un message d'erreur
-7. **Bus** — pub/sub avec fan-out. `Subscribe(name)` retourne un canal dédié par consommateur. `Publish()` broadcast à tous les subscribers simultanément. Buffer plein → warning + drop sans bloquer les autres subscribers. `Unsubscribe(name)` ferme le canal proprement.
 
 ```go
 type Decision struct {
@@ -514,35 +513,43 @@ var StaticFiles embed.FS
 Routes :
 
 ```
-GET /                       → index.html (embed.FS)
-GET /static/*               → fichiers statiques (CSS, JS)
-GET /api/status             → StatusResponse JSON
-GET /api/history            → HistoryResponse JSON (10 derniers cycles)
-GET /api/status`            → Dernier cycle + métriques + `dry_run` + `circuit_state`
-GET /api/agents`            → Registry agents + statuts
-POST /api/agents/toggle`    → Active/désactive un agent
-GET /api/docker`            → État containers Docker
-GET /api/logs/status`       → Taille logs, backups, rotation
+GET /                           → index.html (embed.FS — build Next.js en prod)
+GET /static/*                   → fichiers statiques
+GET /api/status                 → StatusResponse — métriques, uptime, dry_run, circuit_state
+GET /api/history                → HistoryResponse — 10 derniers cycles
+GET /api/agents                 → AgentStatusResponse — registry + statuts
+POST /api/agents/toggle         → Active/désactive un agent (body: {"name": "..."})
+GET /api/docker                 → DockerResponse — containers running/exited
+GET /api/logs/status            → LogsStatusResponse — taille logs, backups, rotation
+GET /api/file                   → FileAgentResponse — status FileAgent + watch_paths
+GET /api/daily-report           → DailyReportResponse — scheduled_at, last_sent, next_send
+POST /api/daily-report/send     → SendReportResponse — déclenche un rapport immédiat
+GET /api/llm-context            → LLMContextResponse — tendances, dominant_action, alert_rate
 ```
 
 ### `GET /api/status` — Réponse complète
 
 ```go
 type StatusResponse struct {
-    Online    bool                `json:"online"`
-    Model     string              `json:"model"`
-    Interval  string              `json:"interval"`
-    CycleNum  int                 `json:"cycle_num"`
-    Uptime    string              `json:"uptime"`
-    LastCycle *memory.CycleRecord `json:"last_cycle,omitempty"`
+    Online       bool                `json:"online"`
+    Model        string              `json:"model"`
+    Interval     string              `json:"interval"`
+    CycleNum     int                 `json:"cycle_num"`
+    Uptime       string              `json:"uptime"`
+    DryRun       bool                `json:"dry_run"`
+    CircuitState string              `json:"circuit_state"` // "closed" | "open" | "half-open"
+    LastCycle    *memory.CycleRecord `json:"last_cycle,omitempty"`
 }
 ```
 
-### Frontend (`web/static/`)
+### Frontend (`dashboard/`)
 
-- `index.html` — structure du dashboard
-- `style.css` — dark theme, variables CSS, animations
-- `app.js` — polling toutes les 5s vers `/api/status` et `/api/history`, mise à jour du DOM
+Le dashboard est une application **Next.js 16** (App Router, React 19, Tailwind v4, TypeScript) dans `dashboard/` à la racine du repo.
+
+En dev : Next.js tourne sur `:3000` et consomme l'API Go sur `:8080`.
+En prod : `npm run build` génère le build statique, copié dans `runtime/web/static/` et embarqué via `embed.FS` dans le binaire Go.
+
+Trois hooks de polling dans `lib/hooks.ts` — `useStatus` (5s), `useAgents` (10s), `useHistory` (15s) — construits sur un hook générique `usePolling<T>`. Les types TypeScript dans `lib/api.ts` sont des miroirs exacts des structs Go de `web/server.go`.
 
 ---
 
@@ -996,15 +1003,15 @@ Utile pour : tester une nouvelle config de seuils, valider un déploiement, déb
 [x] 58 tests unitaires — parser, health, alertes, registry, shell, config, logger
 ```
 
-### Roadmap technique v1.5
+### Roadmap technique v1.5 ✅
 
 ```
-[ ] Structured logging (slog) — remplace fmt.Printf
-[ ] Config seuils via variables d'environnement
-[ ] Health check Ollama au démarrage (fail fast)
-[ ] Rotation automatique des logs (taille max ou date)
-[ ] Qdrant client pour mémoire vectorielle longue durée
-[ ] Interface Notifier (Discord, Slack, Ntfy, Gotify)
+[x] Page Containers — tableau Docker live, filtres All/Running/Exited
+[x] Page LLM Context — tendances + contexte adaptatif transmis au LLM
+[x] Widget DailyReporter — last_sent + trigger manuel
+[x] Bloc Analyse IA — résumé depuis /api/llm-context
+[x] Badge Docker topbar — running/total, rouge si containers down
+[x] Nouveaux endpoints API — /api/file, /api/daily-report, /api/daily-report/send, /api/llm-context
 ```
 
 ### Roadmap technique v2.0

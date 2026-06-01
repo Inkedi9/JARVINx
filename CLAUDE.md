@@ -143,15 +143,30 @@ To add a new agent: implement `Agent`, register in `core/runtime.go` via `regist
 
 `BuildAdaptiveContext()` (`context_builder.go`) analyzes recent cycles and snapshots to produce CPU/RAM/Disk trend strings (`stable`, `rising`, `high`, `falling`) and alert rate. `BuildAdaptiveSystemPrompt()` appends this context to the base system prompt, making the LLM aware of historical patterns.
 
+A `CircuitBreaker` (`circuit_breaker.go`) wraps all Ollama calls: after `maxFailures` consecutive errors it opens (blocks calls, returns `ErrCircuitOpen`), then transitions to half-open after `resetTimeout` to probe recovery. The current state is exposed via `GET /api/status` as `circuit_state`.
+
 ### Web API (`web/`)
 
 Go embeds the compiled dashboard into the binary via `embed.FS`. In dev, the Go server (`:8080`) serves only the API; the Next.js dev server (`:3000`) serves the UI. CORS origin check is an O(1) map lookup.
 
-API endpoints: `GET /api/status`, `GET /api/history`, `GET /api/agents`, `POST /api/agents/{name}/toggle`.
+API endpoints:
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/status` | Runtime status, uptime, circuit state, last cycle |
+| GET | `/api/history` | Last 10 cycles (most recent first) |
+| GET | `/api/agents` | Agent list with enabled/run/error counts |
+| POST | `/api/agents/toggle` | Toggle agent by name — body: `{"name": "..."}` |
+| GET | `/api/docker` | Container list with running/exited counts |
+| GET | `/api/logs/status` | Log file sizes and rotation status |
+| GET | `/api/file` | FileAgent status and watched paths |
+| GET | `/api/daily-report` | DailyReporter schedule and last/next send |
+| POST | `/api/daily-report/send` | Trigger an immediate report dispatch |
+| GET | `/api/llm-context` | Adaptive context fed to the LLM (trends, alert rate) |
 
 ### Dashboard (`dashboard/`)
 
-Stack: **Next.js 16**, React 19, Tailwind v4, TypeScript, Jest. App Router with pages: Overview, Agents, History, Settings. Three domain hooks — `useStatus` (5s), `useAgents` (10s), `useHistory` (15s) — built on a generic `usePolling<T>`. TypeScript types in `lib/api.ts` mirror Go response structs exactly. Styling via Tailwind v4 CSS custom properties (`--color-bg-primary`, `--color-accent-blue`, etc.).
+Stack: **Next.js 16**, React 19, Tailwind v4, TypeScript, Jest. App Router with pages: Overview, Agents, History, Containers, LLM Context, Settings. Three domain hooks — `useStatus` (5s), `useAgents` (10s), `useHistory` (15s) — built on a generic `usePolling<T>`. TypeScript types in `lib/api.ts` mirror Go response structs exactly. Styling via Tailwind v4 CSS custom properties (`--color-bg-primary`, `--color-accent-blue`, etc.).
 
 > **Important:** Next.js 16 has breaking changes. Before editing Next.js-specific code, read `dashboard/AGENTS.md` and check `node_modules/next/dist/docs/`.
 

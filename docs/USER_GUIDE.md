@@ -1,6 +1,6 @@
 # JARVINx — Manuel Utilisateur
 
-> Version 1.0 | Pour les questions : ouvre une issue sur [GitHub](https://github.com/Inkeki9/JARVINx)
+> Version 1.5 | Pour les questions : ouvre une issue sur [GitHub](https://github.com/Inkeki9/JARVINx)
 
 ---
 
@@ -322,7 +322,7 @@ Tu verras une bannière jaune au démarrage. Utile pour :
 [ REGISTRY ] Agent enregistré : system (schedule: 15s)
 [ REGISTRY ] Agent enregistré : alert (schedule: 15s)
 ╔══════════════════════════════════════════════╗
-║           JARVINx — RUNTIME v1.2            ║
+║           JARVINx — RUNTIME v1.5            ║
 ╚══════════════════════════════════════════════╝
   Modèle     : llama3.1:8b
   Intervalle : 15s
@@ -449,83 +449,51 @@ Désactivé si `JARVINX_FILE_WATCH` est vide.
 
 ## Dashboard web
 
-Le dashboard est accessible à `http://localhost:8080` dès le démarrage de JARVINx.
+**Dev :** `http://localhost:3000` (Next.js) + runtime Go sur `http://localhost:8080`
+**Prod :** `http://localhost:8080` (binaire Go embarque le build Next.js)
 
-### Sections du dashboard
+```bash
+# Lancer le dashboard en dev
+cd dashboard
+npm run dev
+```
 
-**Runtime Info** (bandeau supérieur)
+### Pages
 
-- Modèle LLM actif
-- Intervalle de cycle
-- Numéro du cycle courant
-- Uptime depuis le démarrage
+**Overview `/`**
+4 stat cards (health, agents actifs, décisions, intervalle), cycle agent visuel (Observe → Think → Decide → Act), liste agents, feed décisions LLM, bloc Analyse IA, métriques live CPU/RAM/Disk.
 
-**Métriques système** (3 jauges)
+**Agents `/agents`**
+Registry complet — une card par agent avec health %, runs, erreurs, bouton enable/disable à chaud.
 
-- CPU % avec barre de progression
-- RAM utilisée / totale en MB avec %
-- Disk utilisé / total en GB avec %
-- Actualisé toutes les 5 secondes
+**Containers `/containers`**
+Tableau Docker live avec filtres All / Running / Exited. Le badge dans la topbar affiche running/total et passe en rouge si des containers sont down.
 
-**Dernière décision LLM**
+**History `/history`**
+Tableau des cycles avec métriques colorées (vert/amber/rouge selon seuils), action badge, analyse LLM. Stats globales en haut (total, log/suggest/alert/execute).
 
-- Action décidée par le LLM (`log` / `alert` / `suggest` / `execute`)
-- Analyse courte de l'état du système
-- Raison de la décision
+**LLM Context `/llm-context`**
+Visualise le contexte adaptatif transmis au LLM : tendances CPU/RAM/Disk (`stable` / `rising` / `high` / `falling`), action dominante, taux d'alerte, dernières alertes.
 
-**Agent Loop** (animation visuelle)
-
-- Visualise le cycle : Observe → Think → Decide → Act → Sleep
-- L'étape active est mise en surbrillance
-
-**Console logs** (style macOS)
-
-- Derniers logs du runtime en temps réel
-- Code couleur selon le type d'événement
-
-**Historique des 10 derniers cycles** (tableau)
-
-- Timestamp, CPU, RAM, Disk, action décidée
-- Badges colorés selon l'action (log=gris, alert=rouge, suggest=orange, execute=bleu)
+**Settings `/settings`**
+Config runtime live (modèle, intervalle, uptime), seuils d'alerte, widget DailyReporter (dernier envoi + bouton trigger manuel), endpoints API cliquables.
 
 ### API REST
 
-Le dashboard consomme une API interne que tu peux aussi interroger directement.
+L'API est accessible directement sur `http://localhost:8080/api/`.
 
-#### `GET /api/status`
-
-Retourne l'état actuel du runtime.
-
-```json
-{
-  "online": true,
-  "model": "llama3.1:8b",
-  "interval": "15s",
-  "cycle_num": 42,
-  "uptime": "2h 15m 30s",
-  "last_cycle": {
-    "cycle_num": 42,
-    "timestamp": "2025-05-20T14:32:17Z",
-    "cpu": 12.4,
-    "mem_percent": 29.4,
-    "disk_percent": 36.5,
-    "action": "log",
-    "analysis": "Système stable, pas de tendance préoccupante",
-    "reason": "Toutes les métriques en dessous des seuils"
-  }
-}
-```
-
-#### `GET /api/history`
-
-Retourne les 10 derniers cycles, du plus récent au plus ancien.
-
-```json
-{
-  "cycles": [ ... ],
-  "total": 42
-}
-```
+| Endpoint | Description |
+|----------|-------------|
+| `GET /api/status` | État runtime, uptime, circuit breaker, dernier cycle |
+| `GET /api/history` | 10 derniers cycles |
+| `GET /api/agents` | Registry agents |
+| `POST /api/agents/toggle` | Enable/disable un agent — body: `{"name": "..."}` |
+| `GET /api/docker` | Containers Docker |
+| `GET /api/logs/status` | Taille et état des logs |
+| `GET /api/file` | Status FileAgent |
+| `GET /api/daily-report` | Horaire + dernier/prochain envoi rapport |
+| `POST /api/daily-report/send` | Déclenche un rapport immédiat |
+| `GET /api/llm-context` | Contexte adaptatif LLM |
 
 ---
 

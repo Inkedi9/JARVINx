@@ -7,7 +7,7 @@
 ██   ██║██╔══██║██╔══██╗╚██╗ ██╔╝██║██║╚██╗██║ ██╔██╗
 ╚█████╔╝██║  ██║██║  ██║ ╚████╔╝ ██║██║ ╚████║██╔╝ ██╗
  ╚════╝ ╚═╝  ╚═╝╚═╝  ╚═╝  ╚═══╝  ╚═╝╚═╝  ╚═══╝╚═╝  ╚═╝
-Version 1.4.0
+Version 1.5.0
 ```
 
 **Autonomous AI Runtime · Observing. Thinking. Acting. Evolving.**
@@ -15,7 +15,7 @@ Version 1.4.0
 ![Go](https://img.shields.io/badge/Go-1.26.3-00ADD8?style=flat-square&logo=go&logoColor=white)
 ![Ollama](https://img.shields.io/badge/Ollama-local%20LLM-black?style=flat-square)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
-![Status](https://img.shields.io/badge/status-v1.4%20stable-00E5FF?style=flat-square)
+![Status](https://img.shields.io/badge/status-v1.5%20stable-00E5FF?style=flat-square)
 
 _Your system. My mission._
 
@@ -55,8 +55,8 @@ observe → think → decide → act → log → repeat
 
 - **Go** — runtime concurrent, goroutines natives, binaire unique
 - **Ollama** — LLM local (llama3.1, qwen2.5, mistral...)
-- **Discord Webhooks** — alertes temps réel
-- **HTML/CSS/JS** — dashboard web servi directement par Go
+- **Next.js 16 / React 19 / Tailwind v4** — dashboard web (TypeScript)
+- **Discord / Slack / Ntfy / Gotify** — alertes multi-canal
 
 ---
 
@@ -65,78 +65,62 @@ observe → think → decide → act → log → repeat
 ```
 jarvinx/
 │
-├── cmd/
-│   └── main.go              # Point d'entrée — config + lancement
+├── runtime/                     # Backend Go
+│   ├── cmd/main.go              # Point d'entrée — config + lancement
+│   ├── core/                    # Runtime, Bus, Scheduler, Orchestrator, CLI
+│   ├── agents/                  # Interface Agent, Registry, tous les agents
+│   │   ├── system_agent.go      # LLM → décision JSON
+│   │   ├── alert_agent.go       # Seuils + NotifierDispatcher
+│   │   ├── docker_agent.go      # Surveillance containers (30s)
+│   │   ├── file_agent.go        # Surveillance fichiers lourds (5min)
+│   │   ├── daily_report.go      # Rapport quotidien (goroutine indépendante)
+│   │   └── notifier.go          # Discord / Slack / Ntfy / Gotify
+│   ├── llm/                     # Client Ollama, parser JSON, prompt adaptatif, circuit breaker
+│   ├── memory/                  # state.json, logs.jsonl / alerts.jsonl avec rotation
+│   ├── tools/                   # Métriques gopsutil, shell whitelist, Docker, filesystem
+│   ├── web/                     # HTTP server, CORS, embed.FS (build Next.js)
+│   ├── config/                  # Config centralisée + chargement .env
+│   └── jxlog/                   # Structured logging slog custom
 │
-├── core/
-│   ├── runtime.go           # Assemblage + shutdown propre (SIGINT/SIGTERM)
-│   ├── bus.go               # Bus d'événements (channels Go)
-│   ├── scheduler.go         # Ticker — émet les cycles
-│   ├── orchestrator.go      # Cerveau — dispatch observe/think/act
-│   └── cli.go               # Interface CLI interactive
-│
-├── agents/
-│   ├── agent.go             # Interface Agent + BaseAgent + AgentContext
-│   ├── registry.go          # Registry — lifecycle, enable/disable, panic isolation
-│   ├── system_agent.go      # Agent LLM — analyse + décision JSON
-│   ├── alert_agent.go       # Agent alertes — seuils + Discord
-│   ├── alert_test.go        # Tests AlertAgent
-│   └── registry_test.go     # Tests Registry
-│
-├── llm/
-│   ├── ollama.go            # Client HTTP Ollama + retries
-│   ├── parser.go            # Parser JSON robuste + fallback + validation
-│   ├── parser_test.go       # Tests parser (8 cas)
-│   └── prompt.go            # Prompt builder (system + user + historique)
-│
-├── tools/
-│   ├── system.go            # Métriques CPU/RAM/Disk — détection OS auto
-│   └── shell.go             # Executor whitelist de commandes
-│
-├── memory/
-│   ├── state.go             # Persistance state.json — historique cycles
-│   └── logger.go            # Logger JSONL — logs.jsonl / alerts.jsonl
-│
-├── web/
-│   ├── server.go            # HTTP server — API REST
-│   ├── embed.go             # embed.FS — fichiers statiques dans le binaire
-│   └── static/
-│       ├── index.html       # Dashboard HTML
-│       ├── style.css        # Styles dark theme
-│       └── app.js           # Logique dashboard
-│
-├── jxlog/
-│   ├── log.go               # Structured logging slog — niveaux INFO/WARN/ERROR/DEBUG
-│   └── log_test.go          # Tests handler et helpers
-│
-└── config/
-    ├── config.go            # Configuration centralisée
-    └── env.go               # Auto-load .env au démarrage
+└── dashboard/                   # Frontend Next.js 16
+    ├── app/                     # App Router — pages: Overview, Agents, Containers,
+    │                            #   History, LLM Context, Settings
+    ├── components/              # Composants React (metrics-bar, decision-feed, etc.)
+    └── lib/                     # api.ts (types Go miroir), hooks.ts (usePolling)
 ```
 
 ### Agent loop
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                    JARVINX RUNTIME                       │
-│                                                          │
-│  Scheduler ──tick──► Bus ──► Orchestrator                │
-│     (15s)          (chan)        │                       │
-│                                 ├── AlertAgent           │
-│                                 │   └── Discord Webhook  │
-│                                 │                        │
-│                                 ├── SystemAgent (LLM)    │
-│                                 │   └── Ollama API       │
-│                                 │                        │
-│                                 ├── Executor (whitelist) │
-│                                 │                        │
-│                                 └── Memory               │
-│                                     ├── state.json       │
-│                                     └── logs.jsonl       │
-│                                                          │
-│  WebServer ──────────────────── Dashboard :8080          │
-│  CLI ────────────────────────── stdin interactif         │
-└─────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│                      JARVINX RUNTIME                         │
+│                                                              │
+│  Scheduler ──tick──► Bus ──► Orchestrator                    │
+│     (15s)          (chan)        │                           │
+│                                 ├── SystemAgent (LLM)        │
+│                                 │   └── Ollama API → JSON    │
+│                                 │                            │
+│                                 ├── AlertAgent               │
+│                                 │   └── NotifierDispatcher   │
+│                                 │       Discord/Slack/Ntfy/  │
+│                                 │       Gotify               │
+│                                 │                            │
+│                                 ├── DockerAgent (30s)        │
+│                                 │   └── crash/restart detect │
+│                                 │                            │
+│                                 ├── FileAgent (5min)         │
+│                                 │   └── fichiers volumineux  │
+│                                 │                            │
+│                                 └── Memory                   │
+│                                     ├── state.json           │
+│                                     └── logs.jsonl           │
+│                                         alerts.jsonl         │
+│                                                              │
+│  DailyReporter ────────── rapport quotidien (goroutine)      │
+│  WebServer ─────────────── API REST :8080 + embed dashboard  │
+│  Dashboard ─────────────── Next.js :3000 (dev)               │
+│  CLI ───────────────────── stdin interactif                  │
+└─────────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -177,9 +161,12 @@ go mod tidy
 
 ### 3. Configurer les variables d'environnement
 
-Crée un fichier `.env` à la racine :
+Crée un fichier `runtime/.env` (voir la section Configuration pour toutes les variables) :
 
 ```env
+# Modèle Ollama
+JARVINX_MODEL=llama3.1:8b
+
 # Discord webhook (optionnel — alertes désactivées si absent)
 DISCORD_WEBHOOK=https://discord.com/api/webhooks/TON_ID/TON_TOKEN
 ```
@@ -192,6 +179,21 @@ ollama serve
 ```
 
 ### 5. Lancer JARVINx
+
+```powershell
+# Runtime Go (API :8080)
+cd runtime
+.\run.ps1           # Windows — charge .env et lance
+# ou
+make run
+
+# Dashboard Next.js (UI :3000) — dans un second terminal
+cd dashboard
+npm install
+npm run dev
+```
+
+Dashboard accessible sur `http://localhost:3000`. En production, `make build` produit un binaire Go qui embarque le build Next.js sur `:8080`.
 
 ---
 
@@ -423,26 +425,34 @@ go test ./... -cover
 
 ## Dashboard web
 
-Le dashboard est accessible à `http://localhost:8080` dès le lancement.
+**Dev :** `http://localhost:3000` (Next.js) · API Go sur `http://localhost:8080`
+**Prod :** `http://localhost:8080` (binaire Go embarque le build Next.js)
 
-**Fonctionnalités :**
+**Pages :**
 
-- Métriques CPU / RAM / Disk en temps réel (refresh 5s)
-- Dernière décision de l'agent avec analyse et raison
-- Console style macOS avec logs live
-- Historique des 10 derniers cycles avec badges d'action
-- Agent loop visuel (Observe → Think → Decide → Act → Sleep)
-- Runtime info (modèle, intervalle, cycle, uptime)
+| Page | URL | Description |
+|------|-----|-------------|
+| Overview | `/` | Métriques live, cycle agent, feed décisions, analyse IA |
+| Agents | `/agents` | Registry — health, runs, erreurs, enable/disable à chaud |
+| Containers | `/containers` | Tableau Docker live, filtres All/Running/Exited, badge topbar |
+| History | `/history` | Tableau cycles avec badges d'action et métriques colorées |
+| LLM Context | `/llm-context` | Tendances CPU/RAM/Disk, action dominante, taux d'alerte |
+| Settings | `/settings` | Config runtime, seuils, endpoints API cliquables |
 
 **Endpoints API :**
 
-```
-GET /                   → Dashboard HTML
-GET /api/status         → Dernier cycle + métriques actuelles
-GET /api/history        → 10 derniers cycles complets
-GET /api/agents         → Registry agents + statuts
-POST /api/agents/toggle → Active/désactive un agent à chaud
-```
+| Méthode | Endpoint | Description |
+|---------|----------|-------------|
+| GET | `/api/status` | État runtime, uptime, circuit breaker, dernier cycle |
+| GET | `/api/history` | 10 derniers cycles (plus récent en premier) |
+| GET | `/api/agents` | Liste agents avec runs/erreurs/enabled |
+| POST | `/api/agents/toggle` | Active/désactive un agent — body: `{"name": "..."}` |
+| GET | `/api/docker` | Containers avec running/exited counts |
+| GET | `/api/logs/status` | Taille et état des fichiers de logs |
+| GET | `/api/file` | Status FileAgent + chemins surveillés |
+| GET | `/api/daily-report` | Horaire rapport + dernier/prochain envoi |
+| POST | `/api/daily-report/send` | Déclenche un rapport immédiat |
+| GET | `/api/llm-context` | Contexte adaptatif transmis au LLM |
 
 ---
 
@@ -528,7 +538,7 @@ JARVINx envoie des embeds Discord structurés quand un seuil est dépassé.
 | V1.2    | Correction & Robustesse   | ✅ Released    |
 | V1.3    | Intelligence & Mémoire    | ✅ Released    |
 | V1.4    | Robustesse Runtime        | ✅ Released    |
-| V1.5    | Dashboard                 | 🔄 In progress |
+| V1.5    | Dashboard                 | ✅ Released    |
 | V1.6    | Couche décisionnelle      | 📋 Planned     |
 | V1.x    | Mémoire sémantique Qdrant | 🔮 Future      |
 
@@ -598,13 +608,14 @@ JARVINx envoie des embeds Discord structurés quand un seuil est dépassé.
 - [x] **Test intégration** end-to-end — 6 nouveaux tests
 - [x] **Store mémoire** longue durée SQLite vs BBolt design doc
 
-### V1.5 — Dashboard
+### V1.5 — Dashboard ✅
 
-- [x] **Quick win** badge header Brancher `/api/docker` — page Agents ou widget
-- [x] **Nouveau endpoint** `GET /api/file` - FileAgent status + paths + tailles - `GET /api/daily-report` + `POST /api/daily-report/send`
-- [x] **Features Dashboard** Page "LLM Context" — tendances + prompt adaptatif - Widget DailyReporter — last_sent + trigger manuel - `GET /api/llm-context` — expose `BuildAdaptiveContext()`
-- [x] **Vue conteneurs live** — tableau CPU%/RAM/statut par conteneur, rafraîchissement WebSocket - Basé sur `DockerGraph.tsx` existant, branché sur `/api/docker` en temps réel - Badge "nouvelle image disponible" si UpdateAgent détecte une mise à jour
-- [x] **Bloc "Analyse IA"** — résumé LLM de l'état global de l'infra, affiché si Ollama connecté - Alimente le bloc depuis `/api/llm-context`
+- [x] **Badge Docker** — topbar running/total, rouge si containers down
+- [x] **Page Containers** — tableau live, filtres All/Running/Exited, branché sur `/api/docker`
+- [x] **Page LLM Context** — tendances CPU/RAM/Disk, action dominante, taux d'alerte
+- [x] **Widget DailyReporter** — last_sent + trigger manuel depuis le dashboard
+- [x] **Bloc Analyse IA** — résumé LLM de l'état global, affiché si Ollama connecté
+- [x] **Nouveaux endpoints** — `/api/file`, `/api/daily-report`, `/api/daily-report/send`, `/api/llm-context`
 
 ### V1.6 — Couche décisionnelle
 
