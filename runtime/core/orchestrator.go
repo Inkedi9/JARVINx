@@ -15,7 +15,7 @@ import (
 // executeGuard prevents the same command from running too frequently.
 type executeGuard struct {
 	mu         sync.Mutex
-	lastCmd    string
+	LastCmd    string
 	lastExecAt time.Time
 	cooldown   time.Duration
 }
@@ -24,12 +24,27 @@ func (g *executeGuard) Allow(cmd string) bool {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 
-	if cmd == g.lastCmd && time.Since(g.lastExecAt) < g.cooldown {
+	if cmd == g.LastCmd && time.Since(g.lastExecAt) < g.cooldown {
 		return false
 	}
-	g.lastCmd = cmd
+	g.LastCmd = cmd
 	g.lastExecAt = time.Now()
 	return true
+}
+
+func (g *executeGuard) CooldownRemaining() time.Duration {
+	elapsed := time.Since(g.lastExecAt)
+	if elapsed >= g.cooldown {
+		return 0
+	}
+	return g.cooldown - elapsed
+}
+
+// ExecGuardStatus retourne l'état courant de l'execute guard de façon thread-safe.
+func (o *Orchestrator) ExecGuardStatus() (string, time.Duration) {
+	o.execGuard.mu.Lock()
+	defer o.execGuard.mu.Unlock()
+	return o.execGuard.LastCmd, o.execGuard.CooldownRemaining()
 }
 
 type Orchestrator struct {

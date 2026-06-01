@@ -34,6 +34,8 @@ type CycleRecord struct {
 	TriggerCPU  float64 `json:"trigger_cpu,omitempty"`
 	TriggerRAM  float64 `json:"trigger_ram,omitempty"`
 	TriggerDisk float64 `json:"trigger_disk,omitempty"`
+
+	Confidence float64 `json:"confidence,omitempty"`
 }
 
 type State struct {

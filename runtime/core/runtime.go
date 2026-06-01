@@ -107,7 +107,8 @@ func NewRuntime(cfg *config.Config, version string) *Runtime {
 		webServer: web.NewServer(
 			cfg, state, registry,
 			logger, alertLogger,
-			dailyReporter, // ← nouveau
+			dailyReporter,
+			orchestrator,
 			cfg.WebPort,
 			web.StaticFiles(),
 		),

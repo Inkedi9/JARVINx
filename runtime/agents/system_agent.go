@@ -87,6 +87,7 @@ func (a *SystemAgent) Run(ctx context.Context, actx AgentContext) error {
 		decision.Reason,
 		decision.Command,
 	)
+	record.Confidence = decision.Confidence
 	if decision.Action == "execute" {
 		record.TriggerCPU = snap.CPUPercent
 		record.TriggerRAM = snap.MemPercent

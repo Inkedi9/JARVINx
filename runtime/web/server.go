@@ -17,6 +17,11 @@ import (
 	"github.com/Inkedi9/jarvinx/tools"
 )
 
+// execGuardProvider permet au serveur d'interroger l'état du guard sans importer core.
+type execGuardProvider interface {
+	ExecGuardStatus() (string, time.Duration)
+}
+
 type Server struct {
 	cfg            *config.Config
 	state          *memory.State
@@ -24,9 +29,15 @@ type Server struct {
 	mainLogger     *memory.Logger
 	alertLogger    *memory.Logger
 	dailyReporter  *agents.DailyReporter
+	execGuard      execGuardProvider
 	port           int
 	files          embed.FS
 	allowedOrigins map[string]bool
+}
+
+type ExecGuardStatus struct {
+	LastCmd                  string  `json:"last_cmd"`
+	CooldownRemainingSeconds float64 `json:"cooldown_remaining_seconds"`
 }
 
 type StatusResponse struct {
@@ -38,6 +49,7 @@ type StatusResponse struct {
 	DryRun       bool                `json:"dry_run"`
 	CircuitState string              `json:"circuit_state"`
 	LastCycle    *memory.CycleRecord `json:"last_cycle,omitempty"`
+	ExecGuard    ExecGuardStatus     `json:"exec_guard"`
 }
 
 type HistoryResponse struct {
@@ -122,6 +134,7 @@ func NewServer(
 	mainLogger *memory.Logger,
 	alertLogger *memory.Logger,
 	dailyReporter *agents.DailyReporter,
+	guard execGuardProvider,
 	port int,
 	files embed.FS,
 ) *Server {
@@ -138,6 +151,7 @@ func NewServer(
 		mainLogger:     mainLogger,
 		alertLogger:    alertLogger,
 		dailyReporter:  dailyReporter,
+		execGuard:      guard,
 		port:           port,
 		files:          files,
 		allowedOrigins: origins,
@@ -328,6 +342,14 @@ func (s *Server) handleStatus(w http.ResponseWriter, r *http.Request) {
 	if len(cycles) > 0 {
 		c := cycles[0]
 		resp.LastCycle = &c
+	}
+
+	if s.execGuard != nil {
+		lastCmd, remaining := s.execGuard.ExecGuardStatus()
+		resp.ExecGuard = ExecGuardStatus{
+			LastCmd:                  lastCmd,
+			CooldownRemainingSeconds: remaining.Seconds(),
+		}
 	}
 
 	s.writeJSON(w, resp)
