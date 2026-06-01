@@ -129,8 +129,19 @@ Shutdown propre via `signal.NotifyContext(ctx, SIGINT, SIGTERM)` : quand le sign
 
 ### `core/bus.go` — Bus d'événements
 
-Bus central basé sur un channel Go bufferisé.
-**Bus** — pub/sub avec fan-out. `Subscribe(name)` retourne un canal dédié par consommateur. `Publish()` broadcast à tous les subscribers simultanément. Buffer plein → warning + drop sans bloquer les autres subscribers. `Unsubscribe(name)` ferme le canal proprement.
+Pub/sub avec **goroutine dédiée par subscriber** depuis v1.4.
+
+`Publish()` :
+
+1. Prend `RLock` — copie la liste des subscribers
+2. Libère `RLock` **avant** les envois
+3. Envoie dans le canal `dispatch` de chaque subscriber (non-bloquant)
+
+Chaque subscriber a une goroutine `run()` qui transfère `dispatch → ch`.
+Si le consommateur est lent, `dispatch` absorbe le surplus.
+Si `dispatch` est plein aussi, drop avec warning — les autres subscribers ne sont pas affectés.
+
+**Bénéfice :** le verrou n'est plus tenu pendant les envois — scalable à N subscribers.
 
 ```go
 type EventType string
@@ -349,6 +360,27 @@ Activé via `JARVINX_DAILY_REPORT=true`.
 `BuildAdaptiveSystemPrompt(base, ctx)` enrichit le system prompt avec ce contexte.
 Utilisé automatiquement par `SystemAgent` — aucune config requise.
 
+## Circuit Breaker (`llm/circuit_breaker.go`)
+
+Protège le runtime contre les pannes Ollama prolongées.
+
+**États :**
+
+- `closed` — normal, appels autorisés
+- `open` — panne détectée, appels bloqués immédiatement (pas de timeout)
+- `half-open` — test après `resetTimeout`, un appel autorisé
+
+**Config par défaut :** 3 échecs consécutifs → open, reset après 30s.
+
+**Exposition :** `circuit_state` dans `GET /api/status`.
+
+```go
+// Vérification avant appel LLM
+if err := c.circuit.Allow(); err != nil {
+    return fallbackDecision("circuit breaker open"), 0, err
+}
+```
+
 ---
 
 ## Intégration LLM (Ollama)
@@ -482,10 +514,15 @@ var StaticFiles embed.FS
 Routes :
 
 ```
-GET /                → index.html (embed.FS)
-GET /static/*        → fichiers statiques (CSS, JS)
-GET /api/status      → StatusResponse JSON
-GET /api/history     → HistoryResponse JSON (10 derniers cycles)
+GET /                       → index.html (embed.FS)
+GET /static/*               → fichiers statiques (CSS, JS)
+GET /api/status             → StatusResponse JSON
+GET /api/history            → HistoryResponse JSON (10 derniers cycles)
+GET /api/status`            → Dernier cycle + métriques + `dry_run` + `circuit_state`
+GET /api/agents`            → Registry agents + statuts
+POST /api/agents/toggle`    → Active/désactive un agent
+GET /api/docker`            → État containers Docker
+GET /api/logs/status`       → Taille logs, backups, rotation
 ```
 
 ### `GET /api/status` — Réponse complète
@@ -778,6 +815,21 @@ func TestNetworkAgent_Failure(t *testing.T) {
     }
 }
 ```
+
+## Tests d'intégration (`core/integration_test.go`)
+
+6 tests end-to-end avec mock Ollama (`httptest.NewServer`) :
+
+| Test                  | Ce qui est vérifié                                       |
+| --------------------- | -------------------------------------------------------- |
+| `FullCycle`           | SystemAgent.Run() → cycle enregistré dans State          |
+| `AlertTriggered`      | AlertAgent avec seuils bas → alertCount > 0              |
+| `BusEventFlow`        | Publish → Subscribe → 3 événements reçus                 |
+| `SchedulerPublishes`  | Scheduler → EventObserved dans le bus                    |
+| `DryRunNoExecution`   | Action execute → cycle enregistré, commande non exécutée |
+| `OllamaDown_Fallback` | Ollama unreachable → fallback decision, RunCount > 0     |
+
+Pattern : mock Ollama retourne du JSON valide, timeout court, polling sur State.
 
 ---
 

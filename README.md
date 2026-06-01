@@ -397,16 +397,16 @@ go test ./... -cover
 
 | Package         | Tests                                                            | Couverture            |
 | --------------- | ---------------------------------------------------------------- | --------------------- |
-| `llm`           | 26 tests — parser JSON, markdown, fallback, uppercase, malformed | Parser robuste        |
+| `llm`           | 36 tests — parser JSON, markdown, fallback, uppercase, malformed | Parser robuste        |
 | `agents`        | 44 tests — seuils, cooldown, enable/disable, panic isolation     | AlertAgent + Registry |
 | `tools`         | 8 tests — whitelist, timeout, commandes valides                  | Shell executor        |
-| `config`        | 22 tests — seuils, intervalle, port, champs vides                | Validation config     |
+| `config`        | 29 tests — seuils, intervalle, port, champs vides                | Validation config     |
 | `jxlog`         | 9 tests — niveaux, filtrage debug, nil safety                    | Logger structuré      |
-| `memory`        | 8 tests                                                          |
-| `web`           | 12 tests                                                         |
-| `core`          | 17 tests                                                         |
+| `memory`        | 11 tests                                                         |
+| `web`           | 15 tests                                                         |
+| `core`          | 23 tests                                                         |
 | `dashboard/lib` | 18 tests                                                         |
-| **Total**       | **150 tests**                                                    |
+| **Total**       | **~193 tests**                                                   |
 
 **Ce qui est testé :**
 
@@ -526,8 +526,8 @@ JARVINx envoie des embeds Discord structurés quand un seuil est dépassé.
 | V1.1    | Hardening & Corrections   | ✅ Released    |
 | V1.2    | Correction & Robustesse   | ✅ Released    |
 | V1.3    | Intelligence & Mémoire    | ✅ Released    |
-| V1.4    | Robustesse Runtime        | 🔄 In progress |
-| V1.5    | Dashboard                 | 📋 Planned     |
+| V1.4    | Robustesse Runtime        | ✅ Released    |
+| V1.5    | Dashboard                 | 🔄 In progress |
 | V1.6    | Couche décisionnelle      | 📋 Planned     |
 | V1.x    | Mémoire sémantique Qdrant | 🔮 Future      |
 
@@ -583,22 +583,22 @@ JARVINx envoie des embeds Discord structurés quand un seuil est dépassé.
 - [x] **Rapport quotidien** — résumé automatique envoyé à heure fixe
 - [x] **Prompt adaptatif** — le system prompt évolue selon l'historique des décisions
 
-### v1.4 — Robustesse runtime
+### v1.4 — Robustesse runtime ✅
 
-- [ ] **Supprimer** webhookURL mort DockerAgent
-- [ ] **Documenter Docker socket** README + TECHNICAL
-- [ ] **Validation** URLs webhooks au démarrage
-- [ ] **Validation** paths FileAgent
-- [ ] **Exposer** dry_run dans StatusResponse
-- [ ] **GET** /api/logs/status
-- [ ] **Circuit breaker** OllamaClient
-- [ ] **Bus dispatcher** goroutine dédiée
-- [ ] **Race conditions** CLAUDE.md
-- [ ] **Test intégration** end-to-end
-- [ ] **Store mémoire** longue durée SQLite vs BBolt design doc
+- [x] **Supprimer** webhookURL mort DockerAgent
+- [x] **Documenter Docker socket** README + TECHNICAL
+- [x] **Validation** URLs webhooks au démarrage — `url.Parse()` + schéma
+- [x] **Validation** paths FileAgent — blocklist chemins sensibles
+- [x] **Exposer** dry_run dans StatusResponse
+- [x] **GET** /api/logs/status — taille, backups, rotation
+- [x] **Circuit breaker** OllamaClient — open/half-open/closed
+- [x] **Bus dispatcher** Bus goroutine dédiée — `Publish()` non-bloquant hors verrou
+- [x] CI `-race` clean — 0 data race détectée
+- [x] **Test intégration** end-to-end — 6 nouveaux tests
 
 ### V1.5 — Dashboard
 
+- [ ] **Store mémoire** longue durée SQLite vs BBolt design doc
 - [ ] **Quick win** badge header Brancher `/api/docker` — page Agents ou widget
 - [ ] **Nouveau endpoint** `GET /api/file` - FileAgent status + paths + tailles - `GET /api/daily-report` + `POST /api/daily-report/send`
 - [ ] **Features Dashboard** Page "LLM Context" — tendances + prompt adaptatif - Widget DailyReporter — last_sent + trigger manuel - `GET /api/llm-context` — expose `BuildAdaptiveContext()`

@@ -794,3 +794,32 @@ JARVINX_LOG_MAX_BACKUPS=2
 ```
 
 Les anciens logs sont archivés en `logs.jsonl.1`, `logs.jsonl.2`.
+
+### Le circuit breaker est ouvert — LLM bloqué
+
+Si `/api/status` retourne `"circuit_state": "open"`, Ollama a eu trop d'échecs consécutifs.
+
+JARVINx va automatiquement tester à nouveau après 30 secondes (`half-open`).
+Pour forcer le reset : redémarre JARVINx.
+
+Vérifie qu'Ollama tourne :
+
+```bash
+ollama serve
+curl http://localhost:11434/api/tags
+```
+
+### logs.jsonl est plein
+
+Configure la rotation dans `.env` :
+
+```env
+JARVINX_LOG_MAX_MB=5
+JARVINX_LOG_MAX_BACKUPS=3
+```
+
+Consulte l'état des logs via l'API :
+
+```bash
+curl http://localhost:8080/api/logs/status
+```
