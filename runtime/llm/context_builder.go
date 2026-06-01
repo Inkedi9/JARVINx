@@ -20,7 +20,7 @@ type AdaptiveContext struct {
 }
 
 // BuildAdaptiveContext analyse les derniers cycles et retourne un contexte enrichi
-func BuildAdaptiveContext(cycles []memory.CycleRecord, snapshots []memory.Snapshot) AdaptiveContext {
+func BuildAdaptiveContext(cycles []memory.CycleRecord, snapshots []memory.Snapshot, cpuT, ramT, diskT float64) AdaptiveContext {
 	ctx := AdaptiveContext{}
 
 	// Analyse des cycles
@@ -47,9 +47,9 @@ func BuildAdaptiveContext(cycles []memory.CycleRecord, snapshots []memory.Snapsh
 
 	// Analyse des snapshots — indépendante des cycles
 	if len(snapshots) >= 3 {
-		ctx.CPUTrend = trend(snapshots, func(s memory.Snapshot) float64 { return s.CPUPercent })
-		ctx.RAMTrend = trend(snapshots, func(s memory.Snapshot) float64 { return s.MemPercent })
-		ctx.DiskTrend = trend(snapshots, func(s memory.Snapshot) float64 { return s.DiskPercent })
+		ctx.CPUTrend = trendWithThreshold(snapshots, func(s memory.Snapshot) float64 { return s.CPUPercent }, cpuT)
+		ctx.RAMTrend = trendWithThreshold(snapshots, func(s memory.Snapshot) float64 { return s.MemPercent }, ramT)
+		ctx.DiskTrend = trendWithThreshold(snapshots, func(s memory.Snapshot) float64 { return s.DiskPercent }, diskT)
 	}
 
 	return ctx
@@ -101,8 +101,8 @@ func BuildAdaptiveSystemPrompt(base string, ctx AdaptiveContext) string {
 	return sb.String()
 }
 
-// trend calcule la tendance d'une métrique sur une série de snapshots
-func trend(snapshots []memory.Snapshot, getter func(memory.Snapshot) float64) string {
+// trendWithThreshold calcule la tendance d'une métrique par rapport au seuil configuré
+func trendWithThreshold(snapshots []memory.Snapshot, getter func(memory.Snapshot) float64, threshold float64) string {
 	if len(snapshots) < 3 {
 		return "insufficient data"
 	}
@@ -114,9 +114,9 @@ func trend(snapshots []memory.Snapshot, getter func(memory.Snapshot) float64) st
 	current := getter(snapshots[len(snapshots)-1])
 
 	switch {
-	case current >= 85:
+	case current >= threshold:
 		return fmt.Sprintf("critique (%.1f%%) — action requise", current)
-	case current >= 70:
+	case current >= threshold*0.85:
 		return fmt.Sprintf("élevé (%.1f%%)", current)
 	case diff > 10:
 		return fmt.Sprintf("en hausse (%.1f%% → %.1f%%)", first, last)
@@ -161,5 +161,11 @@ type SystemContext struct {
 	DiskTotal   uint64
 	DiskPercent float64
 	History     []memory.Snapshot
-	Cycles      []memory.CycleRecord // nouveau — historique des décisions
+	Cycles      []memory.CycleRecord
+
+	// Seuils configurés — synchronisent l'analyse LLM avec la config réelle
+	CPUThreshold  float64
+	RAMThreshold  float64
+	DiskThreshold float64
+	GOOS          string
 }

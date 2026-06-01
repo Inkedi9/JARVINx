@@ -49,7 +49,7 @@ func TestIntegration_FullCycle(t *testing.T) {
 	cfg := makeIntegrationConfig(srv.URL)
 	state := memory.NewState("")
 
-	agent := agents.NewSystemAgent(cfg.OllamaURL, cfg.Model)
+	agent := agents.NewSystemAgent(cfg.OllamaURL, cfg.Model, 85, 90, 85)
 
 	actx := agents.AgentContext{
 		Snapshot: memory.Snapshot{
@@ -178,7 +178,7 @@ func TestIntegration_DryRunNoExecution(t *testing.T) {
 
 	cfg := makeIntegrationConfig(srv.URL)
 	state := memory.NewState("")
-	agent := agents.NewSystemAgent(cfg.OllamaURL, cfg.Model)
+	agent := agents.NewSystemAgent(cfg.OllamaURL, cfg.Model, 85, 90, 85)
 
 	actx := agents.AgentContext{
 		Snapshot: memory.Snapshot{
@@ -214,7 +214,7 @@ func TestIntegration_DryRunNoExecution(t *testing.T) {
 func TestIntegration_OllamaDown_Fallback(t *testing.T) {
 	cfg := makeIntegrationConfig("http://localhost:19999")
 	state := memory.NewState("")
-	agent := agents.NewSystemAgent(cfg.OllamaURL, cfg.Model)
+	agent := agents.NewSystemAgent(cfg.OllamaURL, cfg.Model, 85, 90, 85)
 
 	// Timeout court pour ne pas attendre 3 × 60s
 	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Second)

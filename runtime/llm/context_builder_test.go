@@ -27,7 +27,7 @@ func makeCycle(action string) memory.CycleRecord {
 }
 
 func TestBuildAdaptiveContext_Empty(t *testing.T) {
-	ctx := BuildAdaptiveContext(nil, nil)
+	ctx := BuildAdaptiveContext(nil, nil, 85, 90, 85)
 	if ctx.CycleCount != 0 {
 		t.Errorf("expected 0 cycles, got %d", ctx.CycleCount)
 	}
@@ -41,7 +41,7 @@ func TestBuildAdaptiveContext_DominantAction(t *testing.T) {
 		makeCycle("alert"),
 	}
 
-	ctx := BuildAdaptiveContext(cycles, nil)
+	ctx := BuildAdaptiveContext(cycles, nil, 85, 90, 85)
 	if ctx.DominantAction != "log" {
 		t.Errorf("expected dominant 'log', got '%s'", ctx.DominantAction)
 	}
@@ -55,7 +55,7 @@ func TestBuildAdaptiveContext_AlertRate(t *testing.T) {
 		makeCycle("log"),
 	}
 
-	ctx := BuildAdaptiveContext(cycles, nil)
+	ctx := BuildAdaptiveContext(cycles, nil, 85, 90, 85)
 	if ctx.AlertRate != 50.0 {
 		t.Errorf("expected alert rate 50%%, got %.1f%%", ctx.AlertRate)
 	}
@@ -67,7 +67,7 @@ func TestBuildAdaptiveContext_RecentAlerts(t *testing.T) {
 		memory.NewCycleRecord(makeSnap(20, 50, 60), "log", "stable", "", ""),
 	}
 
-	ctx := BuildAdaptiveContext(cycles, nil)
+	ctx := BuildAdaptiveContext(cycles, nil, 85, 90, 85)
 	if len(ctx.RecentAlerts) == 0 {
 		t.Error("expected recent alerts")
 	}
@@ -83,7 +83,7 @@ func TestBuildAdaptiveContext_CPUTrend(t *testing.T) {
 		makeSnap(85, 52, 60), // spike
 	}
 
-	ctx := BuildAdaptiveContext(nil, snaps)
+	ctx := BuildAdaptiveContext(nil, snaps, 85, 90, 85)
 	if !strings.Contains(ctx.CPUTrend, "critique") {
 		t.Errorf("expected 'critique' in CPU trend for 85%%, got: %s", ctx.CPUTrend)
 	}
@@ -147,7 +147,7 @@ func TestTrend_Critical(t *testing.T) {
 		makeSnap(90, 50, 60),
 	}
 
-	result := trend(snaps, func(s memory.Snapshot) float64 { return s.CPUPercent })
+	result := trendWithThreshold(snaps, func(s memory.Snapshot) float64 { return s.CPUPercent }, 85.0)
 	if !strings.Contains(result, "critique") {
 		t.Errorf("expected 'critique' for 90%% CPU, got: %s", result)
 	}
@@ -160,7 +160,7 @@ func TestTrend_Rising(t *testing.T) {
 		makeSnap(40, 50, 60), // diff > 10 entre les deux moitiés
 	}
 
-	result := trend(snaps, func(s memory.Snapshot) float64 { return s.CPUPercent })
+	result := trendWithThreshold(snaps, func(s memory.Snapshot) float64 { return s.CPUPercent }, 85.0)
 	if !strings.Contains(result, "hausse") {
 		t.Errorf("expected 'hausse' for rising CPU, got: %s", result)
 	}
@@ -173,7 +173,7 @@ func TestTrend_Stable(t *testing.T) {
 		makeSnap(25, 50, 60),
 	}
 
-	result := trend(snaps, func(s memory.Snapshot) float64 { return s.CPUPercent })
+	result := trendWithThreshold(snaps, func(s memory.Snapshot) float64 { return s.CPUPercent }, 85.0)
 	if !strings.Contains(result, "stable") {
 		t.Errorf("expected 'stable', got: %s", result)
 	}

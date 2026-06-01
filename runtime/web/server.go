@@ -281,7 +281,7 @@ func (s *Server) handleLLMContext(w http.ResponseWriter, r *http.Request) {
 	cycles := s.state.LastCycles(20)
 	snapshots := s.state.Last(10)
 
-	ctx := llm.BuildAdaptiveContext(cycles, snapshots)
+	ctx := llm.BuildAdaptiveContext(cycles, snapshots, s.cfg.CPUAlertThreshold, s.cfg.RAMAlertThreshold, s.cfg.DiskAlertThreshold)
 
 	s.writeJSON(w, LLMContextResponse{
 		CycleCount:     ctx.CycleCount,

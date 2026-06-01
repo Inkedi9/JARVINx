@@ -57,7 +57,7 @@ func NewRuntime(cfg *config.Config, version string) *Runtime {
 		dispatcher.Register(agents.NewNtfyNotifier(cfg.NtfyURL, cfg.NtfyTopic))
 	}
 
-	registry.Register(agents.NewSystemAgent(cfg.OllamaURL, cfg.Model))
+	registry.Register(agents.NewSystemAgent(cfg.OllamaURL, cfg.Model, cfg.CPUAlertThreshold, cfg.RAMAlertThreshold, cfg.DiskAlertThreshold))
 	registry.Register(agents.NewAlertAgent(
 		cfg.CPUAlertThreshold,
 		cfg.RAMAlertThreshold,

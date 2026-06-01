@@ -3,6 +3,7 @@ package agents
 import (
 	"context"
 	"fmt"
+	"runtime"
 	"time"
 
 	jxlog "github.com/Inkedi9/jarvinx/jxlog"
@@ -12,15 +13,21 @@ import (
 
 type SystemAgent struct {
 	BaseAgent
-	client *llm.OllamaClient
-	retry  llm.RetryConfig
+	client        *llm.OllamaClient
+	retry         llm.RetryConfig
+	cpuThreshold  float64
+	ramThreshold  float64
+	diskThreshold float64
 }
 
-func NewSystemAgent(baseURL, model string) *SystemAgent {
+func NewSystemAgent(baseURL, model string, cpuThreshold, ramThreshold, diskThreshold float64) *SystemAgent {
 	return &SystemAgent{
-		BaseAgent: NewBaseAgent("system", 15*time.Second),
-		client:    llm.NewOllamaClient(baseURL, model),
-		retry:     llm.DefaultRetryConfig(),
+		BaseAgent:     NewBaseAgent("system", 15*time.Second),
+		client:        llm.NewOllamaClient(baseURL, model),
+		retry:         llm.DefaultRetryConfig(),
+		cpuThreshold:  cpuThreshold,
+		ramThreshold:  ramThreshold,
+		diskThreshold: diskThreshold,
 	}
 }
 
@@ -35,16 +42,20 @@ func (a *SystemAgent) Run(ctx context.Context, actx AgentContext) error {
 	cycles := actx.State.LastCycles(20)
 
 	llmCtx := llm.SystemContext{
-		Timestamp:   snap.Timestamp,
-		CPUPercent:  snap.CPUPercent,
-		MemUsed:     snap.MemUsed,
-		MemTotal:    snap.MemTotal,
-		MemPercent:  snap.MemPercent,
-		DiskUsed:    snap.DiskUsed,
-		DiskTotal:   snap.DiskTotal,
-		DiskPercent: snap.DiskPercent,
-		History:     history,
-		Cycles:      cycles, // nouveau
+		Timestamp:     snap.Timestamp,
+		CPUPercent:    snap.CPUPercent,
+		MemUsed:       snap.MemUsed,
+		MemTotal:      snap.MemTotal,
+		MemPercent:    snap.MemPercent,
+		DiskUsed:      snap.DiskUsed,
+		DiskTotal:     snap.DiskTotal,
+		DiskPercent:   snap.DiskPercent,
+		History:       history,
+		Cycles:        cycles,
+		CPUThreshold:  a.cpuThreshold,
+		RAMThreshold:  a.ramThreshold,
+		DiskThreshold: a.diskThreshold,
+		GOOS:          runtime.GOOS,
 	}
 
 	// Prompt adaptatif — enrichi du contexte historique
