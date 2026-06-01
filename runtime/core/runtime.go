@@ -84,7 +84,7 @@ func NewRuntime(cfg *config.Config, version string) *Runtime {
 	}
 
 	scheduler := NewScheduler(cfg.Interval, bus)
-	orchestrator := NewOrchestrator(bus, registry, state, logger, cfg.DryRun)
+	orchestrator := NewOrchestrator(bus, registry, state, logger, cfg.DryRun, cfg.ExecCooldown)
 
 	var dailyReporter *agents.DailyReporter
 	if cfg.DailyReportEnabled {

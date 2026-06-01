@@ -62,6 +62,9 @@ type Config struct {
 	DailyReportEnabled bool
 	DailyReportHour    int // heure d'envoi (0-23)
 	DailyReportMinute  int // minute d'envoi
+
+	// Execute guard
+	ExecCooldown time.Duration
 }
 
 func Default() *Config {
@@ -98,5 +101,6 @@ func Default() *Config {
 		DailyReportEnabled: false, // désactivé par défaut
 		DailyReportHour:    8,
 		DailyReportMinute:  0,
+		ExecCooldown:       5 * time.Minute,
 	}
 }

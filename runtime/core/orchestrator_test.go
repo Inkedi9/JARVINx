@@ -16,7 +16,7 @@ func makeTestOrchestrator() (*Orchestrator, *Bus, *agents.Registry, *memory.Stat
 	logger := memory.NewLogger("")
 	registry := agents.NewRegistry()
 
-	orch := NewOrchestrator(bus, registry, state, logger, false) // false = pas de dry-run
+	orch := NewOrchestrator(bus, registry, state, logger, false, 5*time.Minute)
 	return orch, bus, registry, state
 }
 

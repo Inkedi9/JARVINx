@@ -189,4 +189,13 @@ func (c *Config) FromEnv() {
 	if v := os.Getenv("JARVINX_FILE_ENABLED"); v == "false" {
 		c.FileEnabled = false
 	}
+
+	// Execute guard
+	if v := os.Getenv("JARVINX_EXEC_COOLDOWN"); v != "" {
+		if d, err := time.ParseDuration(v); err == nil {
+			c.ExecCooldown = d
+		} else {
+			fmt.Fprintf(os.Stderr, "[ WARN ] JARVINX_EXEC_COOLDOWN invalide '%s' — valeur ignorée\n", v)
+		}
+	}
 }

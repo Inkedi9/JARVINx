@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/Inkedi9/jarvinx/agents"
 	"github.com/Inkedi9/jarvinx/jxlog"
@@ -11,15 +12,36 @@ import (
 	"github.com/Inkedi9/jarvinx/tools"
 )
 
+// executeGuard prevents the same command from running too frequently.
+type executeGuard struct {
+	mu         sync.Mutex
+	lastCmd    string
+	lastExecAt time.Time
+	cooldown   time.Duration
+}
+
+func (g *executeGuard) Allow(cmd string) bool {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+
+	if cmd == g.lastCmd && time.Since(g.lastExecAt) < g.cooldown {
+		return false
+	}
+	g.lastCmd = cmd
+	g.lastExecAt = time.Now()
+	return true
+}
+
 type Orchestrator struct {
-	bus      *Bus
-	registry *agents.Registry
-	state    *memory.State
-	logger   *memory.Logger
-	mu       sync.Mutex
-	lastSnap memory.Snapshot
-	snapMu   sync.RWMutex
-	dryRun   bool
+	bus       *Bus
+	registry  *agents.Registry
+	state     *memory.State
+	logger    *memory.Logger
+	mu        sync.Mutex
+	lastSnap  memory.Snapshot
+	snapMu    sync.RWMutex
+	dryRun    bool
+	execGuard *executeGuard
 }
 
 func NewOrchestrator(
@@ -28,13 +50,15 @@ func NewOrchestrator(
 	state *memory.State,
 	logger *memory.Logger,
 	dryRun bool,
+	execCooldown time.Duration,
 ) *Orchestrator {
 	return &Orchestrator{
-		bus:      bus,
-		registry: registry,
-		state:    state,
-		logger:   logger,
-		dryRun:   dryRun,
+		bus:       bus,
+		registry:  registry,
+		state:     state,
+		logger:    logger,
+		dryRun:    dryRun,
+		execGuard: &executeGuard{cooldown: execCooldown},
 	}
 }
 
@@ -103,12 +127,15 @@ func (o *Orchestrator) handleObserved(snap memory.Snapshot) {
 	// Run command if action is execute
 	cycles := o.state.LastCycles(1)
 	if len(cycles) > 0 && cycles[0].Command != "" {
-		if o.dryRun {
-			jxlog.Info("DRY-RUN", fmt.Sprintf("Commande '%s' simulée — non exécutée", cycles[0].Command))
-			result := tools.ExecuteCommandDryRun(cycles[0].Command)
+		cmd := cycles[0].Command
+		if !o.execGuard.Allow(cmd) {
+			jxlog.Info("EXEC-GUARD", fmt.Sprintf("cooldown actif — '%s' ignorée", cmd))
+		} else if o.dryRun {
+			jxlog.Info("DRY-RUN", fmt.Sprintf("Commande '%s' simulée — non exécutée", cmd))
+			result := tools.ExecuteCommandDryRun(cmd)
 			result.Display()
 		} else {
-			result := tools.ExecuteCommand(cycles[0].Command)
+			result := tools.ExecuteCommand(cmd)
 			result.Display()
 			o.bus.Publish(Event{Type: EventExecuted, Payload: result})
 		}
