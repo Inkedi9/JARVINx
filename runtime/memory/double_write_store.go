@@ -22,6 +22,10 @@ func (d *DoubleWriteStore) Add(snap Snapshot) error {
 
 func (d *DoubleWriteStore) AddCycle(record CycleRecord) error {
 	err := d.primary.AddCycle(record)
+	// Propagate the cycle_num assigned by the primary so the secondary stays in
+	// sync — critical when SQLite is enabled after the JSON State has already run
+	// N cycles (SQLite would otherwise start its own counter from 0).
+	record.CycleNum = d.primary.CurrentCycle()
 	_ = d.secondary.AddCycle(record)
 	return err
 }

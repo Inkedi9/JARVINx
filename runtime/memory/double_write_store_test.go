@@ -82,6 +82,56 @@ func TestDoubleWriteStore_SQLiteServes25WhenJSONCappedAt20(t *testing.T) {
 	}
 }
 
+func TestDoubleWriteStore_CycleNumConsistency(t *testing.T) {
+	primary := NewState("")
+	sq, err := OpenSQLiteStore(":memory:")
+	if err != nil {
+		t.Fatalf("OpenSQLiteStore: %v", err)
+	}
+	defer func() { _ = sq.Close() }()
+	dw := NewDoubleWriteStore(primary, sq)
+
+	for i := range 5 {
+		_ = dw.AddCycle(NewCycleRecord(Snapshot{Timestamp: time.Now()}, "log", "", "", ""))
+		if primary.CurrentCycle() != sq.CurrentCycle() {
+			t.Errorf("cycle %d: primary=%d sqlite=%d", i+1, primary.CurrentCycle(), sq.CurrentCycle())
+		}
+	}
+}
+
+// TestDoubleWriteStore_SQLiteStartsBehindState reproduces the divergence that
+// occurs when SQLite is enabled after the JSON State has already run N cycles.
+// Without the fix, SQLite would start its counter from 0 instead of N.
+func TestDoubleWriteStore_SQLiteStartsBehindState(t *testing.T) {
+	primary := NewState("")
+	for range 10 {
+		_ = primary.AddCycle(NewCycleRecord(Snapshot{Timestamp: time.Now()}, "log", "", "", ""))
+	}
+	if primary.CurrentCycle() != 10 {
+		t.Fatalf("setup: primary CycleNum want 10, got %d", primary.CurrentCycle())
+	}
+
+	sq, err := OpenSQLiteStore(":memory:")
+	if err != nil {
+		t.Fatalf("OpenSQLiteStore: %v", err)
+	}
+	defer func() { _ = sq.Close() }()
+
+	dw := NewDoubleWriteStore(primary, sq)
+	_ = dw.AddCycle(NewCycleRecord(Snapshot{Timestamp: time.Now()}, "log", "", "", ""))
+
+	if primary.CurrentCycle() != 11 {
+		t.Errorf("primary: want 11, got %d", primary.CurrentCycle())
+	}
+	if sq.CurrentCycle() != 11 {
+		t.Errorf("sqlite: want 11, got %d (drift detected)", sq.CurrentCycle())
+	}
+	cycles := sq.LastCycles(1)
+	if len(cycles) != 1 || cycles[0].CycleNum != 11 {
+		t.Errorf("sqlite stored CycleNum: want 11, got %+v", cycles)
+	}
+}
+
 func TestDoubleWriteStore_SaveDelegatesToPrimary(t *testing.T) {
 	path := t.TempDir() + "/dw_state.json"
 	primary := NewState(path)

@@ -125,8 +125,17 @@ func (s *SQLiteStore) Add(snap Snapshot) error {
 
 func (s *SQLiteStore) AddCycle(record CycleRecord) error {
 	s.mu.Lock()
-	s.cycleNum++
-	record.CycleNum = s.cycleNum
+	if record.CycleNum > 0 {
+		// Caller (e.g. DoubleWriteStore) already assigned the canonical cycle_num
+		// from the primary store. Keep our counter at the highest seen value so
+		// standalone AddCycle calls (tests, future direct use) remain consistent.
+		if record.CycleNum > s.cycleNum {
+			s.cycleNum = record.CycleNum
+		}
+	} else {
+		s.cycleNum++
+		record.CycleNum = s.cycleNum
+	}
 	s.mu.Unlock()
 
 	_, err := s.db.Exec(
