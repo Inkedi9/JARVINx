@@ -7,8 +7,6 @@ linters:
     - govet
     - ineffassign
     - staticcheck
-    - gofmt
-    - goimports
     - misspell
     - prealloc
   settings:
@@ -17,4 +15,9 @@ linters:
     govet:
       enable:
         - shadow
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
 
