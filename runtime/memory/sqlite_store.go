@@ -32,6 +32,10 @@ func OpenSQLiteStore(path string) (*SQLiteStore, error) {
 		_ = db.Close()
 		return nil, fmt.Errorf("sqlite pragma: %w", err)
 	}
+	if _, err := db.Exec("PRAGMA synchronous=NORMAL"); err != nil {
+		_ = db.Close()
+		return nil, fmt.Errorf("sqlite pragma synchronous: %w", err)
+	}
 
 	if err := sqliteMigrate(db); err != nil {
 		_ = db.Close()
@@ -92,11 +96,13 @@ func sqliteMigrate(db *sql.DB) error {
 			snap_disk_percent  REAL    NOT NULL
 		)`
 
-	if _, err := db.Exec(createSnapshots); err != nil {
-		return err
-	}
-	if _, err := db.Exec(createCycles); err != nil {
-		return err
+	const idxSnapshotsTS = `CREATE INDEX IF NOT EXISTS idx_snapshots_ts ON snapshots(timestamp)`
+	const idxCyclesTS = `CREATE INDEX IF NOT EXISTS idx_cycles_ts ON cycles(timestamp)`
+
+	for _, stmt := range []string{createSnapshots, createCycles, idxSnapshotsTS, idxCyclesTS} {
+		if _, err := db.Exec(stmt); err != nil {
+			return err
+		}
 	}
 	return nil
 }
