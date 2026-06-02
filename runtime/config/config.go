@@ -17,8 +17,9 @@ type Config struct {
 	Model     string
 
 	// Memory
-	LogFile   string
-	StateFile string
+	LogFile    string
+	StateFile  string
+	SQLitePath string // empty = disabled
 
 	// Seuils d'alerte
 	CPUAlertThreshold  float64
@@ -74,6 +75,7 @@ func Default() *Config {
 		Model:              "llama3.1:8b",
 		LogFile:            "logs.jsonl",
 		StateFile:          "state.json",
+		SQLitePath:         "",
 		AlertFile:          "alerts.jsonl",
 		WebPort:            8080,
 		CPUAlertThreshold:  85.0,

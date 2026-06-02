@@ -190,6 +190,11 @@ func (c *Config) FromEnv() {
 		c.FileEnabled = false
 	}
 
+	// SQLite history store
+	if v := os.Getenv("JARVINX_SQLITE_PATH"); v != "" {
+		c.SQLitePath = v
+	}
+
 	// Execute guard
 	if v := os.Getenv("JARVINX_EXEC_COOLDOWN"); v != "" {
 		if d, err := time.ParseDuration(v); err == nil {

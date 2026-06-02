@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"os/signal"
 	"syscall"
@@ -25,11 +26,28 @@ type Runtime struct {
 	registry      *agents.Registry
 	dailyReporter *agents.DailyReporter
 	alertLogger   *memory.Logger
+	sqliteCloser  io.Closer // non-nil when SQLiteStore is active
 }
 
 func NewRuntime(cfg *config.Config, version string) *Runtime {
 	bus := NewBus(10)
 	state := memory.NewState(cfg.StateFile)
+
+	// Build the active Store: DoubleWriteStore when SQLite is configured, JSON-only otherwise.
+	var store memory.Store = state
+	var sqliteCloser io.Closer
+	if cfg.SQLitePath != "" {
+		sq, err := memory.OpenSQLiteStore(cfg.SQLitePath)
+		if err != nil {
+			jxlog.Warn("SQLITE", fmt.Sprintf("ouverture échouée (%v) — JSON seul", err))
+			store = memory.NewDoubleWriteStore(state, memory.NoopStore{})
+		} else {
+			store = memory.NewDoubleWriteStore(state, sq)
+			sqliteCloser = sq
+			jxlog.Info("SQLITE", fmt.Sprintf("store actif : %s", cfg.SQLitePath))
+		}
+	}
+
 	logger := memory.NewLoggerWithRotation(
 		cfg.LogFile,
 		cfg.LogMaxSizeBytes,
@@ -84,13 +102,13 @@ func NewRuntime(cfg *config.Config, version string) *Runtime {
 	}
 
 	scheduler := NewScheduler(cfg.Interval, bus)
-	orchestrator := NewOrchestrator(bus, registry, state, logger, cfg.DryRun, cfg.ExecCooldown)
+	orchestrator := NewOrchestrator(bus, registry, store, logger, cfg.DryRun, cfg.ExecCooldown)
 
 	var dailyReporter *agents.DailyReporter
 	if cfg.DailyReportEnabled {
 		dailyReporter = agents.NewDailyReporter(
 			dispatcher,
-			state,
+			store,
 			cfg.DailyReportHour,
 			cfg.DailyReportMinute,
 			cfg.DryRun,
@@ -115,6 +133,7 @@ func NewRuntime(cfg *config.Config, version string) *Runtime {
 		alertLogger:   alertLogger,
 		registry:      registry,
 		dailyReporter: dailyReporter,
+		sqliteCloser:  sqliteCloser,
 	}
 }
 
@@ -163,5 +182,10 @@ func (r *Runtime) Start() {
 	go r.webServer.Start()
 
 	<-ctx.Done()
+	if r.sqliteCloser != nil {
+		if err := r.sqliteCloser.Close(); err != nil {
+			jxlog.Warn("SQLITE", fmt.Sprintf("fermeture : %v", err))
+		}
+	}
 	jxlog.Info("JARVINX", "Arrêt terminé. À bientôt.")
 }
