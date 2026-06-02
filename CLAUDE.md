@@ -20,7 +20,7 @@ go run cmd/main.go --dry-run   # simulation mode — no real alerts/notification
 go test ./...                    # all tests
 go test ./llm/... -v             # single package, verbose
 go test -race ./... -coverprofile=coverage.out  # with race detector (matches CI)
-golangci-lint run                # lint (10 linters — see .golangci.yml)
+golangci-lint run                # lint (8 linters, format golangci-lint v2 — see .golangci.yml)
 ```
 
 ### Next.js Dashboard (`dashboard/`)
@@ -78,6 +78,9 @@ Create `runtime/.env` with the following vars (no `.env.example` exists). All `J
 **Execute guard**
 - `JARVINX_EXEC_COOLDOWN` — Go duration string, cooldown between identical execute commands (default: `5m`)
 
+**SQLite store (optional)**
+- `JARVINX_SQLITE_PATH` — path to the SQLite database, e.g. `jarvinx.db` (empty = JSON-only mode, no behavior change)
+
 Dashboard: use `.env.local` (dev), `.env.homelab`, or `.env.tailscale` for network deployments. The only variable is `NEXT_PUBLIC_RUNTIME_URL` (defaults to `http://localhost:8080`).
 
 ## CI/CD
@@ -96,13 +99,13 @@ GitHub Actions (`.github/workflows/ci.yml`) runs on push to `main`/`develop` and
 | `core/` | Runtime, Bus, Scheduler, Orchestrator, CLI |
 | `agents/` | Agent interface, BaseAgent, Registry, SystemAgent, AlertAgent, DockerAgent, FileAgent, DailyReporter, NotifierDispatcher |
 | `llm/` | OllamaClient, JSON parser, prompt builder, AdaptiveContext, retry logic |
-| `memory/` | State (state.json), Logger with rotation (logs.jsonl / alerts.jsonl) |
+| `memory/` | `Store` + `EventLog` interfaces; `*State` (state.json, 20 cycles); `*Logger` (logs.jsonl/alerts.jsonl, rotation); `SQLiteStore` (unlimited history, WAL); `DoubleWriteStore` (dual-write JSON→SQLite, reads from SQLite); `NoopStore` |
 | `tools/` | System metrics via gopsutil, shell executor with whitelist, Docker, filesystem scan |
 | `web/` | HTTP server, CORS, embedded dashboard via embed.FS |
 | `config/` | Config struct, .env loader, validation (interval 5s–1h) |
 | `jxlog/` | Structured logging with custom slog handler |
 
-Only external dependency: `github.com/shirou/gopsutil/v3` for cross-platform metrics.
+External dependencies: `github.com/shirou/gopsutil/v3` (cross-platform metrics) + `modernc.org/sqlite` (pure Go SQLite, no CGO — only active when `JARVINX_SQLITE_PATH` is set). Note: `go.mod` requires `go 1.25.0` due to `modernc.org/libc` transitive dependency.
 
 ### Core Loop (runtime/)
 
@@ -120,7 +123,8 @@ Scheduler → tools.Observe() → Bus(EventObserved)
                      DockerAgent:  container state changes → NotifierDispatcher (30s interval)
                      FileAgent:    large files / directory growth (5min interval)
                                      ↓
-                         memory.State (state.json)   ← max 20 snapshots / 20 cycles
+                         memory.State (state.json)       ← max 20 snapshots / 20 cycles (source of truth + cycle counter)
+                         memory.SQLiteStore (jarvinx.db) ← unlimited, active if JARVINX_SQLITE_PATH set
                          memory.Logger (logs.jsonl, alerts.jsonl, with rotation)
 ```
 
@@ -168,10 +172,13 @@ API endpoints:
 | GET | `/api/daily-report` | DailyReporter schedule and last/next send |
 | POST | `/api/daily-report/send` | Trigger an immediate report dispatch |
 | GET | `/api/llm-context` | Adaptive context fed to the LLM (trends, alert rate) |
+| GET | `/api/history/full` | Aggregated snapshots by period (`?range=7d\|30d\|90d`) — hourly or daily buckets from SQLite |
 
 ### Dashboard (`dashboard/`)
 
-Stack: **Next.js 16**, React 19, Tailwind v4, TypeScript, Jest. App Router with pages: Overview, Agents, History, Containers, LLM Context, Settings. Three domain hooks — `useStatus` (5s), `useAgents` (10s), `useHistory` (15s) — built on a generic `usePolling<T>`. TypeScript types in `lib/api.ts` mirror Go response structs exactly. Styling via Tailwind v4 CSS custom properties (`--color-bg-primary`, `--color-accent-blue`, etc.).
+Stack: **Next.js 16**, React 19, Tailwind v4, TypeScript, Recharts, Jest. App Router with pages: Overview, Agents, History, Containers, LLM Context, Settings. Domain hooks: `useStatus` (5s), `useAgents` (10s), `useHistory` (15s), `useHistoryFull(range)` (5min) — all built on a generic `usePolling<T>`. TypeScript types in `lib/api.ts` mirror Go response structs exactly. Styling via Tailwind v4 CSS custom properties (`--color-bg-primary`, `--color-accent-blue`, etc.).
+
+The **History page** shows a Recharts `AreaChart` (CPU/RAM/Disk over time) with a 7d/30d/90d period selector, powered by `/api/history/full` — only rendered when `JARVINX_SQLITE_PATH` is configured.
 
 > **Important:** Next.js 16 has breaking changes. Before editing Next.js-specific code, read `dashboard/AGENTS.md` and check `node_modules/next/dist/docs/`.
 
@@ -188,5 +195,5 @@ Commands run directly (no `sh -c`). Exact whitelist: `docker ps`, `docker stats`
 - **Race conditions** exist in the current runtime (known, tracked). Be careful when touching shared state in `core/` without holding the appropriate mutex.
 - Ollama must be running locally before the runtime starts; a health check runs at startup and exits if Ollama is unreachable.
 - Alert cooldown and minimum consecutive-cycle logic live in `AlertAgent` — changes there affect alert frequency directly.
-- State is capped at **20 snapshots** and **20 cycles** in memory; older entries are dropped silently.
+- State is capped at **20 snapshots** and **20 cycles** in memory (JSON State); older entries are dropped silently. When `SQLiteStore` is active (`JARVINX_SQLITE_PATH`), reads are served from SQLite (unlimited history) — JSON State remains the write-ahead source of truth and cycle counter.
 - `DockerAgent` gracefully skips cycles when Docker is not available (`tools.DockerAvailable()` check). `FileAgent` is a no-op when `FileWatchPaths` is empty.

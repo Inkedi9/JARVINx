@@ -7,7 +7,7 @@
 ██   ██║██╔══██║██╔══██╗╚██╗ ██╔╝██║██║╚██╗██║ ██╔██╗
 ╚█████╔╝██║  ██║██║  ██║ ╚████╔╝ ██║██║ ╚████║██╔╝ ██╗
  ╚════╝ ╚═╝  ╚═╝╚═╝  ╚═╝  ╚═══╝  ╚═╝╚═╝  ╚═══╝╚═╝  ╚═╝
-Version 1.6.0
+Version 1.7.0
 ```
 
 **Autonomous AI Runtime · Observing. Thinking. Acting. Evolving.**
@@ -15,7 +15,7 @@ Version 1.6.0
 ![Go](https://img.shields.io/badge/Go-1.26.3-00ADD8?style=flat-square&logo=go&logoColor=white)
 ![Ollama](https://img.shields.io/badge/Ollama-local%20LLM-black?style=flat-square)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
-![Status](https://img.shields.io/badge/status-v1.6%20stable-00E5FF?style=flat-square)
+![Status](https://img.shields.io/badge/status-v1.7%20stable-00E5FF?style=flat-square)
 
 _Your system. My mission._
 
@@ -76,7 +76,8 @@ jarvinx/
 │   │   ├── daily_report.go      # Rapport quotidien (goroutine indépendante)
 │   │   └── notifier.go          # Discord / Slack / Ntfy / Gotify
 │   ├── llm/                     # Client Ollama, parser JSON, prompt adaptatif, circuit breaker
-│   ├── memory/                  # state.json, logs.jsonl / alerts.jsonl avec rotation
+│   ├── memory/                  # Store/EventLog interfaces, state.json, SQLiteStore (historique illimité),
+│   │                            #   DoubleWriteStore, logs.jsonl / alerts.jsonl avec rotation
 │   ├── tools/                   # Métriques gopsutil, shell whitelist, Docker, filesystem
 │   ├── web/                     # HTTP server, CORS, embed.FS (build Next.js)
 │   ├── config/                  # Config centralisée + chargement .env
@@ -524,9 +525,10 @@ JARVINx envoie des embeds Discord structurés quand un seuil est dépassé.
 
 | Fichier        | Format       | Description                                                 |
 | -------------- | ------------ | ----------------------------------------------------------- |
-| `state.json`   | JSON indenté | Historique cycles + snapshots — persiste entre redémarrages |
-| `logs.jsonl`   | JSONL        | Une ligne par observation                                   |
-| `alerts.jsonl` | JSONL        | Historique de toutes les alertes déclenchées                |
+| `state.json`   | JSON indenté | Historique cycles + snapshots — persiste entre redémarrages (20 derniers) |
+| `logs.jsonl`   | JSONL        | Une ligne par observation                                                  |
+| `alerts.jsonl` | JSONL        | Historique de toutes les alertes déclenchées                               |
+| `jarvinx.db`   | SQLite       | Historique illimité (snapshots + cycles) — activé via `JARVINX_SQLITE_PATH` |
 
 ---
 
@@ -541,7 +543,7 @@ JARVINx envoie des embeds Discord structurés quand un seuil est dépassé.
 | V1.4    | Robustesse Runtime        | ✅ Released |
 | V1.5    | Dashboard                 | ✅ Released |
 | V1.6    | Couche décisionnelle      | ✅ Released |
-| V1.7    | Mémoire historique SQLite | 🔮 Future   |
+| V1.7    | Mémoire historique SQLite | ✅ Released |
 | V1.8    | Mémoire sémantique Qdrant | 🔮 Future   |
 
 ## Roadmap
@@ -631,24 +633,11 @@ JARVINx envoie des embeds Discord structurés quand un seuil est dépassé.
 - [x] **Dashboard Overview** Statut execute guard en temps réel — cooldown actif ou disponible
 - [x] **API exec_guard** `last_cmd` + `cooldown_remaining_seconds` dans `GET /api/status`
 
-## 🗄️ V1.7 — Mémoire historique SQLite
+### V1.7 — Mémoire historique SQLite ✅
 
-> JARVINx se souvient. Les métriques persistent au-delà des 20 cycles en mémoire.
-
-### Phase 0 — Interface Store _(pré-requis)_
-
-- [ ] Créer `memory/store.go` — interfaces `Store` et `EventLog`, découpler `AgentContext` des types concrets
-- [ ] `Add()` / `AddCycle()` retournent `error` — mettre à jour appelants et tests
-
-### Phase 1 — SQLite double write
-
-- [ ] `SQLiteStore` + `DoubleWriteStore` — JSON reste source de vérité, SQLite en secondary fail-silencieux
-- [ ] Config `JARVINX_SQLITE_PATH` — chemin configurable, défaut `jarvinx.db`
-
-### Phase 2 — Bascule lecture + Dashboard
-
-- [ ] Lecture depuis SQLite — benchmarker `LastCycles` à 5760 items avant livraison
-- [ ] Graphes temporels dashboard — courbes CPU/RAM/Disk par conteneur sur 7j / 30j / 90j
+- [x] **Phase 0 — Interface Store** — `memory.Store` + `memory.EventLog` ; `AgentContext` découplé des types concrets ; `Add()`/`AddCycle()` retournent `error`
+- [x] **Phase 1 — SQLite double write** — `SQLiteStore` (historique illimité, WAL, pure Go via `modernc.org/sqlite`) ; `DoubleWriteStore` (JSON source de vérité + SQLite secondary fail-silencieux) ; `NoopStore` fallback ; config `JARVINX_SQLITE_PATH`
+- [x] **Phase 2 — Bascule lecture + Dashboard** — lecture depuis SQLite (`LastCycles(5760)` < 3s validé en CI) ; `GET /api/history/full?range=7d|30d|90d` avec agrégation SQL par bucket heure/6h/jour ; graphes CPU/RAM/Disk (Recharts AreaChart) + sélecteur période sur la page History
 
 ## 🧠 V1.8 — Mémoire sémantique Qdrant
 

@@ -170,6 +170,10 @@ JARVINX_LOG_MAX_BACKUPS=3
 
 # Cooldown entre deux exécutions identiques (format Go duration : 5m, 10m, 30m...)
 JARVINX_EXEC_COOLDOWN=5m
+
+# === SQLite store (optionnel) ===
+# Active l'historique illimité. Laisser vide pour rester en mode JSON seul (comportement inchangé).
+# JARVINX_SQLITE_PATH=jarvinx.db
 ```
 
 Aucune recompilation nécessaire. Les valeurs invalides sont ignorées avec un warning.
@@ -477,6 +481,8 @@ Tableau Docker live avec filtres All / Running / Exited. Le badge dans la topbar
 Tableau des cycles avec métriques colorées (vert/amber/rouge selon seuils), action badge, analyse LLM. Stats globales en haut (total, log/suggest/alert/execute).
 Pour les actions `execute` et `suggest` : badge confiance coloré (vert ≥ 75%, orange ≥ 50%, rouge en dessous). Si une commande a été déclenchée par un pic de métrique, sous-texte "Déclenché à CPU 91% / RAM 78%".
 
+**Graphes historiques (SQLite requis)** — Si `JARVINX_SQLITE_PATH` est configuré, un graphe AreaChart (Recharts) s'affiche au-dessus du tableau avec sélecteur de période **7j / 30j / 90j**. Les courbes CPU, RAM et Disk affichent les moyennes par bucket (horaire pour 7j, 6h pour 30j, journalier pour 90j). Sans SQLite, un message invite à activer `JARVINX_SQLITE_PATH`.
+
 **LLM Context `/llm-context`**
 Visualise le contexte adaptatif transmis au LLM : tendances CPU/RAM/Disk (`stable` / `rising` / `high` / `falling`), action dominante, taux d'alerte, dernières alertes.
 
@@ -499,6 +505,7 @@ L'API est accessible directement sur `http://localhost:8080/api/`.
 | `GET /api/daily-report` | Horaire + dernier/prochain envoi rapport |
 | `POST /api/daily-report/send` | Déclenche un rapport immédiat |
 | `GET /api/llm-context` | Contexte adaptatif LLM |
+| `GET /api/history/full` | Snapshots agrégés par période (`?range=7d\|30d\|90d`) — nécessite SQLite |
 
 ---
 
@@ -652,6 +659,12 @@ tail -1 logs.jsonl | jq .
 # Tous les cycles où le CPU dépasse 80%
 cat logs.jsonl | jq 'select(.cpu_percent > 80)'
 ```
+
+### `jarvinx.db` _(optionnel)_
+
+Base SQLite contenant l'historique illimité des snapshots et cycles. Créée automatiquement quand `JARVINX_SQLITE_PATH=jarvinx.db` est défini dans `.env`. Sans cette variable, ce fichier n'est pas créé — comportement identique à avant V1.7.
+
+---
 
 ### `alerts.jsonl`
 

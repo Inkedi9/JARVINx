@@ -31,7 +31,7 @@ jarvinx/
 ├── core/       Runtime, bus, scheduler, orchestrator, CLI
 ├── agents/     Interface Agent, Registry, agents concrets
 ├── llm/        Client Ollama, parser JSON, prompt builder
-├── memory/     Persistance state.json, logger JSONL
+├── memory/     Store + EventLog interfaces, state.json, SQLiteStore (historique illimité), DoubleWriteStore, logger JSONL
 ├── tools/      Métriques système, exécuteur shell whitelist
 ├── web/        HTTP server, embed.FS, API REST
 └── config/     Config centralisée, chargement .env
@@ -50,13 +50,14 @@ core / agents / web
 
 ### Dépendances externes
 
-JARVINx a **une seule** dépendance externe :
+JARVINx a **deux** dépendances externes :
 
 ```
-github.com/shirou/gopsutil/v3
+github.com/shirou/gopsutil/v3   # métriques CPU/RAM/Disk cross-platform (tools/system.go)
+modernc.org/sqlite               # SQLite pure Go, no CGO (memory/sqlite_store.go)
 ```
 
-Utilisée uniquement dans `tools/system.go` pour la collecte cross-platform de métriques CPU/RAM/Disk.
+`modernc.org/sqlite` est la dépendance ajoutée en V1.7. Elle est pure Go (pas de CGO requis) et active uniquement quand `JARVINX_SQLITE_PATH` est défini. Note : `go.mod` est à `go 1.25.0` car `modernc.org/libc` (dépendance transitive) l'impose.
 
 ---
 
@@ -457,6 +458,59 @@ Actions valides : `log`, `alert`, `suggest`, `execute`. Toute autre valeur est n
 
 ## Mémoire & persistance
 
+### Interfaces (`memory/store.go`)
+
+V1.7 introduit deux interfaces qui découplent les agents et l'orchestrateur des implémentations concrètes :
+
+```go
+// Store — persistance cycles + snapshots (implémenté par *State et *SQLiteStore)
+type Store interface {
+    Add(Snapshot) error
+    AddCycle(CycleRecord) error
+    Last(n int) []Snapshot
+    LastCycles(n int) []CycleRecord
+    CurrentCycle() int
+    Save() error
+}
+
+// EventLog — logger append-only (implémenté par *Logger)
+type EventLog interface {
+    Write(LogEntry) error
+    Status() LogStatus
+}
+
+// HistoryReader — requêtes temporelles agrégées (implémenté par *SQLiteStore)
+type HistoryReader interface {
+    SnapshotBuckets(from time.Time, bucketHours int) []SnapshotBucket
+    TotalSnapshots(from time.Time) int
+}
+```
+
+`AgentContext` expose `State memory.Store` et `Logger memory.EventLog` — aucun agent n'importe de type concret du package `memory`.
+
+### `SQLiteStore` (`memory/sqlite_store.go`)
+
+Store à historique illimité. Activé quand `JARVINX_SQLITE_PATH` est défini.
+
+- **WAL mode** + `synchronous=NORMAL` — bonne performance en écriture, sécurité suffisante
+- **Index** sur `timestamp` dans les deux tables — requêtes `SnapshotBuckets` en < 15ms pour 5760 lignes
+- **`SnapshotBuckets(from, bucketHours)`** — agrégation SQL (AVG/MAX par bucket temporel : 1h, 6h, 24h)
+- Inserts dans une transaction par défaut pour les écritures en batch
+
+### `DoubleWriteStore` (`memory/double_write_store.go`)
+
+Wrapper qui fan-out les écritures vers primary (JSON `*State`) et secondary (SQLite), et bascule les lectures vers le secondary :
+
+```
+Write : primary + secondary (secondary fail-silencieux)
+Read  : secondary.Last(n) → fallback primary si vide
+CurrentCycle / Save : toujours depuis primary
+```
+
+### `NoopStore`
+
+Implémentation no-op de `Store` — secondary du `DoubleWriteStore` quand SQLite est configuré mais indisponible au démarrage.
+
 ### `memory.State` (`memory/state.go`)
 
 Persistance dans `state.json`. Chargé au démarrage, sauvegardé après chaque cycle.
@@ -555,6 +609,8 @@ GET /api/file                   → FileAgentResponse — status FileAgent + wat
 GET /api/daily-report           → DailyReportResponse — scheduled_at, last_sent, next_send
 POST /api/daily-report/send     → SendReportResponse — déclenche un rapport immédiat
 GET /api/llm-context            → LLMContextResponse — tendances, dominant_action, alert_rate
+GET /api/history/full           → HistoryFullResponse — snapshots agrégés par bucket temporel (nécessite SQLite)
+                                   ?range=7d (hourly) | 30d (6h) | 90d (daily)
 ```
 
 ### `GET /api/status` — Réponse complète
@@ -587,7 +643,9 @@ Le dashboard est une application **Next.js 16** (App Router, React 19, Tailwind 
 En dev : Next.js tourne sur `:3000` et consomme l'API Go sur `:8080`.
 En prod : `npm run build` génère le build statique, copié dans `runtime/web/static/` et embarqué via `embed.FS` dans le binaire Go.
 
-Trois hooks de polling dans `lib/hooks.ts` — `useStatus` (5s), `useAgents` (10s), `useHistory` (15s) — construits sur un hook générique `usePolling<T>`. Les types TypeScript dans `lib/api.ts` sont des miroirs exacts des structs Go de `web/server.go`.
+Quatre hooks de polling dans `lib/hooks.ts` — `useStatus` (5s), `useAgents` (10s), `useHistory` (15s), `useHistoryFull(range)` (5min) — construits sur un hook générique `usePolling<T>`. Les types TypeScript dans `lib/api.ts` sont des miroirs exacts des structs Go de `web/server.go`.
+
+La **page History** intègre un `AreaChart` Recharts (courbes CPU/RAM/Disk) avec sélecteur de période 7j/30j/90j, alimenté par `/api/history/full`. Ce composant (`app/components/metrics-chart.tsx`) est affiché uniquement quand `available: true` dans la réponse (SQLite actif).
 
 ---
 
