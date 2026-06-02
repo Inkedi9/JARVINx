@@ -242,6 +242,26 @@ func TestFromEnv_DryRunFalseByDefault(t *testing.T) {
 	}
 }
 
+func TestFromEnv_QdrantURL(t *testing.T) {
+	t.Setenv("JARVINX_QDRANT_URL", "http://localhost:6333")
+
+	cfg := Default()
+	cfg.FromEnv()
+
+	if cfg.QdrantURL != "http://localhost:6333" {
+		t.Errorf("expected QdrantURL='http://localhost:6333', got '%s'", cfg.QdrantURL)
+	}
+}
+
+func TestFromEnv_QdrantURLEmptyByDefault(t *testing.T) {
+	cfg := Default()
+	cfg.FromEnv()
+
+	if cfg.QdrantURL != "" {
+		t.Errorf("expected QdrantURL empty by default, got '%s'", cfg.QdrantURL)
+	}
+}
+
 func TestValidate_InvalidDiscordWebhook(t *testing.T) {
 	cfg := Default()
 	cfg.DiscordWebhook = "http//malformed"

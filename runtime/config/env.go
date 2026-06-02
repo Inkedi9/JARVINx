@@ -203,4 +203,9 @@ func (c *Config) FromEnv() {
 			fmt.Fprintf(os.Stderr, "[ WARN ] JARVINX_EXEC_COOLDOWN invalide '%s' — valeur ignorée\n", v)
 		}
 	}
+
+	// Qdrant — mémoire sémantique (v1.8) — opt-in
+	if v := os.Getenv("JARVINX_QDRANT_URL"); v != "" {
+		c.QdrantURL = v
+	}
 }

@@ -66,6 +66,9 @@ type Config struct {
 
 	// Execute guard
 	ExecCooldown time.Duration
+
+	// Qdrant — mémoire sémantique (v1.8) — vide = désactivé
+	QdrantURL string
 }
 
 func Default() *Config {
