@@ -15,9 +15,9 @@ import (
 )
 
 const (
-	qdrantCollection    = "jarvinx_decisions"
-	similarDecisionsK   = 3   // top-K résultats retournés à chaque recherche
-	minSimilarityScore  = 0.6 // seuil cosine minimum — en dessous, ignoré
+	qdrantCollection   = "jarvinx_decisions"
+	similarDecisionsK  = 3   // top-K résultats retournés à chaque recherche
+	minSimilarityScore = 0.6 // seuil cosine minimum — en dessous, ignoré
 )
 
 // QdrantAgent vectorise chaque décision LLM (N-1) et interroge la mémoire sémantique.
