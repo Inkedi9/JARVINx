@@ -18,10 +18,9 @@ linters:
       enable:
         - shadow
 
-issues:
-  exclusions:
-    rules:
-      # Les fichiers de test ont le droit d'ignorer certaines erreurs
-      - path: _test\.go
-        linters:
-          - errcheck
+exclusions:
+  rules:
+    # Les fichiers de test ont le droit d'ignorer certaines erreurs
+    - path: _test\.go
+      linters:
+        - errcheck
