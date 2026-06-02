@@ -65,7 +65,7 @@ func TestCircuitBreaker_ClosedAfterSuccessInHalfOpen(t *testing.T) {
 	cb := NewCircuitBreaker(1, 50*time.Millisecond)
 	cb.RecordFailure()
 	time.Sleep(60 * time.Millisecond)
-	cb.Allow() // → HalfOpen
+	_ = cb.Allow() // → HalfOpen
 
 	cb.RecordSuccess()
 
@@ -78,7 +78,7 @@ func TestCircuitBreaker_ReOpenAfterFailureInHalfOpen(t *testing.T) {
 	cb := NewCircuitBreaker(1, 50*time.Millisecond)
 	cb.RecordFailure()
 	time.Sleep(60 * time.Millisecond)
-	cb.Allow() // → HalfOpen
+	_ = cb.Allow() // → HalfOpen
 
 	cb.RecordFailure() // échec en half-open → retour Open
 

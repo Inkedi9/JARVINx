@@ -29,18 +29,18 @@ func OpenSQLiteStore(path string) (*SQLiteStore, error) {
 	db.SetMaxOpenConns(1)
 
 	if _, err := db.Exec("PRAGMA journal_mode=WAL"); err != nil {
-		db.Close()
+		_ = db.Close()
 		return nil, fmt.Errorf("sqlite pragma: %w", err)
 	}
 
 	if err := sqliteMigrate(db); err != nil {
-		db.Close()
+		_ = db.Close()
 		return nil, fmt.Errorf("sqlite migrate: %w", err)
 	}
 
 	var maxCycle sql.NullInt64
 	if err := db.QueryRow(`SELECT MAX(cycle_num) FROM cycles`).Scan(&maxCycle); err != nil {
-		db.Close()
+		_ = db.Close()
 		return nil, fmt.Errorf("sqlite init cycle_num: %w", err)
 	}
 

@@ -25,7 +25,7 @@ func CheckOllama(baseURL string, model string) HealthStatus {
 			Error:  fmt.Sprintf("Ollama inaccessible sur %s : %v", baseURL, err),
 		}
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return HealthStatus{

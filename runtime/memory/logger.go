@@ -67,7 +67,7 @@ func (l *Logger) Write(entry LogEntry) error {
 	if err != nil {
 		return fmt.Errorf("open log file: %w", err)
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	if err := json.NewEncoder(file).Encode(entry); err != nil {
 		return fmt.Errorf("encode log entry: %w", err)

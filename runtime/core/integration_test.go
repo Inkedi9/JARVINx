@@ -193,7 +193,7 @@ func TestIntegration_DryRunNoExecution(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	agent.Run(ctx, actx)
+	_ = agent.Run(ctx, actx)
 
 	cycles := state.LastCycles(1)
 	if len(cycles) == 0 {

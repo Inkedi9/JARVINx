@@ -30,7 +30,7 @@ func makeOllamaServer(models []string, statusCode int) *httptest.Server {
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(response{Models: entries})
+		_ = json.NewEncoder(w).Encode(response{Models: entries})
 	}))
 }
 

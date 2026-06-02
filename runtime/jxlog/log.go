@@ -80,7 +80,7 @@ func (h *JXHandler) Handle(_ context.Context, r slog.Record) error {
 		line += " \033[90m" + strings.Join(extras, " ") + "\033[0m"
 	}
 
-	fmt.Fprintln(h.out, line)
+	_, _ = fmt.Fprintln(h.out, line)
 	return nil
 }
 
