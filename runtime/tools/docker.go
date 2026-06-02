@@ -17,7 +17,6 @@ type ContainerState struct {
 	Name    string
 	Image   string
 	Status  string // "running", "exited", "paused", etc.
-	Health  string // "healthy", "unhealthy", "starting", ""
 	Running bool
 	Exited  bool
 }
