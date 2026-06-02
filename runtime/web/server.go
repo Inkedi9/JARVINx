@@ -117,13 +117,13 @@ type SendReportResponse struct {
 // ── /api/history/full ────────────────────────────────────────────────────────
 
 type HistoryFullResponse struct {
-	Range          string                 `json:"range"`
-	From           time.Time              `json:"from"`
-	To             time.Time              `json:"to"`
-	BucketHours    int                    `json:"bucket_hours"`
+	Range          string                  `json:"range"`
+	From           time.Time               `json:"from"`
+	To             time.Time               `json:"to"`
+	BucketHours    int                     `json:"bucket_hours"`
 	Buckets        []memory.SnapshotBucket `json:"buckets"`
-	TotalSnapshots int                    `json:"total_snapshots"`
-	Available      bool                   `json:"available"`
+	TotalSnapshots int                     `json:"total_snapshots"`
+	Available      bool                    `json:"available"`
 }
 
 // ── /api/llm-context ─────────────────────────────────────────────────────────

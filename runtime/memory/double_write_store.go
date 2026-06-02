@@ -39,5 +39,5 @@ func (d *DoubleWriteStore) LastCycles(n int) []CycleRecord {
 	}
 	return d.primary.LastCycles(n)
 }
-func (d *DoubleWriteStore) CurrentCycle() int              { return d.primary.CurrentCycle() }
-func (d *DoubleWriteStore) Save() error                    { return d.primary.Save() }
+func (d *DoubleWriteStore) CurrentCycle() int { return d.primary.CurrentCycle() }
+func (d *DoubleWriteStore) Save() error       { return d.primary.Save() }
