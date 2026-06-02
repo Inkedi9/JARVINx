@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useRef } from 'react'
-import { api, StatusResponse, HistoryResponse, AgentsResponse, DockerResponse } from './api'
+import { api, StatusResponse, HistoryResponse, AgentsResponse, DockerResponse, HistoryFullResponse } from './api'
 
 const MAX_BACKOFF_MS = 30_000  // 30s max
 const BASE_BACKOFF_MS = 1_000   // 1s initial
@@ -67,4 +67,34 @@ export function useDocker() {
         15_000,
         { available: false, containers: [], total: 0, running: 0, exited: 0 }
     )
+}
+
+export function useHistoryFull(range: '7d' | '30d' | '90d') {
+    const [data, setData] = useState<HistoryFullResponse>({
+        range,
+        from: '',
+        to: '',
+        bucket_hours: 1,
+        buckets: [],
+        total_snapshots: 0,
+        available: false,
+    })
+
+    useEffect(() => {
+        let active = true
+        async function run() {
+            try {
+                const result = await api.historyFull(range)
+                if (active) setData(result)
+            } catch { /* ignore réseau */ }
+        }
+        run()
+        const id = setInterval(run, 5 * 60_000) // 5 min
+        return () => {
+            active = false
+            clearInterval(id)
+        }
+    }, [range])
+
+    return data
 }

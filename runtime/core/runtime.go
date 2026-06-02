@@ -36,6 +36,7 @@ func NewRuntime(cfg *config.Config, version string) *Runtime {
 	// Build the active Store: DoubleWriteStore when SQLite is configured, JSON-only otherwise.
 	var store memory.Store = state
 	var sqliteCloser io.Closer
+	var historyReader memory.HistoryReader
 	if cfg.SQLitePath != "" {
 		sq, err := memory.OpenSQLiteStore(cfg.SQLitePath)
 		if err != nil {
@@ -44,6 +45,7 @@ func NewRuntime(cfg *config.Config, version string) *Runtime {
 		} else {
 			store = memory.NewDoubleWriteStore(state, sq)
 			sqliteCloser = sq
+			historyReader = sq
 			jxlog.Info("SQLITE", fmt.Sprintf("store actif : %s", cfg.SQLitePath))
 		}
 	}
@@ -127,6 +129,7 @@ func NewRuntime(cfg *config.Config, version string) *Runtime {
 			logger, alertLogger,
 			dailyReporter,
 			orchestrator,
+			historyReader,
 			cfg.WebPort,
 			web.StaticFiles(),
 		),

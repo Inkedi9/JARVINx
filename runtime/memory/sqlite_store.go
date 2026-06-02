@@ -221,6 +221,65 @@ func (s *SQLiteStore) CurrentCycle() int {
 // Save is a no-op — SQLite writes are immediate.
 func (s *SQLiteStore) Save() error { return nil }
 
+// SnapshotBuckets returns pre-aggregated metrics grouped by time bucket.
+// bucketHours: 1 = hourly, 6 = 6-hourly, 24 = daily.
+func (s *SQLiteStore) SnapshotBuckets(from time.Time, bucketHours int) []SnapshotBucket {
+	var bucketExpr string
+	switch bucketHours {
+	case 1:
+		bucketExpr = `strftime('%Y-%m-%dT%H:00:00Z', timestamp)`
+	case 6:
+		bucketExpr = `strftime('%Y-%m-%dT', timestamp) || printf('%02d:00:00Z', (CAST(strftime('%H', timestamp) AS INTEGER) / 6) * 6)`
+	default: // 24
+		bucketExpr = `strftime('%Y-%m-%dT00:00:00Z', timestamp)`
+	}
+
+	q := fmt.Sprintf(`
+		SELECT %s AS bucket,
+			ROUND(AVG(cpu_percent), 2), ROUND(MAX(cpu_percent), 2),
+			ROUND(AVG(mem_percent), 2), ROUND(MAX(mem_percent), 2),
+			ROUND(AVG(disk_percent), 2), ROUND(MAX(disk_percent), 2),
+			COUNT(*)
+		FROM snapshots
+		WHERE timestamp >= ?
+		GROUP BY bucket
+		ORDER BY bucket ASC`, bucketExpr)
+
+	rows, err := s.db.Query(q, from.UTC().Format(time.RFC3339))
+	if err != nil {
+		return nil
+	}
+	defer func() { _ = rows.Close() }()
+
+	var buckets []SnapshotBucket
+	for rows.Next() {
+		var b SnapshotBucket
+		if err := rows.Scan(
+			&b.Timestamp,
+			&b.CPUAvg, &b.CPUMax,
+			&b.MEMAvg, &b.MEMMax,
+			&b.DiskAvg, &b.DiskMax,
+			&b.Count,
+		); err != nil {
+			continue
+		}
+		buckets = append(buckets, b)
+	}
+	return buckets
+}
+
+// TotalSnapshots returns the number of snapshots recorded since from.
+func (s *SQLiteStore) TotalSnapshots(from time.Time) int {
+	var count int
+	if err := s.db.QueryRow(
+		`SELECT COUNT(*) FROM snapshots WHERE timestamp >= ?`,
+		from.UTC().Format(time.RFC3339),
+	).Scan(&count); err != nil {
+		return 0
+	}
+	return count
+}
+
 func reverseSnapshots(s []Snapshot) {
 	for i, j := 0, len(s)-1; i < j; i, j = i+1, j-1 {
 		s[i], s[j] = s[j], s[i]

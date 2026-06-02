@@ -26,7 +26,18 @@ func (d *DoubleWriteStore) AddCycle(record CycleRecord) error {
 	return err
 }
 
-func (d *DoubleWriteStore) Last(n int) []Snapshot          { return d.primary.Last(n) }
-func (d *DoubleWriteStore) LastCycles(n int) []CycleRecord { return d.primary.LastCycles(n) }
+func (d *DoubleWriteStore) Last(n int) []Snapshot {
+	if result := d.secondary.Last(n); len(result) > 0 {
+		return result
+	}
+	return d.primary.Last(n)
+}
+
+func (d *DoubleWriteStore) LastCycles(n int) []CycleRecord {
+	if result := d.secondary.LastCycles(n); len(result) > 0 {
+		return result
+	}
+	return d.primary.LastCycles(n)
+}
 func (d *DoubleWriteStore) CurrentCycle() int              { return d.primary.CurrentCycle() }
 func (d *DoubleWriteStore) Save() error                    { return d.primary.Save() }

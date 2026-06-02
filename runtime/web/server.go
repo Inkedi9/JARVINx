@@ -30,6 +30,7 @@ type Server struct {
 	alertLogger    *memory.Logger
 	dailyReporter  *agents.DailyReporter
 	execGuard      execGuardProvider
+	history        memory.HistoryReader // nil when SQLite not configured
 	port           int
 	files          embed.FS
 	allowedOrigins map[string]bool
@@ -113,6 +114,18 @@ type SendReportResponse struct {
 	Message string `json:"message"`
 }
 
+// ── /api/history/full ────────────────────────────────────────────────────────
+
+type HistoryFullResponse struct {
+	Range          string                 `json:"range"`
+	From           time.Time              `json:"from"`
+	To             time.Time              `json:"to"`
+	BucketHours    int                    `json:"bucket_hours"`
+	Buckets        []memory.SnapshotBucket `json:"buckets"`
+	TotalSnapshots int                    `json:"total_snapshots"`
+	Available      bool                   `json:"available"`
+}
+
 // ── /api/llm-context ─────────────────────────────────────────────────────────
 
 type LLMContextResponse struct {
@@ -135,6 +148,7 @@ func NewServer(
 	alertLogger *memory.Logger,
 	dailyReporter *agents.DailyReporter,
 	guard execGuardProvider,
+	history memory.HistoryReader,
 	port int,
 	files embed.FS,
 ) *Server {
@@ -152,6 +166,7 @@ func NewServer(
 		alertLogger:    alertLogger,
 		dailyReporter:  dailyReporter,
 		execGuard:      guard,
+		history:        history,
 		port:           port,
 		files:          files,
 		allowedOrigins: origins,
@@ -178,6 +193,7 @@ func (s *Server) Start() {
 	mux.HandleFunc("/api/daily-report", s.handleDailyReport)
 	mux.HandleFunc("/api/daily-report/send", s.handleDailyReportSend)
 	mux.HandleFunc("/api/llm-context", s.handleLLMContext)
+	mux.HandleFunc("/api/history/full", s.handleHistoryFull)
 
 	// corsMiddleware est maintenant une méthode — accès à s.allowedOrigins
 	handler := s.corsMiddleware(mux)
@@ -305,6 +321,55 @@ func (s *Server) handleLLMContext(w http.ResponseWriter, r *http.Request) {
 		RAMTrend:       ctx.RAMTrend,
 		DiskTrend:      ctx.DiskTrend,
 		RecentAlerts:   ctx.RecentAlerts,
+	})
+}
+
+// ── /api/history/full ────────────────────────────────────────────────────────
+
+func (s *Server) handleHistoryFull(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	if s.history == nil {
+		s.writeJSON(w, HistoryFullResponse{
+			Available: false,
+			Buckets:   []memory.SnapshotBucket{},
+		})
+		return
+	}
+
+	rangeParam := r.URL.Query().Get("range")
+	var from time.Time
+	var bucketHours int
+
+	switch rangeParam {
+	case "30d":
+		from = time.Now().UTC().AddDate(0, 0, -30)
+		bucketHours = 6
+	case "90d":
+		from = time.Now().UTC().AddDate(0, 0, -90)
+		bucketHours = 24
+	default:
+		rangeParam = "7d"
+		from = time.Now().UTC().AddDate(0, 0, -7)
+		bucketHours = 1
+	}
+
+	buckets := s.history.SnapshotBuckets(from, bucketHours)
+	if buckets == nil {
+		buckets = []memory.SnapshotBucket{}
+	}
+
+	s.writeJSON(w, HistoryFullResponse{
+		Range:          rangeParam,
+		From:           from,
+		To:             time.Now().UTC(),
+		BucketHours:    bucketHours,
+		Buckets:        buckets,
+		TotalSnapshots: s.history.TotalSnapshots(from),
+		Available:      true,
 	})
 }
 

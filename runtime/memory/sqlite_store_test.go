@@ -150,3 +150,46 @@ func TestSQLiteStore_LastZeroReturnsNil(t *testing.T) {
 		t.Error("LastCycles(0) should return nil")
 	}
 }
+
+func TestSQLiteStore_Benchmark_5760(t *testing.T) {
+	s := openTestSQLite(t)
+
+	base := time.Now().UTC().Add(-24 * time.Hour)
+	for i := range 5760 {
+		snap := Snapshot{
+			Timestamp:   base.Add(time.Duration(i) * 15 * time.Second),
+			CPUPercent:  float64(i%100) * 0.9,
+			MemUsed:     4096,
+			MemTotal:    16384,
+			MemPercent:  float64(i%100) * 0.5,
+			DiskPercent: 80.0 + float64(i%5),
+		}
+		if storeErr := s.Add(snap); storeErr != nil {
+			t.Fatalf("Add[%d]: %v", i, storeErr)
+		}
+		if storeErr := s.AddCycle(NewCycleRecord(snap, "log", "bench", "bench", "")); storeErr != nil {
+			t.Fatalf("AddCycle[%d]: %v", i, storeErr)
+		}
+	}
+
+	start := time.Now()
+	cycles := s.LastCycles(5760)
+	elapsed := time.Since(start)
+
+	if len(cycles) != 5760 {
+		t.Errorf("LastCycles(5760): want 5760, got %d", len(cycles))
+	}
+	if elapsed > 500*time.Millisecond {
+		t.Errorf("LastCycles(5760) trop lent : %v (max 500ms)", elapsed)
+	}
+	t.Logf("LastCycles(5760) : %v", elapsed)
+
+	start = time.Now()
+	buckets := s.SnapshotBuckets(base, 1)
+	elapsed = time.Since(start)
+
+	if len(buckets) == 0 {
+		t.Error("SnapshotBuckets(1h) : résultat vide inattendu")
+	}
+	t.Logf("SnapshotBuckets(24h, 1h) : %v — %d buckets", elapsed, len(buckets))
+}

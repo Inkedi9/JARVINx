@@ -1,8 +1,10 @@
 'use client'
 
-import { useHistory } from '@/lib/hooks'
+import { useState } from 'react'
+import { useHistory, useHistoryFull } from '@/lib/hooks'
 import { formatTime, actionColor, cn } from '@/lib/utils'
-import { Terminal, Clock, TrendingUp, Activity } from 'lucide-react'
+import { Terminal, Clock, TrendingUp, Activity, BarChart2 } from 'lucide-react'
+import { MetricsChart } from '@/app/components/metrics-chart'
 
 function ActionBadge({ action }: { action: string }) {
     return (
@@ -48,6 +50,8 @@ function StatPill({
 
 export default function HistoryPage() {
     const { data: history } = useHistory()
+    const [chartRange, setChartRange] = useState<'7d' | '30d' | '90d'>('7d')
+    const historyFull = useHistoryFull(chartRange)
 
     // Stats globales
     const counts = history.cycles.reduce((acc, c) => {
@@ -76,6 +80,49 @@ export default function HistoryPage() {
                 <StatPill label="Alert" value={counts.alert ?? 0} color="text-red-400" />
                 <StatPill label="Execute" value={counts.execute ?? 0} color="text-blue-400" />
                 <StatPill label="Actions" value={withCommand} color="text-accent-blue" />
+            </div>
+
+            {/* Graphes temporels */}
+            <div className="bg-bg-secondary border border-border rounded-xl p-5">
+                <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                        <BarChart2 size={14} className="text-accent-blue" />
+                        <span className="font-mono text-xs text-gray-400">Métriques système — moyennes par période</span>
+                        {historyFull.available && historyFull.total_snapshots > 0 && (
+                            <span className="font-mono text-[9px] text-gray-600">
+                                · {historyFull.total_snapshots.toLocaleString('fr-FR')} snapshots
+                            </span>
+                        )}
+                    </div>
+                    <div className="flex gap-1">
+                        {(['7d', '30d', '90d'] as const).map(r => (
+                            <button
+                                key={r}
+                                onClick={() => setChartRange(r)}
+                                className={cn(
+                                    'font-mono text-[9px] px-2 py-1 rounded border uppercase tracking-wider transition-colors cursor-pointer',
+                                    chartRange === r
+                                        ? 'border-accent-blue text-accent-blue bg-accent-blue/10'
+                                        : 'border-border text-gray-500 hover:border-gray-500'
+                                )}
+                            >
+                                {r}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
+                {!historyFull.available ? (
+                    <div className="flex flex-col items-center justify-center h-48 gap-2 text-gray-700">
+                        <BarChart2 size={28} />
+                        <div className="font-mono text-xs text-gray-600">SQLite non configuré</div>
+                        <div className="font-mono text-[10px] text-gray-700">
+                            Active <span className="text-gray-500">JARVINX_SQLITE_PATH=jarvinx.db</span> pour les graphes historiques
+                        </div>
+                    </div>
+                ) : (
+                    <MetricsChart buckets={historyFull.buckets} bucketHours={historyFull.bucket_hours} />
+                )}
             </div>
 
             {/* Table */}

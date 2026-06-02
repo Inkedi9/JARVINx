@@ -127,6 +127,27 @@ export interface LLMContextResponse {
     recent_alerts: string[]
 }
 
+export interface SnapshotBucket {
+    timestamp: string
+    cpu_avg: number
+    cpu_max: number
+    mem_avg: number
+    mem_max: number
+    disk_avg: number
+    disk_max: number
+    count: number
+}
+
+export interface HistoryFullResponse {
+    range: string
+    from: string
+    to: string
+    bucket_hours: number
+    buckets: SnapshotBucket[]
+    total_snapshots: number
+    available: boolean
+}
+
 // ── Client ───────────────────────────────────────────────────────────────────
 
 async function fetchAPI<T>(endpoint: string): Promise<T> {
@@ -152,6 +173,8 @@ export const api = {
             recent_alerts: res.recent_alerts ?? [],
         }
     },
+    historyFull: (range: '7d' | '30d' | '90d') =>
+        fetchAPI<HistoryFullResponse>(`/api/history/full?range=${range}`),
     sendDailyReport: async (): Promise<SendReportResponse> => {
         const res = await fetch(`${RUNTIME_URL}/api/daily-report/send`, {
             method: 'POST',

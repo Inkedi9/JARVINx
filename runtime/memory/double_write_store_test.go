@@ -52,6 +52,36 @@ func TestDoubleWriteStore_CurrentCycleDelegatesToPrimary(t *testing.T) {
 	}
 }
 
+func TestDoubleWriteStore_SQLiteServes25WhenJSONCappedAt20(t *testing.T) {
+	primary := NewState("")
+	sq, err := OpenSQLiteStore(":memory:")
+	if err != nil {
+		t.Fatalf("OpenSQLiteStore: %v", err)
+	}
+	defer func() { _ = sq.Close() }()
+
+	dw := NewDoubleWriteStore(primary, sq)
+
+	for i := range 25 {
+		_ = dw.AddCycle(NewCycleRecord(
+			Snapshot{Timestamp: time.Now(), CPUPercent: float64(i)},
+			"log", "cohérence", "test", "",
+		))
+	}
+
+	// DoubleWriteStore lit depuis SQLite → 25 résultats
+	all := dw.LastCycles(25)
+	if len(all) != 25 {
+		t.Errorf("LastCycles(25) via SQLite : want 25, got %d", len(all))
+	}
+
+	// Primary JSON reste capé à 20
+	fromPrimary := primary.LastCycles(25)
+	if len(fromPrimary) != 20 {
+		t.Errorf("JSON State capé à 20, got %d", len(fromPrimary))
+	}
+}
+
 func TestDoubleWriteStore_SaveDelegatesToPrimary(t *testing.T) {
 	path := t.TempDir() + "/dw_state.json"
 	primary := NewState(path)
