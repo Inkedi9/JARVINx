@@ -210,6 +210,33 @@ func TestIntegration_DryRunNoExecution(t *testing.T) {
 	}
 }
 
+// TestIntegration_QdrantRegistration — QdrantAgent enregistré seulement si QdrantURL défini
+func TestIntegration_QdrantRegistration(t *testing.T) {
+	t.Run("not registered when URL empty", func(t *testing.T) {
+		r := agents.NewRegistry()
+		cfg := makeIntegrationConfig("http://localhost:11434")
+		// cfg.QdrantURL vide par défaut
+		if cfg.QdrantURL != "" {
+			r.Register(agents.NewQdrantAgent(cfg.QdrantURL, cfg.OllamaURL))
+		}
+		if _, ok := r.Get("qdrant"); ok {
+			t.Error("QdrantAgent ne doit pas être enregistré quand QdrantURL est vide")
+		}
+	})
+
+	t.Run("registered when URL set", func(t *testing.T) {
+		r := agents.NewRegistry()
+		cfg := makeIntegrationConfig("http://localhost:11434")
+		cfg.QdrantURL = "http://localhost:6333"
+		if cfg.QdrantURL != "" {
+			r.Register(agents.NewQdrantAgent(cfg.QdrantURL, cfg.OllamaURL))
+		}
+		if _, ok := r.Get("qdrant"); !ok {
+			t.Error("QdrantAgent doit être enregistré quand QdrantURL est défini")
+		}
+	})
+}
+
 // TestIntegration_OllamaDown_Fallback — fallback quand Ollama est down
 func TestIntegration_OllamaDown_Fallback(t *testing.T) {
 	cfg := makeIntegrationConfig("http://localhost:19999")
