@@ -10,9 +10,10 @@ import (
 
 // AgentContext est passé à chaque Run() — tout ce dont un agent peut avoir besoin
 type AgentContext struct {
-	Snapshot memory.Snapshot
-	State    memory.Store
-	Logger   memory.EventLog
+	Snapshot         memory.Snapshot
+	State            memory.Store
+	Logger           memory.EventLog
+	SimilarDecisions []string // décisions passées similaires — rempli par QdrantAgent (v1.8), nil sinon
 }
 
 // AgentStatus représente l'état observable d'un agent

@@ -10,13 +10,14 @@ import (
 
 // AdaptiveContext contient les insights tirés de l'historique
 type AdaptiveContext struct {
-	DominantAction string
-	AlertRate      float64 // % de cycles en alerte
-	CPUTrend       string  // "stable", "rising", "high"
-	RAMTrend       string
-	DiskTrend      string
-	RecentAlerts   []string
-	CycleCount     int
+	DominantAction   string
+	AlertRate        float64 // % de cycles en alerte
+	CPUTrend         string  // "stable", "rising", "high"
+	RAMTrend         string
+	DiskTrend        string
+	RecentAlerts     []string
+	CycleCount       int
+	SimilarDecisions []string // décisions passées similaires issues de Qdrant (v1.8)
 }
 
 // BuildAdaptiveContext analyse les derniers cycles et retourne un contexte enrichi
@@ -95,6 +96,14 @@ func BuildAdaptiveSystemPrompt(base string, ctx AdaptiveContext) string {
 		}
 	}
 
+	// Décisions similaires passées (injectées par QdrantAgent en v1.8)
+	if len(ctx.SimilarDecisions) > 0 {
+		sb.WriteString("\nDécisions similaires dans l'historique :\n")
+		for _, d := range ctx.SimilarDecisions {
+			_, _ = fmt.Fprintf(&sb, "  - %s\n", d)
+		}
+	}
+
 	sb.WriteString("--- FIN CONTEXTE ---\n")
 	sb.WriteString("Utilise ce contexte pour affiner ton analyse.")
 
@@ -168,4 +177,7 @@ type SystemContext struct {
 	RAMThreshold  float64
 	DiskThreshold float64
 	GOOS          string
+
+	// Décisions similaires passées — rempli par QdrantAgent (v1.8), nil sinon
+	SimilarDecisions []string
 }

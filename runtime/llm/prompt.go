@@ -54,6 +54,7 @@ func BuildAdaptivePrompt(ctx SystemContext) string {
 	base := BuildSystemPrompt(ctx.CPUThreshold, ctx.RAMThreshold, ctx.DiskThreshold, ctx.GOOS)
 
 	adaptiveCtx := BuildAdaptiveContext(ctx.Cycles, ctx.History, ctx.CPUThreshold, ctx.RAMThreshold, ctx.DiskThreshold)
+	adaptiveCtx.SimilarDecisions = ctx.SimilarDecisions
 	return BuildAdaptiveSystemPrompt(base, adaptiveCtx)
 }
 
