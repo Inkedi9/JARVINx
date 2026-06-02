@@ -154,7 +154,7 @@ func TestSQLiteStore_LastZeroReturnsNil(t *testing.T) {
 func TestSQLiteStore_Benchmark_5760(t *testing.T) {
 	s := openTestSQLite(t)
 
-	// Inserts dans une transaction pour éviter 5760 auto-commits individuels.
+	// Inserts dans une transaction pour éviter 5760 auto-commits individuals.
 	base := time.Now().UTC().Add(-24 * time.Hour)
 	tx, err := s.db.Begin()
 	if err != nil {
