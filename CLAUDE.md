@@ -81,6 +81,10 @@ Create `runtime/.env` with the following vars (no `.env.example` exists). All `J
 **SQLite store (optional)**
 - `JARVINX_SQLITE_PATH` — path to the SQLite database, e.g. `jarvinx.db` (empty = JSON-only mode, no behavior change)
 
+**Qdrant semantic memory (optional — v1.8)**
+- `JARVINX_QDRANT_URL` — Qdrant base URL, e.g. `http://localhost:6333` (empty = disabled, QdrantAgent not registered)
+- `JARVINX_EMBED_MODEL` — Ollama model used for embeddings (default: `nomic-embed-text`)
+
 Dashboard: use `.env.local` (dev), `.env.homelab`, or `.env.tailscale` for network deployments. The only variable is `NEXT_PUBLIC_RUNTIME_URL` (defaults to `http://localhost:8080`).
 
 ## CI/CD
@@ -97,8 +101,8 @@ GitHub Actions (`.github/workflows/ci.yml`) runs on push to `main`/`develop` and
 |---------|------|
 | `cmd/` | Entry point; wires config, runtime, signals; `--dry-run` CLI flag |
 | `core/` | Runtime, Bus, Scheduler, Orchestrator, CLI |
-| `agents/` | Agent interface, BaseAgent, Registry, SystemAgent, AlertAgent, DockerAgent, FileAgent, DailyReporter, NotifierDispatcher |
-| `llm/` | OllamaClient, JSON parser, prompt builder, AdaptiveContext, retry logic |
+| `agents/` | Agent interface, BaseAgent, Registry, SystemAgent, AlertAgent, DockerAgent, FileAgent, QdrantAgent, DailyReporter, NotifierDispatcher, SimilarDecisionsProvider |
+| `llm/` | OllamaClient, OllamaEmbedder, JSON parser, prompt builder, AdaptiveContext, CircuitBreaker, retry logic |
 | `memory/` | `Store` + `EventLog` interfaces; `*State` (state.json, 20 cycles); `*Logger` (logs.jsonl/alerts.jsonl, rotation); `SQLiteStore` (unlimited history, WAL); `DoubleWriteStore` (dual-write JSON→SQLite, reads from SQLite); `NoopStore` |
 | `tools/` | System metrics via gopsutil, shell executor with whitelist, Docker, filesystem scan |
 | `web/` | HTTP server, CORS, embedded dashboard via embed.FS |
@@ -118,10 +122,11 @@ Scheduler → tools.Observe() → Bus(EventObserved)
                                      ↓
                          Agent Registry (each agent)
                                      ↓
-                     SystemAgent:  Ollama LLM → JSON decision
+                     SystemAgent:  Ollama LLM → JSON decision (SimilarDecisions injected via AgentContext)
                      AlertAgent:   thresholds → NotifierDispatcher
                      DockerAgent:  container state changes → NotifierDispatcher (30s interval)
                      FileAgent:    large files / directory growth (5min interval)
+                     QdrantAgent:  embed decision N-1 → upsert Qdrant; search similar → lastSimilar (opt-in, 15s)
                                      ↓
                          memory.State (state.json)       ← max 20 snapshots / 20 cycles (source of truth + cycle counter)
                          memory.SQLiteStore (jarvinx.db) ← unlimited, active if JARVINX_SQLITE_PATH set
@@ -134,9 +139,19 @@ Scheduler → tools.Observe() → Bus(EventObserved)
 
 **Orchestrator execute cycle** — The Orchestrator reads `LastCycles(1)` on each tick and executes the command from the **previous** cycle's LLM decision (N-1 pattern). This is intentional: observe and act are decoupled across cycles so the LLM never blocks the metrics pipeline. An `executeGuard` (default cooldown: 5min, configurable via `JARVINX_EXEC_COOLDOWN`) prevents the same command from re-running on consecutive cycles.
 
+**Orchestrator + SimilarDecisions (v1.8)** — `AgentContext()` reads `LastSimilarDecisions()` from the optional `SimilarDecisionsProvider` (set via `SetSimilarDecisionsProvider()`) and injects the result into `AgentContext.SimilarDecisions`. When Qdrant is not configured, `similarProvider` is nil and the field is nil — zero behavioral change.
+
 ### Agent Pattern
 
-All agents implement the `Agent` interface (`agents/agent.go`). Embed `BaseAgent` for common state (lastRun, errorCount, enabled flag, RWMutex). `Run()` receives an `AgentContext` with snapshot, state, and logger. The Registry runs each agent in its own goroutine and isolates panics — a crashing agent is disabled, not fatal.
+All agents implement the `Agent` interface (`agents/agent.go`). Embed `BaseAgent` for common state (lastRun, errorCount, enabled flag, RWMutex). `Run()` receives an `AgentContext` with snapshot, state, logger, and `SimilarDecisions`. The Registry runs each agent in its own goroutine and isolates panics — a crashing agent is disabled, not fatal.
+
+`AgentContext` fields:
+- `Snapshot memory.Snapshot` — current cycle metrics
+- `State memory.Store` — full history access
+- `Logger memory.EventLog` — write to logs.jsonl
+- `SimilarDecisions []string` — past similar decisions from Qdrant (v1.8); nil when Qdrant is not configured
+
+`SimilarDecisionsProvider` interface (`agents/agent.go`) — implemented by `QdrantAgent`. Decouples the Orchestrator from the concrete agent type.
 
 To add a new agent: implement `Agent`, register in `core/runtime.go` via `registry.Register()`.
 
@@ -150,7 +165,9 @@ To add a new agent: implement `Agent`, register in `core/runtime.go` via `regist
 
 `OllamaClient` sends system + user prompts with retry (`DefaultRetryConfig`). The JSON parser (`parser.go`) strips markdown backticks, extracts embedded JSON from surrounding text, and falls back to a safe default decision on failure. Valid `action` values: `"log"`, `"alert"`, `"suggest"`, `"execute"`. The `ParseResult` struct exposes `Raw`, `Attempts`, and `Cleaned` for debugging.
 
-`BuildAdaptiveContext()` (`context_builder.go`) analyzes recent cycles and snapshots to produce CPU/RAM/Disk trend strings (`stable`, `rising`, `high`, `falling`) and alert rate. `BuildAdaptiveSystemPrompt()` appends this context to the base system prompt, making the LLM aware of historical patterns.
+`BuildAdaptiveContext()` (`context_builder.go`) analyzes recent cycles and snapshots to produce CPU/RAM/Disk trend strings (`stable`, `rising`, `high`, `falling`) and alert rate. If `SimilarDecisions` is non-nil, `BuildAdaptiveSystemPrompt()` appends a "Décisions similaires dans l'historique" section to the prompt. When Qdrant is disabled the field is nil and the section is omitted — fully backward-compatible.
+
+`OllamaEmbedder` (`embedder.go`) — POST `/api/embeddings`, 30s timeout, own `CircuitBreaker` (independent of `OllamaClient`'s breaker). Used exclusively by `QdrantAgent`.
 
 A `CircuitBreaker` (`circuit_breaker.go`) wraps all Ollama calls: after `maxFailures` consecutive errors it opens (blocks calls, returns `ErrCircuitOpen`), then transitions to half-open after `resetTimeout` to probe recovery. The current state is exposed via `GET /api/status` as `circuit_state`.
 
@@ -197,3 +214,6 @@ Commands run directly (no `sh -c`). Exact whitelist: `docker ps`, `docker stats`
 - Alert cooldown and minimum consecutive-cycle logic live in `AlertAgent` — changes there affect alert frequency directly.
 - State is capped at **20 snapshots** and **20 cycles** in memory (JSON State); older entries are dropped silently. When `SQLiteStore` is active (`JARVINX_SQLITE_PATH`), reads are served from SQLite (unlimited history) — JSON State remains the write-ahead source of truth and cycle counter.
 - `DockerAgent` gracefully skips cycles when Docker is not available (`tools.DockerAvailable()` check). `FileAgent` is a no-op when `FileWatchPaths` is empty.
+- `QdrantAgent` is **fail-silent** on every error (embedding, upsert, search, collection init). Two independent circuit breakers: one in `OllamaEmbedder` (Ollama calls), one `qdrantCircuit` (all Qdrant HTTP calls). Both default to 3 failures → open, 30s reset. The main 15s cycle is never blocked.
+- `QdrantAgent` collection init uses `collReady bool + sync.Mutex` instead of `sync.Once` — deliberately retried each cycle until first success, to recover from Qdrant being down at startup.
+- `SimilarDecisions` follows the N-1 pattern: `QdrantAgent` searches at cycle N and stores results; the Orchestrator injects them into `AgentContext` at cycle N+1 when building the context for `SystemAgent`.

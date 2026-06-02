@@ -30,7 +30,7 @@ jarvinx/
 ├── cmd/        Point d'entrée unique — config + boot
 ├── core/       Runtime, bus, scheduler, orchestrator, CLI
 ├── agents/     Interface Agent, Registry, agents concrets
-├── llm/        Client Ollama, parser JSON, prompt builder
+├── llm/        Client Ollama, parser JSON, prompt builder, embedder (v1.8), circuit breaker
 ├── memory/     Store + EventLog interfaces, state.json, SQLiteStore (historique illimité), DoubleWriteStore, logger JSONL
 ├── tools/      Métriques système, exécuteur shell whitelist
 ├── web/        HTTP server, embed.FS, API REST
@@ -254,11 +254,26 @@ Passé à `Run()` à chaque cycle, contient tout ce dont un agent peut avoir bes
 
 ```go
 type AgentContext struct {
-    Snapshot memory.Snapshot   // Métriques du cycle courant
-    State    *memory.State     // Accès à l'historique complet
-    Logger   *memory.Logger    // Pour écrire dans logs.jsonl
+    Snapshot         memory.Snapshot // Métriques du cycle courant
+    State            memory.Store    // Accès à l'historique complet
+    Logger           memory.EventLog // Pour écrire dans logs.jsonl
+    SimilarDecisions []string        // Décisions passées similaires (Qdrant v1.8) — nil si désactivé
 }
 ```
+
+`SimilarDecisions` est peuplé par `QdrantAgent` via l'interface `SimilarDecisionsProvider` et injecté par l'Orchestrateur à chaque cycle. Quand Qdrant n'est pas configuré, la slice est `nil` et le comportement est identique aux versions précédentes.
+
+### `SimilarDecisionsProvider`
+
+Interface implémentée par `QdrantAgent` et lue par l'Orchestrateur :
+
+```go
+type SimilarDecisionsProvider interface {
+    LastSimilarDecisions() []string
+}
+```
+
+L'Orchestrateur stocke une référence optionnelle via `SetSimilarDecisionsProvider()`, appelé dans `runtime.go` quand `JARVINX_QDRANT_URL` est défini. Découplage total : l'Orchestrateur ne connaît pas `QdrantAgent` directement.
 
 ### `Registry`
 
@@ -359,6 +374,45 @@ func (n *MyNotifier) Send(a Alert) error { /* ... */ return nil }
 dispatcher.Register(&MyNotifier{})
 ```
 
+### QdrantAgent (`agents/qdrant_agent.go`) — v1.8
+
+Mémoire sémantique opt-in — actif seulement si `JARVINX_QDRANT_URL` est défini.
+Schedule : 15s. Implémente `SimilarDecisionsProvider`.
+
+**Pattern N-1 — deux phases par cycle :**
+
+1. **`storeDecision()`** — lit `LastCycles(1)`, embeddise `"[action] analysis. reason"` via Ollama, upserte dans Qdrant avec payload complet (`action`, `analysis`, `reason`, `confidence`, `cycle_num`, `trigger_*`, `timestamp`). Point ID = `CycleNum` (uint64).
+
+2. **`updateSimilarDecisions()`** — embeddise le snapshot courant (`"[observe] CPU:X% RAM:Y% Disk:Z%."`) et interroge Qdrant (`/points/search`, top-3). Filtre les résultats sous le seuil cosine `0.6`. Stocke dans `lastSimilar` → lu par l'Orchestrateur au prochain cycle.
+
+**Deux circuit breakers indépendants :**
+
+| CB | Cible | Seuil |
+|---|---|---|
+| Interne à `OllamaEmbedder` | Appels Ollama `/api/embeddings` | 3 échecs → open 30s |
+| `qdrantCircuit` | Appels Qdrant HTTP (check/create/upsert/search) | 3 échecs → open 30s |
+
+**Fail-silent partout :** toute erreur (embedding, réseau, CB ouvert) est loguée en WARN et le cycle continue — `recordSuccess()` est toujours appelé, `Run()` retourne toujours `nil`.
+
+**Initialisation collection (`ensureCollectionOnce`) :**
+
+Contrairement à `sync.Once`, la création de la collection Qdrant (`jarvinx_decisions`, distance Cosine) est retentée à chaque cycle jusqu'au premier succès. `collReady bool` (protégé par `collMu`) remplace `sync.Once` + `initErr` pour permettre la récupération après une panne Qdrant au démarrage.
+
+**Câblage dans runtime.go :**
+
+```go
+// opt-in : qdrantAgent est nil si JARVINX_QDRANT_URL est vide
+var qdrantAgent *agents.QdrantAgent
+if cfg.QdrantURL != "" {
+    qdrantAgent = agents.NewQdrantAgent(cfg.QdrantURL, cfg.OllamaURL, cfg.EmbedModel)
+    registry.Register(qdrantAgent)
+}
+orchestrator := NewOrchestrator(...)
+if qdrantAgent != nil {
+    orchestrator.SetSimilarDecisionsProvider(qdrantAgent)
+}
+```
+
 ### DailyReporter (`agents/daily_report.go`)
 
 Goroutine indépendante — tick toutes les minutes, envoie à l'heure configurée.
@@ -373,9 +427,24 @@ Activé via `JARVINX_DAILY_REPORT=true`.
 - Taux d'alerte (%)
 - Tendances CPU/RAM/Disk via `trendWithThreshold(threshold)` — les seuils réels de config remplacent les valeurs hardcodées
 - Dernières alertes déclenchées
+- `SimilarDecisions []string` — décisions passées similaires issues de Qdrant (v1.8), `nil` si désactivé
 
-`BuildAdaptiveSystemPrompt(base, ctx)` enrichit le system prompt avec ce contexte.
+`BuildAdaptiveSystemPrompt(base, ctx)` enrichit le system prompt avec ce contexte, y compris la section "Décisions similaires dans l'historique" quand `SimilarDecisions` est non vide.
 Utilisé automatiquement par `SystemAgent` — aucune config requise.
+
+### Embedder Ollama (`llm/embedder.go`) — v1.8
+
+```go
+type OllamaEmbedder struct { /* baseURL, model, httpClient, circuit */ }
+
+func NewOllamaEmbedder(baseURL, model string) *OllamaEmbedder
+func (e *OllamaEmbedder) Embed(ctx context.Context, text string) ([]float32, error)
+```
+
+- POST `/api/embeddings` avec `{"model": "...", "prompt": "..."}`
+- Timeout : 30s — distinct des 90s du client chat
+- Circuit breaker propre (3 échecs → open 30s), indépendant de `OllamaClient`
+- Retourne `ErrCircuitOpen` si le circuit est ouvert — immédiat, sans attendre le timeout
 
 `BuildSystemPrompt(cpuT, ramT, diskT float64, goos string)` — depuis v1.6, le system prompt est dynamique :
 - Les seuils d'alerte reflètent la config réelle (plus de `CPU >85%` hardcodé)
@@ -866,9 +935,19 @@ Pattern utilisé : construction d'un `AlertAgent` avec des seuils bas (10%) pour
 
 Couvre : register + get, enable/disable, agent skippé si désactivé, isolation panic.
 
+#### `agents/qdrant_agent_test.go` — 8 tests QdrantAgent (v1.8)
+
+Couvre : skip sans décision, fail-silent embed error, embed+upsert end-to-end (mock Ollama + mock Qdrant), recherche sémantique + filtrage score, search ignoré si collection non prête, retry init collection (panne → recovery), circuit breaker Qdrant (ouverture après 3 échecs + réponse immédiate).
+
+Pattern utilisé : `httptest.Server` pour Ollama et Qdrant, `atomic.Int32` pour les mocks à état (panne puis recovery).
+
 #### `llm/parser_test.go` — 8 tests Parser
 
 Couvre : JSON direct, JSON avec backticks markdown, action uppercase, champs manquants, JSON malformé, fallback.
+
+#### `llm/embedder_test.go` — 4 tests OllamaEmbedder (v1.8)
+
+Couvre : embedding réussi (vecteur exact), erreur serveur (fail), embedding vide (fail), circuit breaker (open après 3 échecs 500).
 
 ### Écrire un test pour ton agent
 

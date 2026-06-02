@@ -1,6 +1,6 @@
-# JARVINx — Manuel Utilisateur
+﻿# JARVINx — Manuel Utilisateur
 
-> Version 1.6 | Pour les questions : ouvre une issue sur [GitHub](https://github.com/Inkeki9/JARVINx)
+> Version 1.8 | Pour les questions : ouvre une issue sur [GitHub](https://github.com/Inkeki9/JARVINx)
 
 ---
 
@@ -174,6 +174,12 @@ JARVINX_EXEC_COOLDOWN=5m
 # === SQLite store (optionnel) ===
 # Active l'historique illimité. Laisser vide pour rester en mode JSON seul (comportement inchangé).
 # JARVINX_SQLITE_PATH=jarvinx.db
+
+# === Mémoire sémantique Qdrant (optionnel — v1.8) ===
+# Active le RAG : JARVINx vectorise chaque décision LLM et retrouve les décisions passées similaires.
+# Nécessite Qdrant local + nomic-embed-text dans Ollama (voir section dédiée ci-dessous).
+# JARVINX_QDRANT_URL=http://localhost:6333
+# JARVINX_EMBED_MODEL=nomic-embed-text
 ```
 
 Aucune recompilation nécessaire. Les valeurs invalides sont ignorées avec un warning.
@@ -592,6 +598,65 @@ Le système évite les alertes en rafale :
 - **CPU / RAM** : alerte seulement après N cycles consécutifs au-dessus du seuil (défaut : 2). Un pic isolé ne déclenche pas d'alerte.
 - **Cooldown** : minimum 5 cycles (75s) entre deux alertes sur la même métrique, même si le seuil reste dépassé.
 - **Reset** : dès que la métrique repasse sous le seuil, le compteur de cycles repart à zéro.
+
+---
+
+## Mémoire sémantique (Qdrant — v1.8)
+
+> Fonctionnalité opt-in. JARVINx fonctionne normalement sans elle.
+
+### Qu'est-ce que c'est ?
+
+Quand Qdrant est activé, JARVINx **apprend de ses propres décisions passées** :
+
+1. À chaque cycle, la décision LLM (`"[log] CPU stable. no anomaly."`) est vectorisée via Ollama et stockée dans Qdrant.
+2. Au cycle suivant, JARVINx interroge Qdrant pour trouver les 3 décisions passées les plus proches du contexte actuel.
+3. Ces décisions sont injectées dans le prompt LLM — le modèle peut ainsi s'appuyer sur ce qu'il a décidé dans des situations similaires.
+
+### Prérequis
+
+**1. Lancer Qdrant en local :**
+
+```bash
+docker run -d --name qdrant -p 6333:6333 qdrant/qdrant
+```
+
+**2. Puller le modèle d'embedding dans Ollama :**
+
+```bash
+ollama pull nomic-embed-text
+```
+
+> `nomic-embed-text` est un modèle léger (~274 MB) optimisé pour les embeddings. Il tourne en parallèle du modèle de décision et ne l'interfère pas.
+
+### Activation
+
+Ajoute dans ton `runtime/.env` :
+
+```env
+JARVINX_QDRANT_URL=http://localhost:6333
+JARVINX_EMBED_MODEL=nomic-embed-text
+```
+
+Au démarrage, tu verras :
+
+```
+[ REGISTRY ] Agent enregistré : qdrant (schedule: 15s)
+[ QDRANT   ] mémoire sémantique activée : http://localhost:6333
+```
+
+La collection `jarvinx_decisions` est créée automatiquement au premier cycle réussi.
+
+### Comportement fail-silent
+
+Si Qdrant ou Ollama embedding est indisponible, JARVINx **continue de fonctionner normalement** sans mémoire sémantique. Les erreurs sont loguées en WARN mais n'interrompent jamais le cycle de 15s. Deux circuit breakers indépendants (Ollama embedding, Qdrant HTTP) s'ouvrent après 3 échecs consécutifs et se referment automatiquement après 30s.
+
+### Variables de configuration
+
+| Variable               | Description                              | Défaut             |
+| ---------------------- | ---------------------------------------- | ------------------ |
+| `JARVINX_QDRANT_URL`   | URL Qdrant — active la mémoire sémantique | — (opt-in)         |
+| `JARVINX_EMBED_MODEL`  | Modèle Ollama pour les embeddings        | `nomic-embed-text` |
 
 ---
 

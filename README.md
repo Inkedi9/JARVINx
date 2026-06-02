@@ -7,7 +7,7 @@
 ██   ██║██╔══██║██╔══██╗╚██╗ ██╔╝██║██║╚██╗██║ ██╔██╗
 ╚█████╔╝██║  ██║██║  ██║ ╚████╔╝ ██║██║ ╚████║██╔╝ ██╗
  ╚════╝ ╚═╝  ╚═╝╚═╝  ╚═╝  ╚═══╝  ╚═╝╚═╝  ╚═══╝╚═╝  ╚═╝
-Version 1.7.0
+Version 1.8.0
 ```
 
 **Autonomous AI Runtime · Observing. Thinking. Acting. Evolving.**
@@ -15,7 +15,7 @@ Version 1.7.0
 ![Go](https://img.shields.io/badge/Go-1.26.3-00ADD8?style=flat-square&logo=go&logoColor=white)
 ![Ollama](https://img.shields.io/badge/Ollama-local%20LLM-black?style=flat-square)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
-![Status](https://img.shields.io/badge/status-v1.7%20stable-00E5FF?style=flat-square)
+![Status](https://img.shields.io/badge/status-v1.8%20stable-00E5FF?style=flat-square)
 
 _Your system. My mission._
 
@@ -73,9 +73,10 @@ jarvinx/
 │   │   ├── alert_agent.go       # Seuils + NotifierDispatcher
 │   │   ├── docker_agent.go      # Surveillance containers (30s)
 │   │   ├── file_agent.go        # Surveillance fichiers lourds (5min)
+│   │   ├── qdrant_agent.go      # Mémoire sémantique — embed + upsert + search (opt-in v1.8)
 │   │   ├── daily_report.go      # Rapport quotidien (goroutine indépendante)
 │   │   └── notifier.go          # Discord / Slack / Ntfy / Gotify
-│   ├── llm/                     # Client Ollama, parser JSON, prompt adaptatif, circuit breaker
+│   ├── llm/                     # Client Ollama, parser JSON, prompt adaptatif, embedder, circuit breaker
 │   ├── memory/                  # Store/EventLog interfaces, state.json, SQLiteStore (historique illimité),
 │   │                            #   DoubleWriteStore, logs.jsonl / alerts.jsonl avec rotation
 │   ├── tools/                   # Métriques gopsutil, shell whitelist, Docker, filesystem
@@ -111,6 +112,9 @@ jarvinx/
 │                                 │                            │
 │                                 ├── FileAgent (5min)         │
 │                                 │   └── fichiers volumineux  │
+│                                 │                            │
+│                                 ├── QdrantAgent (15s)        │
+│                                 │   └── embed + RAG (opt-in) │
 │                                 │                            │
 │                                 └── Memory                   │
 │                                     ├── state.json           │
@@ -383,6 +387,9 @@ func Default() *Config {
 | `JARVINX_REPORT_HOUR`      | Heure d'envoi du rapport (0-23)            | `8`                      |
 | `JARVINX_REPORT_MINUTE`    | Minute d'envoi du rapport (0-59)           | `0`                      |
 | `JARVINX_EXEC_COOLDOWN`    | Cooldown entre deux exécutions identiques  | `5m`                     |
+| `JARVINX_SQLITE_PATH`      | Chemin SQLite (vide = JSON seul)           | —                        |
+| `JARVINX_QDRANT_URL`       | URL Qdrant — active la mémoire sémantique  | — (opt-in)               |
+| `JARVINX_EMBED_MODEL`      | Modèle Ollama pour les embeddings          | `nomic-embed-text`       |
 
 ---
 
@@ -639,13 +646,16 @@ JARVINx envoie des embeds Discord structurés quand un seuil est dépassé.
 - [x] **Phase 1 — SQLite double write** — `SQLiteStore` (historique illimité, WAL, pure Go via `modernc.org/sqlite`) ; `DoubleWriteStore` (JSON source de vérité + SQLite secondary fail-silencieux) ; `NoopStore` fallback ; config `JARVINX_SQLITE_PATH`
 - [x] **Phase 2 — Bascule lecture + Dashboard** — lecture depuis SQLite (`LastCycles(5760)` < 3s validé en CI) ; `GET /api/history/full?range=7d|30d|90d` avec agrégation SQL par bucket heure/6h/jour ; graphes CPU/RAM/Disk (Recharts AreaChart) + sélecteur période sur la page History
 
-## 🧠 V1.8 — Mémoire sémantique Qdrant
+## 🧠 V1.8 — Mémoire sémantique Qdrant ✅
 
 > Les décisions passées alimentent les décisions futures.
 
-- [ ] `QdrantAgent` dans le Registry — vectorise chaque décision LLM via Ollama embeddings
-- [ ] Contexte enrichi — décisions similaires passées injectées dans le prompt LLM
-- [ ] Activation opt-in via `JARVINX_QDRANT_URL` — runtime non impacté si absent
+- [x] `JARVINX_QDRANT_URL` config — Activation opt-in — `QdrantAgent` enregistré seulement si la var est définie
+- [x] `QdrantAgent` dans le Registry — vectorise chaque décision LLM via Ollama embeddings
+- [x] Embedding des décisions — Texte : `"[{action}] {analysis}. {reason}"` + metadata (confidence, triggers, CycleNum)
+- [x] CircuitBreaker embedding — Fail-silencieux si Ollama sous charge — le cycle 15s n'est jamais bloqué
+- [x] Contexte enrichi — décisions similaires passées injectées dans le prompt LLM via `SimilarDecisionsProvider`
+- [ ] Corrélation / patterns — Backlog non daté — à affiner quand le RAG tourne
 
 ### Vision v2.0 — Universal Agent Platform
 
