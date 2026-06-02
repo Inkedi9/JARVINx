@@ -47,7 +47,7 @@ func TestFileAgent_ScansExistingDir(t *testing.T) {
 
 	// Crée un fichier de 1KB
 	f, _ := os.CreateTemp(dir, "test-*.txt")
-	f.Write(make([]byte, 1024))
+	_, _ = f.Write(make([]byte, 1024))
 	f.Close()
 
 	a := NewFileAgent([]string{dir}, 500, false)
@@ -73,7 +73,7 @@ func TestFileAgent_DetectsLargeFile(t *testing.T) {
 
 	// Crée un fichier de 2MB
 	f, _ := os.CreateTemp(dir, "large-*.bin")
-	f.Write(make([]byte, 2*1024*1024))
+	_, _ = f.Write(make([]byte, 2*1024*1024))
 	f.Close()
 
 	// Seuil à 1MB pour déclencher l'alerte
@@ -114,7 +114,7 @@ func TestFileAgent_DryRunMode(t *testing.T) {
 	dir := t.TempDir()
 
 	f, _ := os.CreateTemp(dir, "large-*.bin")
-	f.Write(make([]byte, 2*1024*1024))
+	_, _ = f.Write(make([]byte, 2*1024*1024))
 	f.Close()
 
 	// dry-run = true

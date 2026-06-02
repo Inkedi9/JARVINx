@@ -33,7 +33,7 @@ func TestDailyReporter_BuildReportWithData(t *testing.T) {
 		if i%3 == 0 {
 			action = "alert"
 		}
-		state.AddCycle(memory.NewCycleRecord(
+		_ = state.AddCycle(memory.NewCycleRecord(
 			memory.Snapshot{
 				Timestamp:   time.Now(),
 				CPUPercent:  float64(20 + i),
@@ -108,7 +108,7 @@ func TestDailyReporter_SendDispatchesAlert(t *testing.T) {
 	dispatcher.Register(n)
 
 	state := memory.NewState("")
-	state.AddCycle(memory.NewCycleRecord(
+	_ = state.AddCycle(memory.NewCycleRecord(
 		memory.Snapshot{Timestamp: time.Now(), CPUPercent: 10},
 		"log", "ok", "", "",
 	))

@@ -67,7 +67,7 @@ func TestLogger_MaxBackups(t *testing.T) {
 	entry := makeEntry()
 	// Force plusieurs rotations
 	for i := 0; i < 100; i++ {
-		l.Write(entry)
+		_ = l.Write(entry)
 	}
 
 	// backup .3 ne doit pas exister (max = 2)
@@ -108,7 +108,7 @@ func TestLogger_Size(t *testing.T) {
 		t.Error("expected size 0 for non-existent file")
 	}
 
-	l.Write(makeEntry())
+	_ = l.Write(makeEntry())
 
 	if l.Size() == 0 {
 		t.Error("expected non-zero size after write")
@@ -122,7 +122,7 @@ func TestLogger_ConcurrentWrites(t *testing.T) {
 	done := make(chan struct{}, 10)
 	for i := 0; i < 10; i++ {
 		go func() {
-			l.Write(makeEntry())
+			_ = l.Write(makeEntry())
 			done <- struct{}{}
 		}()
 	}
@@ -155,7 +155,7 @@ func TestLogger_Status_WithFile(t *testing.T) {
 	path := t.TempDir() + "/test.jsonl"
 	l := NewLoggerWithRotation(path, 10*1024*1024, 3)
 
-	l.Write(makeEntry())
+	_ = l.Write(makeEntry())
 
 	status := l.Status()
 
@@ -178,7 +178,7 @@ func TestLogger_Status_BackupCount(t *testing.T) {
 	// Force plusieurs rotations
 	entry := makeEntry()
 	for i := 0; i < 50; i++ {
-		l.Write(entry)
+		_ = l.Write(entry)
 	}
 
 	status := l.Status()
