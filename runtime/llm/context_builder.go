@@ -64,34 +64,34 @@ func BuildAdaptiveSystemPrompt(base string, ctx AdaptiveContext) string {
 	var sb strings.Builder
 	sb.WriteString(base)
 	sb.WriteString("\n\n--- CONTEXTE ADAPTATIF ---\n")
-	sb.WriteString(fmt.Sprintf("Analyse basée sur %d cycles récents.\n", ctx.CycleCount))
+	_, _ = fmt.Fprintf(&sb, "Analyse basée sur %d cycles récents.\n", ctx.CycleCount)
 
 	// Tendance dominante
 	if ctx.DominantAction != "" {
-		sb.WriteString(fmt.Sprintf("Action dominante : %s\n", ctx.DominantAction))
+		_, _ = fmt.Fprintf(&sb, "Action dominante : %s\n", ctx.DominantAction)
 	}
 
 	// Taux d'alerte
 	if ctx.AlertRate > 20 {
-		sb.WriteString(fmt.Sprintf(
+		_, _ = fmt.Fprintf(&sb,
 			"⚠ Taux d'alerte élevé : %.0f%% des cycles — sois particulièrement vigilant.\n",
 			ctx.AlertRate,
-		))
+		)
 	} else if ctx.AlertRate == 0 {
 		sb.WriteString("✓ Système stable — aucune alerte récente.\n")
 	}
 
 	// Tendances métriques
 	sb.WriteString("\nTendances observées :\n")
-	sb.WriteString(fmt.Sprintf("  CPU  : %s\n", ctx.CPUTrend))
-	sb.WriteString(fmt.Sprintf("  RAM  : %s\n", ctx.RAMTrend))
-	sb.WriteString(fmt.Sprintf("  Disk : %s\n", ctx.DiskTrend))
+	_, _ = fmt.Fprintf(&sb, "  CPU  : %s\n", ctx.CPUTrend)
+	_, _ = fmt.Fprintf(&sb, "  RAM  : %s\n", ctx.RAMTrend)
+	_, _ = fmt.Fprintf(&sb, "  Disk : %s\n", ctx.DiskTrend)
 
 	// Alertes récentes
 	if len(ctx.RecentAlerts) > 0 {
 		sb.WriteString("\nDernières alertes :\n")
 		for _, a := range ctx.RecentAlerts {
-			sb.WriteString(fmt.Sprintf("  - %s\n", a))
+			_, _ = fmt.Fprintf(&sb, "  - %s\n", a)
 		}
 	}
 

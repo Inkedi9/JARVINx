@@ -110,7 +110,7 @@ func (n *DiscordNotifier) Send(alert Alert) error {
 	if err != nil {
 		return fmt.Errorf("post: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusNoContent {
 		return fmt.Errorf("discord status: %d", resp.StatusCode)
@@ -161,7 +161,7 @@ func (n *SlackNotifier) Send(alert Alert) error {
 	if err != nil {
 		return fmt.Errorf("post: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("slack status: %d", resp.StatusCode)
@@ -209,7 +209,7 @@ func (n *NtfyNotifier) Send(alert Alert) error {
 	if err != nil {
 		return fmt.Errorf("post: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("ntfy status: %d", resp.StatusCode)
@@ -259,7 +259,7 @@ func (n *GotifyNotifier) Send(alert Alert) error {
 	if err != nil {
 		return fmt.Errorf("post: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("gotify status: %d", resp.StatusCode)

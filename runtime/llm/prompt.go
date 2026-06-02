@@ -8,7 +8,7 @@ import (
 func BuildSystemPrompt(cpuThreshold, ramThreshold, diskThreshold float64, goos string) string {
 	var sb strings.Builder
 
-	sb.WriteString(fmt.Sprintf(`Tu es JARVINx, un agent de monitoring système autonome.
+	_, _ = fmt.Fprintf(&sb, `Tu es JARVINx, un agent de monitoring système autonome.
 Tu reçois l'état actuel d'un système ainsi que son historique récent.
 Tu retournes UNIQUEMENT un objet JSON valide.
 Aucun texte avant ou après le JSON. Aucun markdown. Aucun backtick.
@@ -34,7 +34,7 @@ Commands autorisées :
 - "uptime"
 - "df -h"
 - "free -h"
-`, cpuThreshold, ramThreshold, diskThreshold))
+`, cpuThreshold, ramThreshold, diskThreshold)
 
 	if goos == "windows" {
 		sb.WriteString(`
@@ -64,17 +64,17 @@ func BuildUserPrompt(ctx SystemContext) string {
 	if len(ctx.History) > 0 {
 		sb.WriteString("Historique des observations récentes :\n")
 		for _, snap := range ctx.History {
-			sb.WriteString(fmt.Sprintf("  %s → CPU: %.1f%% | RAM: %.1f%% | Disk: %.1f%%\n",
+			_, _ = fmt.Fprintf(&sb, "  %s → CPU: %.1f%% | RAM: %.1f%% | Disk: %.1f%%\n",
 				snap.Timestamp.Format("15:04:05"),
 				snap.CPUPercent,
 				snap.MemPercent,
 				snap.DiskPercent,
-			))
+			)
 		}
 		sb.WriteString("\n")
 	}
 
-	sb.WriteString(fmt.Sprintf(
+	_, _ = fmt.Fprintf(&sb,
 		`Observation actuelle à %s :
 - CPU    : %.1f%%
 - RAM    : %d MB / %d MB (%.1f%%)
@@ -85,7 +85,7 @@ Analyse les tendances et retourne ta décision JSON.`,
 		ctx.CPUPercent,
 		ctx.MemUsed, ctx.MemTotal, ctx.MemPercent,
 		ctx.DiskUsed, ctx.DiskTotal, ctx.DiskPercent,
-	))
+	)
 
 	return sb.String()
 }
