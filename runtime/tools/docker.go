@@ -37,7 +37,7 @@ func DockerAvailable() bool {
 	if err != nil {
 		return false
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	return resp.StatusCode == http.StatusOK
 }
 
@@ -55,7 +55,7 @@ func ListContainers(ctx context.Context) ([]ContainerState, error) {
 	if err != nil {
 		return nil, fmt.Errorf("docker request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("docker status: %d", resp.StatusCode)

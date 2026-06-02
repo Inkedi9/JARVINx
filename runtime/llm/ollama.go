@@ -90,7 +90,7 @@ func (c *OllamaClient) Think(ctx context.Context, systemPrompt, userPrompt strin
 	if err != nil {
 		return "", fmt.Errorf("ollama request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return "", fmt.Errorf("ollama status: %d", resp.StatusCode)

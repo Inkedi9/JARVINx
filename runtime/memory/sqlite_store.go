@@ -156,7 +156,7 @@ func (s *SQLiteStore) Last(n int) []Snapshot {
 	if err != nil {
 		return nil
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	snaps := make([]Snapshot, 0, n)
 	for rows.Next() {
@@ -188,7 +188,7 @@ func (s *SQLiteStore) LastCycles(n int) []CycleRecord {
 	if err != nil {
 		return nil
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	cycles := make([]CycleRecord, 0, n)
 	for rows.Next() {

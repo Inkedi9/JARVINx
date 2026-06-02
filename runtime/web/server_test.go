@@ -388,7 +388,7 @@ func TestHandleDailyReportSend_NoReporter(t *testing.T) {
 	srv.handleDailyReportSend(w, req)
 
 	var resp SendReportResponse
-	json.NewDecoder(w.Body).Decode(&resp)
+	_ = json.NewDecoder(w.Body).Decode(&resp)
 	if resp.Sent {
 		t.Error("expected sent=false when no reporter configured")
 	}

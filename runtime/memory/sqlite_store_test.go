@@ -11,7 +11,7 @@ func openTestSQLite(t *testing.T) *SQLiteStore {
 	if err != nil {
 		t.Fatalf("OpenSQLiteStore: %v", err)
 	}
-	t.Cleanup(func() { s.Close() })
+	t.Cleanup(func() { _ = s.Close() })
 	return s
 }
 
@@ -128,13 +128,13 @@ func TestSQLiteStore_PersistsCycleNum(t *testing.T) {
 	for range 5 {
 		_ = s1.AddCycle(NewCycleRecord(Snapshot{Timestamp: time.Now()}, "log", "", "", ""))
 	}
-	s1.Close()
+	_ = s1.Close()
 
 	s2, err := OpenSQLiteStore(path)
 	if err != nil {
 		t.Fatalf("second open: %v", err)
 	}
-	defer s2.Close()
+	defer func() { _ = s2.Close() }()
 
 	if s2.CurrentCycle() != 5 {
 		t.Errorf("persisted CycleNum: want 5, got %d", s2.CurrentCycle())

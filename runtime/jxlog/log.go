@@ -32,7 +32,8 @@ func emit(level slog.Level, tag, msg string, args ...any) {
 	if Log == nil {
 		return
 	}
-	attrs := []any{slog.String("tag", ColorTag(tag))}
+	attrs := make([]any, 0, 1+len(args))
+	attrs = append(attrs, slog.String("tag", ColorTag(tag)))
 	attrs = append(attrs, args...)
 	Log.Log(context.Background(), level, msg, attrs...)
 }
