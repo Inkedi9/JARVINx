@@ -208,4 +208,7 @@ func (c *Config) FromEnv() {
 	if v := os.Getenv("JARVINX_QDRANT_URL"); v != "" {
 		c.QdrantURL = v
 	}
+	if v := os.Getenv("JARVINX_EMBED_MODEL"); v != "" {
+		c.EmbedModel = v
+	}
 }

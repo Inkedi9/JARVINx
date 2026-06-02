@@ -105,7 +105,7 @@ func NewRuntime(cfg *config.Config, version string) *Runtime {
 
 	// QdrantAgent — v1.8 — enregistré seulement si JARVINX_QDRANT_URL est défini
 	if cfg.QdrantURL != "" {
-		registry.Register(agents.NewQdrantAgent(cfg.QdrantURL, cfg.OllamaURL))
+		registry.Register(agents.NewQdrantAgent(cfg.QdrantURL, cfg.OllamaURL, cfg.EmbedModel))
 		jxlog.Info("QDRANT", fmt.Sprintf("mémoire sémantique activée : %s", cfg.QdrantURL))
 	}
 

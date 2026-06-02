@@ -217,7 +217,7 @@ func TestIntegration_QdrantRegistration(t *testing.T) {
 		cfg := makeIntegrationConfig("http://localhost:11434")
 		// cfg.QdrantURL vide par défaut
 		if cfg.QdrantURL != "" {
-			r.Register(agents.NewQdrantAgent(cfg.QdrantURL, cfg.OllamaURL))
+			r.Register(agents.NewQdrantAgent(cfg.QdrantURL, cfg.OllamaURL, cfg.EmbedModel))
 		}
 		if _, ok := r.Get("qdrant"); ok {
 			t.Error("QdrantAgent ne doit pas être enregistré quand QdrantURL est vide")
@@ -229,7 +229,7 @@ func TestIntegration_QdrantRegistration(t *testing.T) {
 		cfg := makeIntegrationConfig("http://localhost:11434")
 		cfg.QdrantURL = "http://localhost:6333"
 		if cfg.QdrantURL != "" {
-			r.Register(agents.NewQdrantAgent(cfg.QdrantURL, cfg.OllamaURL))
+			r.Register(agents.NewQdrantAgent(cfg.QdrantURL, cfg.OllamaURL, cfg.EmbedModel))
 		}
 		if _, ok := r.Get("qdrant"); !ok {
 			t.Error("QdrantAgent doit être enregistré quand QdrantURL est défini")

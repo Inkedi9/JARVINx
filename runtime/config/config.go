@@ -68,7 +68,8 @@ type Config struct {
 	ExecCooldown time.Duration
 
 	// Qdrant — mémoire sémantique (v1.8) — vide = désactivé
-	QdrantURL string
+	QdrantURL  string
+	EmbedModel string // modèle Ollama pour les embeddings
 }
 
 func Default() *Config {
@@ -107,5 +108,6 @@ func Default() *Config {
 		DailyReportHour:    8,
 		DailyReportMinute:  0,
 		ExecCooldown:       5 * time.Minute,
+		EmbedModel:         "nomic-embed-text",
 	}
 }
