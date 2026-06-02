@@ -530,11 +530,11 @@ JARVINx envoie des embeds Discord structurés quand un seuil est dépassé.
 
 ## Fichiers générés
 
-| Fichier        | Format       | Description                                                 |
-| -------------- | ------------ | ----------------------------------------------------------- |
-| `state.json`   | JSON indenté | Historique cycles + snapshots — persiste entre redémarrages (20 derniers) |
-| `logs.jsonl`   | JSONL        | Une ligne par observation                                                  |
-| `alerts.jsonl` | JSONL        | Historique de toutes les alertes déclenchées                               |
+| Fichier        | Format       | Description                                                                 |
+| -------------- | ------------ | --------------------------------------------------------------------------- |
+| `state.json`   | JSON indenté | Historique cycles + snapshots — persiste entre redémarrages (20 derniers)   |
+| `logs.jsonl`   | JSONL        | Une ligne par observation                                                   |
+| `alerts.jsonl` | JSONL        | Historique de toutes les alertes déclenchées                                |
 | `jarvinx.db`   | SQLite       | Historique illimité (snapshots + cycles) — activé via `JARVINX_SQLITE_PATH` |
 
 ---
@@ -655,7 +655,7 @@ JARVINx envoie des embeds Discord structurés quand un seuil est dépassé.
 - [x] Embedding des décisions — Texte : `"[{action}] {analysis}. {reason}"` + metadata (confidence, triggers, CycleNum)
 - [x] CircuitBreaker embedding — Fail-silencieux si Ollama sous charge — le cycle 15s n'est jamais bloqué
 - [x] Contexte enrichi — décisions similaires passées injectées dans le prompt LLM via `SimilarDecisionsProvider`
-- [ ] Corrélation / patterns — Backlog non daté — à affiner quand le RAG tourne
+- [x] Corrélation / patterns — Backlog non daté — à affiner quand le RAG tourne
 
 ### Vision v2.0 — Universal Agent Platform
 
