@@ -1,22 +1,22 @@
-linters:
-  enable:
-    - errcheck # variables d'erreur ignorées
-    - gosimple # simplifications Go idiomatiques
-    - govet # erreurs de compilation détectées par vet
-    - ineffassign # assignations inutiles
-    - staticcheck # analyse statique avancée
-    - unused # code mort
-    - gofmt # formatage standard
-    - goimports # imports non triés ou manquants
-    - misspell # fautes d'orthographe dans les commentaires
-    - prealloc # slices à pré-allouer
+version: "2"
 
-linters-settings:
-  errcheck:
-    check-type-assertions: true
-  govet:
-    enable:
-      - shadow # variables qui masquent une variable parente
+linters:
+  default: none
+  enable:
+    - errcheck
+    - govet
+    - ineffassign
+    - staticcheck
+    - gofmt
+    - goimports
+    - misspell
+    - prealloc
+  settings:
+    errcheck:
+      check-type-assertions: true
+    govet:
+      enable:
+        - shadow
 
 issues:
   exclude-rules:
