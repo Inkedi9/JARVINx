@@ -112,7 +112,7 @@ func TestDiscordNotifier_Send(t *testing.T) {
 		}
 
 		var payload map[string]any
-		json.NewDecoder(r.Body).Decode(&payload)
+		_ = json.NewDecoder(r.Body).Decode(&payload)
 
 		if _, ok := payload["embeds"]; !ok {
 			t.Error("expected embeds in Discord payload")
@@ -147,7 +147,7 @@ func TestSlackNotifier_Name(t *testing.T) {
 func TestSlackNotifier_Send(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var payload map[string]any
-		json.NewDecoder(r.Body).Decode(&payload)
+		_ = json.NewDecoder(r.Body).Decode(&payload)
 
 		if _, ok := payload["text"]; !ok {
 			t.Error("expected text in Slack payload")
@@ -216,7 +216,7 @@ func TestGotifyNotifier_Name(t *testing.T) {
 func TestGotifyNotifier_Send(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var payload map[string]any
-		json.NewDecoder(r.Body).Decode(&payload)
+		_ = json.NewDecoder(r.Body).Decode(&payload)
 
 		if _, ok := payload["title"]; !ok {
 			t.Error("expected title in Gotify payload")

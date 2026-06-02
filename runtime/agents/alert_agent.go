@@ -182,7 +182,7 @@ func (a *AlertAgent) logAlert(alert Alert) {
 		jxlog.Error("ALERT", fmt.Sprintf("Log open failed: %v", err))
 		return
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	if err := json.NewEncoder(file).Encode(alert); err != nil {
 		jxlog.Error("ALERT", fmt.Sprintf("Log encode failed: %v", err))
