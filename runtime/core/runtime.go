@@ -104,13 +104,18 @@ func NewRuntime(cfg *config.Config, version string) *Runtime {
 	}
 
 	// QdrantAgent — v1.8 — enregistré seulement si JARVINX_QDRANT_URL est défini
+	var qdrantAgent *agents.QdrantAgent
 	if cfg.QdrantURL != "" {
-		registry.Register(agents.NewQdrantAgent(cfg.QdrantURL, cfg.OllamaURL, cfg.EmbedModel))
+		qdrantAgent = agents.NewQdrantAgent(cfg.QdrantURL, cfg.OllamaURL, cfg.EmbedModel)
+		registry.Register(qdrantAgent)
 		jxlog.Info("QDRANT", fmt.Sprintf("mémoire sémantique activée : %s", cfg.QdrantURL))
 	}
 
 	scheduler := NewScheduler(cfg.Interval, bus)
 	orchestrator := NewOrchestrator(bus, registry, store, logger, cfg.DryRun, cfg.ExecCooldown)
+	if qdrantAgent != nil {
+		orchestrator.SetSimilarDecisionsProvider(qdrantAgent)
+	}
 
 	var dailyReporter *agents.DailyReporter
 	if cfg.DailyReportEnabled {

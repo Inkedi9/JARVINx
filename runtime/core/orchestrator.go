@@ -57,6 +57,17 @@ type Orchestrator struct {
 	snapMu    sync.RWMutex
 	dryRun    bool
 	execGuard *executeGuard
+
+	// similarProvider est nil quand Qdrant n'est pas configuré
+	similarProvider agents.SimilarDecisionsProvider
+}
+
+// SetSimilarDecisionsProvider câble le QdrantAgent comme source de contexte sémantique.
+// Doit être appelé avant Start().
+func (o *Orchestrator) SetSimilarDecisionsProvider(p agents.SimilarDecisionsProvider) {
+	o.snapMu.Lock()
+	defer o.snapMu.Unlock()
+	o.similarProvider = p
 }
 
 func NewOrchestrator(
@@ -80,10 +91,17 @@ func NewOrchestrator(
 func (o *Orchestrator) AgentContext() agents.AgentContext {
 	o.snapMu.RLock()
 	defer o.snapMu.RUnlock()
+
+	var similar []string
+	if o.similarProvider != nil {
+		similar = o.similarProvider.LastSimilarDecisions()
+	}
+
 	return agents.AgentContext{
-		Snapshot: o.lastSnap,
-		State:    o.state,
-		Logger:   o.logger,
+		Snapshot:         o.lastSnap,
+		State:            o.state,
+		Logger:           o.logger,
+		SimilarDecisions: similar,
 	}
 }
 

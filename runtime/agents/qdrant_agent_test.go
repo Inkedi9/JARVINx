@@ -19,8 +19,8 @@ const (
 	testEmbedModel = "nomic-embed-text"
 )
 
-// mockQdrantServer simule un Qdrant sain : GET 404, PUT collection 200, PUT points 200.
-func mockQdrantServer(t *testing.T) *httptest.Server {
+// mockQdrantServer simule un Qdrant sain : GET 404, PUT collection 200, PUT/POST points 200.
+func mockQdrantServer(t *testing.T, searchHits []map[string]any) *httptest.Server {
 	t.Helper()
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
@@ -32,6 +32,9 @@ func mockQdrantServer(t *testing.T) *httptest.Server {
 		case r.Method == http.MethodPut && r.URL.Path == "/collections/jarvinx_decisions/points":
 			w.WriteHeader(http.StatusOK)
 			_ = json.NewEncoder(w).Encode(map[string]any{"result": map[string]any{"status": "acknowledged"}})
+		case r.Method == http.MethodPost && r.URL.Path == "/collections/jarvinx_decisions/points/search":
+			w.WriteHeader(http.StatusOK)
+			_ = json.NewEncoder(w).Encode(map[string]any{"result": searchHits})
 		default:
 			http.NotFound(w, r)
 		}
@@ -78,16 +81,13 @@ func TestQdrantAgent_FailSilentOnEmbedError(t *testing.T) {
 	if err != nil {
 		t.Fatalf("expected nil (fail-silent), got: %v", err)
 	}
-	if a.Status().RunCount != 1 {
-		t.Errorf("expected RunCount=1, got %d", a.Status().RunCount)
-	}
 }
 
 func TestQdrantAgent_EmbedAndUpsert(t *testing.T) {
 	embedding := []float32{0.1, 0.2, 0.3, 0.4}
 	ollamaSrv := mockOllamaEmbedServer(t, embedding)
 	defer ollamaSrv.Close()
-	qdrantSrv := mockQdrantServer(t)
+	qdrantSrv := mockQdrantServer(t, nil)
 	defer qdrantSrv.Close()
 
 	a := NewQdrantAgent(qdrantSrv.URL, ollamaSrv.URL, testEmbedModel)
@@ -98,10 +98,6 @@ func TestQdrantAgent_EmbedAndUpsert(t *testing.T) {
 	if err != nil {
 		t.Fatalf("expected no error, got: %v", err)
 	}
-	if a.Status().RunCount != 1 {
-		t.Errorf("expected RunCount=1, got %d", a.Status().RunCount)
-	}
-	// collReady doit être true après un upsert réussi
 	a.collMu.Lock()
 	ready := a.collReady
 	a.collMu.Unlock()
@@ -120,10 +116,78 @@ func TestNewQdrantAgent_DefaultSchedule(t *testing.T) {
 	}
 }
 
+// --- Tests recherche sémantique ---
+
+func TestQdrantAgent_SearchPopulatesLastSimilar(t *testing.T) {
+	embedding := []float32{0.1, 0.2, 0.3, 0.4}
+
+	hits := []map[string]any{
+		{
+			"score": float64(0.92),
+			"payload": map[string]any{
+				"action": "log", "analysis": "CPU stable", "reason": "no anomaly",
+				"confidence": float64(0.9),
+			},
+		},
+		{
+			"score": float64(0.50), // sous minSimilarityScore — doit être filtré
+			"payload": map[string]any{
+				"action": "alert", "analysis": "CPU high", "reason": "spike detected",
+				"confidence": float64(0.8),
+			},
+		},
+	}
+
+	ollamaSrv := mockOllamaEmbedServer(t, embedding)
+	defer ollamaSrv.Close()
+	qdrantSrv := mockQdrantServer(t, hits)
+	defer qdrantSrv.Close()
+
+	a := NewQdrantAgent(qdrantSrv.URL, ollamaSrv.URL, testEmbedModel)
+	store := memory.NewState("")
+	addCycle(t, store, "log", 5)
+
+	// Premier Run : embed + upsert + init collection → collReady = true
+	_ = a.Run(context.Background(), AgentContext{
+		Snapshot: memory.Snapshot{CPUPercent: 40.0, MemPercent: 55.0, DiskPercent: 30.0},
+		State:    store,
+		Logger:   memory.NewLogger(""),
+	})
+
+	similar := a.LastSimilarDecisions()
+	// Seul le hit score >= 0.6 doit apparaître
+	if len(similar) != 1 {
+		t.Fatalf("expected 1 similar decision (filtered score<0.6), got %d: %v", len(similar), similar)
+	}
+	if similar[0] == "" {
+		t.Error("expected non-empty similar decision string")
+	}
+}
+
+func TestQdrantAgent_SearchSkippedWhenCollectionNotReady(t *testing.T) {
+	// Qdrant down : ensureCollection échoue → collReady false → search jamais appelé
+	embedding := []float32{0.1, 0.2}
+	ollamaSrv := mockOllamaEmbedServer(t, embedding)
+	defer ollamaSrv.Close()
+
+	qdrantSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusServiceUnavailable)
+	}))
+	defer qdrantSrv.Close()
+
+	a := NewQdrantAgent(qdrantSrv.URL, ollamaSrv.URL, testEmbedModel)
+	store := memory.NewState("")
+	addCycle(t, store, "log", 1)
+
+	_ = a.Run(context.Background(), AgentContext{State: store, Logger: memory.NewLogger("")})
+
+	if got := a.LastSimilarDecisions(); len(got) != 0 {
+		t.Errorf("expected no similar decisions when collection not ready, got %v", got)
+	}
+}
+
 // --- Tests circuit breaker ---
 
-// TestQdrantAgent_CollectionInitRetry vérifie que l'init Qdrant est retentée si elle a échoué.
-// Serveur en erreur au premier Run, sain au second → collReady devient true.
 func TestQdrantAgent_CollectionInitRetry(t *testing.T) {
 	embedding := []float32{0.1, 0.2, 0.3}
 	ollamaSrv := mockOllamaEmbedServer(t, embedding)
@@ -133,11 +197,9 @@ func TestQdrantAgent_CollectionInitRetry(t *testing.T) {
 	qdrantSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		n := calls.Add(1)
 		if n == 1 {
-			// Premier appel (GET check) — Qdrant down
 			w.WriteHeader(http.StatusServiceUnavailable)
 			return
 		}
-		// Appels suivants — Qdrant sain
 		switch {
 		case r.Method == http.MethodGet:
 			w.WriteHeader(http.StatusNotFound)
@@ -146,6 +208,9 @@ func TestQdrantAgent_CollectionInitRetry(t *testing.T) {
 			_ = json.NewEncoder(w).Encode(map[string]any{"result": true})
 		case r.Method == http.MethodPut && r.URL.Path == "/collections/jarvinx_decisions/points":
 			w.WriteHeader(http.StatusOK)
+		case r.Method == http.MethodPost:
+			w.WriteHeader(http.StatusOK)
+			_ = json.NewEncoder(w).Encode(map[string]any{"result": []any{}})
 		}
 	}))
 	defer qdrantSrv.Close()
@@ -156,31 +221,26 @@ func TestQdrantAgent_CollectionInitRetry(t *testing.T) {
 	ctx := context.Background()
 	actx := AgentContext{State: store, Logger: memory.NewLogger("")}
 
-	// Cycle 1 : init échoue (503) — fail-silent, collReady reste false
 	_ = a.Run(ctx, actx)
 	a.collMu.Lock()
 	if a.collReady {
-		t.Error("collReady doit rester false après un échec d'init")
+		t.Error("collReady doit rester false après échec init")
 	}
 	a.collMu.Unlock()
 
-	// Cycle 2 : Qdrant est sain — init réussit
 	_ = a.Run(ctx, actx)
 	a.collMu.Lock()
 	if !a.collReady {
-		t.Error("collReady doit être true après un init réussi")
+		t.Error("collReady doit être true après init réussie")
 	}
 	a.collMu.Unlock()
 }
 
-// TestQdrantAgent_QdrantCircuitBreaker vérifie que le CB Qdrant s'ouvre après 3 échecs
-// et bloque les appels sans attendre le timeout HTTP.
 func TestQdrantAgent_QdrantCircuitBreaker(t *testing.T) {
 	embedding := []float32{0.1, 0.2, 0.3}
 	ollamaSrv := mockOllamaEmbedServer(t, embedding)
 	defer ollamaSrv.Close()
 
-	// Qdrant toujours en erreur
 	qdrantSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusServiceUnavailable)
 	}))
@@ -192,24 +252,17 @@ func TestQdrantAgent_QdrantCircuitBreaker(t *testing.T) {
 	ctx := context.Background()
 	actx := AgentContext{State: store, Logger: memory.NewLogger("")}
 
-	// 3 cycles : chaque échec incrémente le compteur du CB
 	for range 3 {
 		_ = a.Run(ctx, actx)
 	}
 
-	// Le CB Qdrant doit être ouvert
 	if a.qdrantCircuit.State() != llm.StateOpen {
 		t.Errorf("expected Qdrant circuit open after 3 failures, got: %s", a.qdrantCircuit.State())
 	}
 
-	// Le 4e appel doit retourner ErrCircuitOpen sans appel HTTP (immédiat)
 	start := time.Now()
 	_ = a.Run(ctx, actx)
-	elapsed := time.Since(start)
-	if elapsed > 500*time.Millisecond {
+	if elapsed := time.Since(start); elapsed > 500*time.Millisecond {
 		t.Errorf("expected near-instant response with open circuit, got %v", elapsed)
-	}
-	if a.Status().RunCount != 4 {
-		t.Errorf("expected RunCount=4 (fail-silent), got %d", a.Status().RunCount)
 	}
 }

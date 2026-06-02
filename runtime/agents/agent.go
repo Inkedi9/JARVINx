@@ -28,6 +28,12 @@ type AgentStatus struct {
 	Schedule   time.Duration `json:"schedule_ms"`
 }
 
+// SimilarDecisionsProvider est implémenté par QdrantAgent quand Qdrant est configuré.
+// L'Orchestrateur l'interroge à chaque cycle pour enrichir l'AgentContext.
+type SimilarDecisionsProvider interface {
+	LastSimilarDecisions() []string
+}
+
 // Agent est l'interface que tout agent doit implémenter
 type Agent interface {
 	Name() string

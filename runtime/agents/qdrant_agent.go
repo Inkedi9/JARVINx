@@ -14,13 +14,16 @@ import (
 	"github.com/Inkedi9/jarvinx/memory"
 )
 
-const qdrantCollection = "jarvinx_decisions"
+const (
+	qdrantCollection    = "jarvinx_decisions"
+	similarDecisionsK   = 3   // top-K résultats retournés à chaque recherche
+	minSimilarityScore  = 0.6 // seuil cosine minimum — en dessous, ignoré
+)
 
-// QdrantAgent vectorise chaque décision LLM via Ollama et la stocke dans Qdrant.
+// QdrantAgent vectorise chaque décision LLM (N-1) et interroge la mémoire sémantique.
 // Actif seulement si JARVINX_QDRANT_URL est défini (opt-in).
-// Pattern N-1 : lit la décision du cycle précédent, l'embeddise, stocke dans Qdrant.
-// Deux circuit breakers indépendants : un pour Ollama embedding, un pour Qdrant HTTP.
-// Toute erreur est fail-silent : le cycle 15s n'est jamais bloqué.
+// Implémente SimilarDecisionsProvider : l'Orchestrateur lit LastSimilarDecisions()
+// pour injecter les décisions passées pertinentes dans le prompt du cycle suivant.
 type QdrantAgent struct {
 	BaseAgent
 	qdrantURL     string
@@ -28,9 +31,13 @@ type QdrantAgent struct {
 	httpClient    *http.Client
 	qdrantCircuit *llm.CircuitBreaker
 
-	// collMu + collReady remplacent sync.Once : retentative à chaque cycle si Qdrant était down.
+	// collMu + collReady : retentative à chaque cycle jusqu'au premier succès Qdrant
 	collMu    sync.Mutex
 	collReady bool
+
+	// sdMu + lastSimilar : décisions similaires du cycle précédent, lues par l'Orchestrateur
+	sdMu        sync.RWMutex
+	lastSimilar []string
 }
 
 func NewQdrantAgent(qdrantURL, ollamaURL, embedModel string) *QdrantAgent {
@@ -43,50 +50,95 @@ func NewQdrantAgent(qdrantURL, ollamaURL, embedModel string) *QdrantAgent {
 	}
 }
 
+// LastSimilarDecisions implémente SimilarDecisionsProvider.
+// Retourne les décisions du dernier cycle de recherche réussi — nil si aucune.
+func (a *QdrantAgent) LastSimilarDecisions() []string {
+	a.sdMu.RLock()
+	defer a.sdMu.RUnlock()
+	return a.lastSimilar
+}
+
 func (a *QdrantAgent) Run(ctx context.Context, actx AgentContext) error {
+	// Phase 1 : vectoriser et stocker la décision du cycle précédent (N-1)
+	a.storeDecision(ctx, actx)
+
+	// Phase 2 : rechercher des décisions similaires pour le prochain cycle
+	a.updateSimilarDecisions(ctx, actx)
+
+	a.recordSuccess()
+	return nil
+}
+
+// storeDecision embed la dernière décision LLM et l'upserte dans Qdrant.
+func (a *QdrantAgent) storeDecision(ctx context.Context, actx AgentContext) {
 	cycles := actx.State.LastCycles(1)
 	if len(cycles) == 0 {
-		jxlog.Debug("QDRANT AGENT", "aucune décision disponible — cycle ignoré")
-		a.recordSuccess()
-		return nil
+		jxlog.Debug("QDRANT AGENT", "aucune décision disponible — upsert ignoré")
+		return
 	}
 
 	last := cycles[0]
 	text := fmt.Sprintf("[%s] %s. %s", last.Action, last.Analysis, last.Reason)
 
-	// Embedding Ollama — circuit breaker interne à OllamaEmbedder (3 échecs → open 30s)
 	vector, err := a.embedder.Embed(ctx, text)
 	if err != nil {
 		jxlog.Warn("QDRANT AGENT", fmt.Sprintf("embedding échoué (cycle %d) : %v", last.CycleNum, err))
-		a.recordSuccess() // fail-silent
-		return nil
+		return
 	}
 
-	// Qdrant collection — retentative à chaque cycle si init précédente a échoué
 	if err := a.ensureCollectionOnce(ctx, len(vector)); err != nil {
 		jxlog.Warn("QDRANT AGENT", fmt.Sprintf("init collection échouée : %v", err))
-		a.recordSuccess() // fail-silent
-		return nil
+		return
 	}
 
-	// Qdrant upsert — circuit breaker Qdrant (3 échecs → open 30s)
 	if err := a.upsert(ctx, last, vector); err != nil {
 		jxlog.Warn("QDRANT AGENT", fmt.Sprintf("upsert échoué (cycle %d) : %v", last.CycleNum, err))
-		a.recordSuccess() // fail-silent
-		return nil
+		return
 	}
 
 	jxlog.Debug("QDRANT AGENT", fmt.Sprintf(
 		"cycle %d vectorisé — action=%s confidence=%.2f dim=%d",
 		last.CycleNum, last.Action, last.Confidence, len(vector),
 	))
-
-	a.recordSuccess()
-	return nil
 }
 
-// ensureCollectionOnce tente de créer la collection si pas encore confirmée.
-// Contrairement à sync.Once, elle retente à chaque cycle jusqu'au premier succès.
+// updateSimilarDecisions embed le snapshot courant et interroge Qdrant pour trouver
+// les décisions passées les plus proches. Résultat stocké dans lastSimilar pour le cycle suivant.
+func (a *QdrantAgent) updateSimilarDecisions(ctx context.Context, actx AgentContext) {
+	a.collMu.Lock()
+	ready := a.collReady
+	a.collMu.Unlock()
+	if !ready {
+		return // collection pas encore initialisée
+	}
+
+	snap := actx.Snapshot
+	// Texte de requête décrivant l'état courant — même espace sémantique que les décisions stockées
+	queryText := fmt.Sprintf("[observe] CPU:%.1f%% RAM:%.1f%% Disk:%.1f%%.",
+		snap.CPUPercent, snap.MemPercent, snap.DiskPercent)
+
+	queryVec, err := a.embedder.Embed(ctx, queryText)
+	if err != nil {
+		jxlog.Warn("QDRANT AGENT", fmt.Sprintf("search embed échoué : %v", err))
+		return
+	}
+
+	similar, err := a.search(ctx, queryVec, similarDecisionsK)
+	if err != nil {
+		jxlog.Warn("QDRANT AGENT", fmt.Sprintf("search Qdrant échoué : %v", err))
+		return
+	}
+
+	a.sdMu.Lock()
+	a.lastSimilar = similar
+	a.sdMu.Unlock()
+
+	if len(similar) > 0 {
+		jxlog.Debug("QDRANT AGENT", fmt.Sprintf("%d décisions similaires trouvées", len(similar)))
+	}
+}
+
+// ensureCollectionOnce retente à chaque cycle jusqu'au premier succès Qdrant.
 func (a *QdrantAgent) ensureCollectionOnce(ctx context.Context, dim int) error {
 	a.collMu.Lock()
 	defer a.collMu.Unlock()
@@ -94,14 +146,12 @@ func (a *QdrantAgent) ensureCollectionOnce(ctx context.Context, dim int) error {
 		return nil
 	}
 	if err := a.ensureCollection(ctx, dim); err != nil {
-		return err // retentative au prochain cycle
+		return err
 	}
 	a.collReady = true
 	return nil
 }
 
-// ensureCollection vérifie l'existence de la collection et la crée si besoin.
-// Protégée par le circuit breaker Qdrant.
 func (a *QdrantAgent) ensureCollection(ctx context.Context, dim int) error {
 	if err := a.qdrantCircuit.Allow(); err != nil {
 		return err
@@ -121,19 +171,15 @@ func (a *QdrantAgent) ensureCollection(ctx context.Context, dim int) error {
 
 	if resp.StatusCode == http.StatusOK {
 		a.qdrantCircuit.RecordSuccess()
-		return nil // existe déjà
+		return nil
 	}
 	if resp.StatusCode != http.StatusNotFound {
 		a.qdrantCircuit.RecordFailure()
 		return fmt.Errorf("check collection: status inattendu %d", resp.StatusCode)
 	}
 
-	// Crée la collection
 	body, _ := json.Marshal(map[string]any{
-		"vectors": map[string]any{
-			"size":     dim,
-			"distance": "Cosine",
-		},
+		"vectors": map[string]any{"size": dim, "distance": "Cosine"},
 	})
 	req, err = http.NewRequestWithContext(ctx, http.MethodPut, url, bytes.NewBuffer(body))
 	if err != nil {
@@ -158,8 +204,6 @@ func (a *QdrantAgent) ensureCollection(ctx context.Context, dim int) error {
 	return nil
 }
 
-// upsert envoie un point vectorisé dans Qdrant avec les métadonnées de la décision.
-// Protégée par le circuit breaker Qdrant.
 func (a *QdrantAgent) upsert(ctx context.Context, record memory.CycleRecord, vector []float32) error {
 	if err := a.qdrantCircuit.Allow(); err != nil {
 		return err
@@ -216,4 +260,74 @@ func (a *QdrantAgent) upsert(ctx context.Context, record memory.CycleRecord, vec
 
 	a.qdrantCircuit.RecordSuccess()
 	return nil
+}
+
+// search interroge Qdrant pour les k décisions les plus proches du vecteur query.
+// Filtre les résultats sous minSimilarityScore. Protégé par le circuit breaker Qdrant.
+func (a *QdrantAgent) search(ctx context.Context, queryVec []float32, k int) ([]string, error) {
+	if err := a.qdrantCircuit.Allow(); err != nil {
+		return nil, err
+	}
+
+	type searchReq struct {
+		Vector      []float32 `json:"vector"`
+		Limit       int       `json:"limit"`
+		WithPayload bool      `json:"with_payload"`
+	}
+	type searchHit struct {
+		Score   float32        `json:"score"`
+		Payload map[string]any `json:"payload"`
+	}
+	type searchResp struct {
+		Result []searchHit `json:"result"`
+	}
+
+	body, err := json.Marshal(searchReq{Vector: queryVec, Limit: k, WithPayload: true})
+	if err != nil {
+		return nil, fmt.Errorf("marshal search: %w", err)
+	}
+
+	url := fmt.Sprintf("%s/collections/%s/points/search", a.qdrantURL, qdrantCollection)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewBuffer(body))
+	if err != nil {
+		return nil, fmt.Errorf("create search request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := a.httpClient.Do(req)
+	if err != nil {
+		a.qdrantCircuit.RecordFailure()
+		return nil, fmt.Errorf("qdrant search: %w", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != http.StatusOK {
+		a.qdrantCircuit.RecordFailure()
+		return nil, fmt.Errorf("qdrant search: status %d", resp.StatusCode)
+	}
+
+	var out searchResp
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+		a.qdrantCircuit.RecordFailure()
+		return nil, fmt.Errorf("decode search response: %w", err)
+	}
+
+	a.qdrantCircuit.RecordSuccess()
+
+	var results []string
+	for _, hit := range out.Result {
+		if hit.Score < minSimilarityScore {
+			continue
+		}
+		action, _ := hit.Payload["action"].(string)
+		analysis, _ := hit.Payload["analysis"].(string)
+		reason, _ := hit.Payload["reason"].(string)
+		confidence, _ := hit.Payload["confidence"].(float64)
+		results = append(results, fmt.Sprintf(
+			"[%s] %s. %s (score:%.2f conf:%.2f)",
+			action, analysis, reason, hit.Score, confidence,
+		))
+	}
+
+	return results, nil
 }

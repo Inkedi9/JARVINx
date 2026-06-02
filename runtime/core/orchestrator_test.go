@@ -137,6 +137,32 @@ func TestOrchestrator_TryLockPreventsOverlap(t *testing.T) {
 	}
 }
 
+func TestOrchestrator_AgentContextWithSimilarDecisions(t *testing.T) {
+	orch, _, _, _ := makeTestOrchestrator()
+
+	// Sans provider — SimilarDecisions doit être nil
+	actx := orch.AgentContext()
+	if actx.SimilarDecisions != nil {
+		t.Errorf("expected nil SimilarDecisions without provider, got %v", actx.SimilarDecisions)
+	}
+
+	// Avec provider — SimilarDecisions doit être injectées
+	want := []string{"[log] CPU stable. no anomaly. (score:0.92 conf:0.90)"}
+	orch.SetSimilarDecisionsProvider(&stubSimilarProvider{decisions: want})
+
+	actx = orch.AgentContext()
+	if len(actx.SimilarDecisions) != 1 || actx.SimilarDecisions[0] != want[0] {
+		t.Errorf("expected %v, got %v", want, actx.SimilarDecisions)
+	}
+}
+
+// stubSimilarProvider implémente SimilarDecisionsProvider pour les tests.
+type stubSimilarProvider struct {
+	decisions []string
+}
+
+func (s *stubSimilarProvider) LastSimilarDecisions() []string { return s.decisions }
+
 func TestOrchestrator_MultipleSubscribers(t *testing.T) {
 	orch, bus, _, _ := makeTestOrchestrator()
 
