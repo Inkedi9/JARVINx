@@ -740,7 +740,6 @@ Architecture
 
 - [ ] **Bus configurable** — `JARVINX_BUS_BUFFER` env var + `drops_count` dans `/api/status`
 - [ ] **Transactions SQLite** — `Add()` et `AddCycle()` dans une transaction pour cohérence garantie
-- [ ] **Rate limiting POST** — token bucket sur `/api/daily-report/send` et `/api/agents/toggle`
 
 ### Vision v2.0 — Universal Agent Platform
 
