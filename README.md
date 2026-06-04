@@ -669,10 +669,15 @@ JARVINx envoie des embeds Discord structurés quand un seuil est dépassé.
 - [ ] **Versioning `state.json`** — champ `version int` + `migrateFrom()` dans `memory/state.go`
 - [ ] **CLI → `memory.Store`** — remplacer `*memory.State` par l'interface dans `core/cli.go`
 - [ ] **Fix DailyReporter double send** — `sync.Mutex` dans `send()` lui-même
+- [ ] **Rate limiting POST** — token bucket 1 req/s sur `/api/daily-report/send` et `/api/agents/toggle`
+- [ ] **`validateFilePath`** — préfixes sensibles
 
 - [ ] **Sanitisation prompt injection Qdrant** — encadrer `SimilarDecisions` comme `[HISTORICAL DATA]` dans `context_builder.go`, tronquer 200 chars, strip newlines
 - [ ] **Headers HTTP sécurité** — `X-Frame-Options`, `X-Content-Type-Options`, `Content-Security-Policy` dans `corsMiddleware`
 - [ ] **QdrantAgent point ID** — remplacer `CycleNum` par `hash(instance_id:cycle_num)` pour éviter collisions au reset SQLite
+- [ ] **Body limit XS** — `http.MaxBytesReader(w, r.Body, 4096)` sur les POST
+- [ ] **`memory/state_test.go`** — cap à 20, `Save()`/`Load()` roundtrip, `CurrentCycle()`. Compatible Windows
+- [ ] **`core/orchestrator_test.go`** — N-1 pattern end-to-end, executeGuard cooldown, shouldExecute annulation
 
 - [ ] **Jitter retry LLM** — `rand.Intn(1000)ms` dans `DefaultRetryConfig`
 - [ ] **Token Gotify dans header** — `X-Gotify-Key` au lieu de query param URL
@@ -727,9 +732,7 @@ Prompt adaptatif — zero appel réseau
 
 Tests manquants critiques
 
-- [ ] **`memory/state_test.go`** — cap à 20, `Save()`/`Load()` roundtrip, `CurrentCycle()`. Compatible Windows
 - [ ] **`memory/sqlite_store_test.go`** — `SnapshotBuckets` buckets 1h/6h/24h, AVG correct, slice vide
-- [ ] **`core/orchestrator_test.go`** — N-1 pattern end-to-end, executeGuard cooldown, shouldExecute annulation
 - [ ] **`dashboard/lib/__tests__/hooks.test.ts`** — cleanup unmount, backoff exponentiel, cancelled flag
 - [ ] **`web/server_test.go`** — `/api/history/full`, `/api/history`, `/api/agents`, `/api/docker`
 
