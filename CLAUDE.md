@@ -55,7 +55,7 @@ Create `runtime/.env` with the following vars (no `.env.example` exists). All `J
 **Notifications** (any combination; omit to disable)
 - `DISCORD_WEBHOOK` — Discord webhook URL
 - `SLACK_WEBHOOK` — Slack incoming webhook URL
-- `NTFY_URL`, `NTFY_TOPIC` — ntfy.sh push notifications (defaults: `https://ntfy.sh`, `jarvinx`)
+- `NTFY_URL`, `NTFY_TOPIC` — ntfy.sh push notifications (both empty by default — disabled to avoid leaking metrics to a public topic)
 - `GOTIFY_URL`, `GOTIFY_TOKEN` — Gotify push notifications
 
 **Log rotation**
@@ -84,6 +84,9 @@ Create `runtime/.env` with the following vars (no `.env.example` exists). All `J
 **Qdrant semantic memory (optional — v1.8)**
 - `JARVINX_QDRANT_URL` — Qdrant base URL, e.g. `http://localhost:6333` (empty = disabled, QdrantAgent not registered)
 - `JARVINX_EMBED_MODEL` — Ollama model used for embeddings (default: `nomic-embed-text`)
+
+**Auth (optional — v1.9)**
+- `JARVINX_API_TOKEN` — Bearer token required on all `/api/*` routes (empty = no auth, dev mode)
 
 Dashboard: use `.env.local` (dev), `.env.homelab`, or `.env.tailscale` for network deployments. The only variable is `NEXT_PUBLIC_RUNTIME_URL` (defaults to `http://localhost:8080`).
 

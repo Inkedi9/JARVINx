@@ -106,25 +106,25 @@
 
 > Consolider avant d'ouvrir les features. Aucune nouvelle fonctionnalité — uniquement sécurité et dette critique.
 
-- [ ] **Auth API** — middleware Bearer token sur tous les `/api/*` via `JARVINX_API_TOKEN`
-- [ ] **Versioning `state.json`** — champ `version int` + `migrateFrom()` dans `memory/state.go`
-- [ ] **CLI → `memory.Store`** — remplacer `*memory.State` par l'interface dans `core/cli.go`
-- [ ] **Fix DailyReporter double send** — `sync.Mutex` dans `send()` lui-même
-- [ ] **Rate limiting POST** — token bucket 1 req/s sur `/api/daily-report/send` et `/api/agents/toggle`
-- [ ] **`validateFilePath`** — préfixes sensibles
+- [x] **Auth API** — middleware Bearer token sur tous les `/api/*` via `JARVINX_API_TOKEN`
+- [x] **Versioning `state.json`** — champ `version int` + `migrateFrom()` dans `memory/state.go`
+- [x] **CLI → `memory.Store`** — remplacer `*memory.State` par l'interface dans `core/cli.go`
+- [x] **Fix DailyReporter double send** — `sync.Mutex` dans `send()` lui-même
+- [x] **Rate limiting POST** — token bucket 1 req/s sur `/api/daily-report/send` et `/api/agents/toggle`
+- [x] **`validateFilePath`** — préfixes sensibles
 
-- [ ] **Sanitisation prompt injection Qdrant** — encadrer `SimilarDecisions` comme `[HISTORICAL DATA]` dans `context_builder.go`, tronquer 200 chars, strip newlines
-- [ ] **Headers HTTP sécurité** — `X-Frame-Options`, `X-Content-Type-Options`, `Content-Security-Policy` dans `corsMiddleware`
-- [ ] **QdrantAgent point ID** — remplacer `CycleNum` par `hash(instance_id:cycle_num)` pour éviter collisions au reset SQLite
-- [ ] **Body limit XS** — `http.MaxBytesReader(w, r.Body, 4096)` sur les POST
-- [ ] **`memory/state_test.go`** — cap à 20, `Save()`/`Load()` roundtrip, `CurrentCycle()`. Compatible Windows
-- [ ] **`core/orchestrator_test.go`** — N-1 pattern end-to-end, executeGuard cooldown, shouldExecute annulation
+- [x] **Sanitisation prompt injection Qdrant** — encadrer `SimilarDecisions` comme `[HISTORICAL DATA]` dans `context_builder.go`, tronquer 200 chars, strip newlines
+- [x] **Headers HTTP sécurité** — `X-Frame-Options`, `X-Content-Type-Options`, `Content-Security-Policy` dans `corsMiddleware`
+- [x] **QdrantAgent point ID** — remplacer `CycleNum` par `hash(instance_id:cycle_num)` pour éviter collisions au reset SQLite
+- [x] **Body limit XS** — `http.MaxBytesReader(w, r.Body, 4096)` sur les POST
+- [x] **`memory/state_test.go`** — cap à 20, `Save()`/`Load()` roundtrip, `CurrentCycle()`. Compatible Windows
+- [x] **`core/orchestrator_test.go`** — N-1 pattern end-to-end, executeGuard cooldown, shouldExecute annulation
 
-- [ ] **Jitter retry LLM** — `rand.Intn(1000)ms` dans `DefaultRetryConfig`
-- [ ] **Token Gotify dans header** — `X-Gotify-Key` au lieu de query param URL
-- [ ] **Ntfy désactivé par défaut** — `NtfyURL: ""` pour éviter fuite métriques sur topic public
-- [ ] **Webhooks HTTPS uniquement** — rejeter `http://` dans `validateWebhookURL`
-- [ ] **Corriger TECHNICAL.md** — `/api/chat`, `Add()`, cap 20 cycles, noms variables réels, commandes Windows
+- [x] **Jitter retry LLM** — `rand.Intn(1000)ms` dans `DefaultRetryConfig`
+- [x] **Token Gotify dans header** — `X-Gotify-Key` au lieu de query param URL
+- [x] **Ntfy désactivé par défaut** — `NtfyURL: ""` pour éviter fuite métriques sur topic public
+- [x] **Webhooks HTTPS uniquement** — rejeter `http://` dans `validateWebhookURL`
+- [x] **Corriger TECHNICAL.md** — `/api/chat`, `Add()`, cap 20 cycles, noms variables réels, commandes Windows
 
 ## ⚡ V1.10 — Enrichissement agents
 

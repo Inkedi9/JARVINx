@@ -105,15 +105,17 @@ Voici ce qui se passe à chaque cycle (15s par défaut) :
 
 ```go
 type Runtime struct {
-    cfg        *config.Config
-    bus        *Bus
-    scheduler  *Scheduler
-    orch       *Orchestrator
-    registry   *agents.Registry
-    state      *memory.State
-    logger     *memory.Logger
-    webServer  *web.Server
-    cli        *CLI
+    cfg           *config.Config
+    version       string
+    bus           *Bus
+    scheduler     *Scheduler
+    orchestrator  *Orchestrator
+    cli           *CLI
+    webServer     *web.Server
+    registry      *agents.Registry
+    dailyReporter *agents.DailyReporter
+    alertLogger   *memory.Logger
+    sqliteCloser  io.Closer // non-nil quand SQLiteStore est actif
 }
 ```
 
@@ -381,7 +383,7 @@ Schedule : 15s. Implémente `SimilarDecisionsProvider`.
 
 **Pattern N-1 — deux phases par cycle :**
 
-1. **`storeDecision()`** — lit `LastCycles(1)`, embeddise `"[action] analysis. reason"` via Ollama, upserte dans Qdrant avec payload complet (`action`, `analysis`, `reason`, `confidence`, `cycle_num`, `trigger_*`, `timestamp`). Point ID = `CycleNum` (uint64).
+1. **`storeDecision()`** — lit `LastCycles(1)`, embeddise `"[action] analysis. reason"` via Ollama, upserte dans Qdrant avec payload complet (`action`, `analysis`, `reason`, `confidence`, `cycle_num`, `instance_id`, `trigger_*`, `timestamp`). Point ID = `FNV-64a(instance_id:cycle_num)` — évite les collisions au reset du compteur de cycles.
 
 2. **`updateSimilarDecisions()`** — embeddise le snapshot courant (`"[observe] CPU:X% RAM:Y% Disk:Z%."`) et interroge Qdrant (`/points/search`, top-3). Filtre les résultats sous le seuil cosine `0.6`. Stocke dans `lastSimilar` → lu par l'Orchestrateur au prochain cycle.
 
@@ -479,13 +481,13 @@ if err := c.circuit.Allow(); err != nil {
 ### Client HTTP (`llm/ollama.go`)
 
 ```go
-func (c *Client) Query(ctx context.Context, prompt Prompt) (string, error)
+func (c *OllamaClient) Think(ctx context.Context, systemPrompt, userPrompt string) (string, error)
 ```
 
-- 3 tentatives avec 2s de délai fixe entre chaque
+- 3 tentatives avec 2s + jitter aléatoire (0–1s) entre chaque
 - Timeout global : 90s (context passé depuis SystemAgent)
-- Format de requête : `POST /api/generate` avec `stream: false`
-- Parse la réponse : extrait `response` du JSON Ollama
+- Format de requête : `POST /api/chat` avec `stream: false`
+- Parse la réponse : extrait `message.content` du JSON Ollama
 
 ### Parser JSON robuste (`llm/parser.go`)
 
@@ -586,9 +588,10 @@ Persistance dans `state.json`. Chargé au démarrage, sauvegardé après chaque 
 
 ```go
 type State struct {
+    Version  int            `json:"version"`   // versioning pour migrations
     CycleNum int            `json:"cycle_num"`
     History  []Snapshot     `json:"history"`   // max 20 entrées
-    Cycles   []CycleRecord  `json:"cycles"`    // non borné — voir limites
+    Cycles   []CycleRecord  `json:"cycles"`    // max 20 entrées
 }
 ```
 
@@ -628,8 +631,8 @@ Les champs `omitempty` garantissent la rétro-compatibilité avec les `state.jso
 
 Méthodes principales :
 
-- `state.AddSnapshot(snap)` — ajoute + rotate si > 20 entrées
-- `state.AddCycle(record)` — ajoute sans borne actuelle
+- `state.Add(snap)` — ajoute + rotate si > 20 entrées
+- `state.AddCycle(record)` — ajoute + rotate si > 20 entrées
 - `state.Last(n)` — retourne les N derniers snapshots
 - `state.LastCycles(n)` — retourne les N derniers cycles
 
@@ -757,11 +760,11 @@ var allowedCommands = map[string]bool{
 }
 ```
 
-Sur Windows, les commandes Unix sont mappées vers leurs équivalents PowerShell via `windowsAliases` :
+Sur Windows, les commandes Unix sont mappées vers leurs équivalents via `windowsSpecs` :
 
-- `uptime` → `(Get-Date) - (gcim Win32_OperatingSystem).LastBootUpTime`
-- `df -h` → `Get-PSDrive`
-- `free -h` → `Get-CimInstance Win32_OperatingSystem | Select FreePhysicalMemory,TotalVisibleMemorySize`
+- `uptime` → `cmd /C "net statistics workstation"`
+- `df -h` → `wmic logicaldisk get size,freespace,caption`
+- `free -h` → `wmic OS get FreePhysicalMemory,TotalVisibleMemorySize`
 
 Toute commande non listée retourne une erreur `command not allowed` sans exécution.
 
@@ -1150,7 +1153,7 @@ Utile pour : tester une nouvelle config de seuils, valider un déploiement, déb
 
 **Scalabilité**
 
-- `Cycles []CycleRecord` dans `state.json` croît sans borne — après des semaines de run continu sur 15s, le fichier peut devenir volumineux
+- `state.json` garde les 20 derniers cycles et snapshots en mémoire — l'historique long terme nécessite SQLite (`JARVINX_SQLITE_PATH`)
 - `logs.jsonl` n'est jamais rotaté — même problème
 
 **Robustesse**

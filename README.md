@@ -7,7 +7,7 @@
 ██   ██║██╔══██║██╔══██╗╚██╗ ██╔╝██║██║╚██╗██║ ██╔██╗
 ╚█████╔╝██║  ██║██║  ██║ ╚████╔╝ ██║██║ ╚████║██╔╝ ██╗
  ╚════╝ ╚═╝  ╚═╝╚═╝  ╚═╝  ╚═══╝  ╚═╝╚═╝  ╚═══╝╚═╝  ╚═╝
-Version 1.8.0
+Version 1.9.0
 ```
 
 **Autonomous AI Runtime · Observing. Thinking. Acting. Evolving.**
@@ -15,7 +15,7 @@ Version 1.8.0
 ![Go](https://img.shields.io/badge/Go-1.26.3-00ADD8?style=flat-square&logo=go&logoColor=white)
 ![Ollama](https://img.shields.io/badge/Ollama-local%20LLM-black?style=flat-square)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
-![Status](https://img.shields.io/badge/status-v1.8%20stable-00E5FF?style=flat-square)
+![Status](https://img.shields.io/badge/status-v1.9%20stable-00E5FF?style=flat-square)
 
 _Your system. My mission._
 
@@ -244,7 +244,8 @@ $env:DISCORD_WEBHOOK="..."
 **Notes Windows :**
 
 - Le chemin disque par défaut est `C:\` — modifiable dans `config/config.go`
-- Les commandes whitelistées (`uptime`, `df -h`, `free -h`) ont des équivalents Windows automatiques via `windowsAliases` dans `tools/shell.go`
+- Les commandes whitelistées (`uptime`, `df -h`, `free -h`) ont des équivalents Windows automatiques via `windowsSpecs` dans `tools/shell.go` (`wmic`, `cmd /C`)
+- Les webhooks Discord/Slack/Gotify/Ntfy requièrent `https://` — les URLs `http://` sont rejetées au démarrage
 - Ollama doit tourner en arrière-plan (`ollama serve`)
 
 ---
@@ -379,8 +380,8 @@ func Default() *Config {
 | `JARVINX_FILE_WATCH`       | Dossiers à surveiller (virgule)            | —                        |
 | `JARVINX_FILE_MAX_MB`      | Taille max fichier avant alerte (MB)       | `500`                    |
 | `SLACK_WEBHOOK`            | URL webhook Slack                          | —                        |
-| `NTFY_URL`                 | URL serveur Ntfy                           | `https://ntfy.sh`        |
-| `NTFY_TOPIC`               | Topic Ntfy                                 | `jarvinx`                |
+| `NTFY_URL`                 | URL serveur Ntfy                           | — (désactivé)            |
+| `NTFY_TOPIC`               | Topic Ntfy                                 | — (désactivé)            |
 | `GOTIFY_URL`               | URL serveur Gotify                         | —                        |
 | `GOTIFY_TOKEN`             | Token Gotify                               | —                        |
 | `JARVINX_DAILY_REPORT`     | Active le rapport quotidien (`true/false`) | `false`                  |
@@ -390,6 +391,7 @@ func Default() *Config {
 | `JARVINX_SQLITE_PATH`      | Chemin SQLite (vide = JSON seul)           | —                        |
 | `JARVINX_QDRANT_URL`       | URL Qdrant — active la mémoire sémantique  | — (opt-in)               |
 | `JARVINX_EMBED_MODEL`      | Modèle Ollama pour les embeddings          | `nomic-embed-text`       |
+| `JARVINX_API_TOKEN`        | Bearer token pour l'API REST (vide = pas d'auth) | —              |
 
 ---
 
@@ -462,6 +464,9 @@ go test ./... -cover
 | GET     | `/api/daily-report`      | Horaire rapport + dernier/prochain envoi                         |
 | POST    | `/api/daily-report/send` | Déclenche un rapport immédiat                                    |
 | GET     | `/api/llm-context`       | Contexte adaptatif transmis au LLM                               |
+| GET     | `/api/history/full`      | Snapshots agrégés par période (`?range=7d\|30d\|90d`) — SQLite requis |
+
+> **Auth API (v1.9)** — si `JARVINX_API_TOKEN` est défini, toutes les routes `/api/*` requièrent le header `Authorization: Bearer <token>`. Laisser vide pour désactiver (dev local).
 
 ---
 
@@ -552,7 +557,7 @@ JARVINx envoie des embeds Discord structurés quand un seuil est dépassé.
 | V1.6    | Couche décisionnelle      | ✅ Released |
 | V1.7    | Mémoire historique SQLite | ✅ Released |
 | V1.8    | Mémoire sémantique Qdrant | ✅ Released |
-| V1.9    | Sécurité & hardening      | 🔮 Future   |
+| V1.9    | Sécurité & hardening      | ✅ Released |
 | V1.10   | Enrichissement agents     | 🔮 Future   |
 | V1.11   | Dashboard & visibilité    | 🔮 Future   |
 | V1.12   | Robustesse & tests        | 🔮 Future   |
