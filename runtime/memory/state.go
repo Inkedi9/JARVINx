@@ -143,13 +143,13 @@ func (s *State) load() {
 	s.migrateFrom(s.Version)
 }
 
-// migrateFrom fait évoluer le state chargé vers currentStateVersion.
-// Chaque case transforme les données si nécessaire avant de passer au suivant.
+// migrateFrom upgrades the loaded state to currentStateVersion.
+// Each version step applies its data changes before moving to the next.
 func (s *State) migrateFrom(from int) {
 	if from >= currentStateVersion {
 		return
 	}
-	// v0 → v1 : ajout du champ version, pas de changement structurel
+	// v0 → v1: version field added, no structural change
 	s.Version = currentStateVersion
 }
 

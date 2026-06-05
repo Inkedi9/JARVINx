@@ -24,18 +24,18 @@ type execGuardProvider interface {
 }
 
 type Server struct {
-	cfg            *config.Config
-	state          *memory.State
-	registry       *agents.Registry
-	mainLogger     *memory.Logger
-	alertLogger    *memory.Logger
-	dailyReporter  *agents.DailyReporter
-	execGuard      execGuardProvider
-	history        memory.HistoryReader // nil when SQLite not configured
-	port           int
-	files          embed.FS
-	allowedOrigins map[string]bool
-	limitToggle    *tokenBucket
+	cfg             *config.Config
+	state           *memory.State
+	registry        *agents.Registry
+	mainLogger      *memory.Logger
+	alertLogger     *memory.Logger
+	dailyReporter   *agents.DailyReporter
+	execGuard       execGuardProvider
+	history         memory.HistoryReader // nil when SQLite not configured
+	port            int
+	files           embed.FS
+	allowedOrigins  map[string]bool
+	limitToggle     *tokenBucket
 	limitSendReport *tokenBucket
 }
 
