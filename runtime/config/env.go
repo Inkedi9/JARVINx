@@ -211,4 +211,9 @@ func (c *Config) FromEnv() {
 	if v := os.Getenv("JARVINX_EMBED_MODEL"); v != "" {
 		c.EmbedModel = v
 	}
+
+	// Auth API
+	if v := os.Getenv("JARVINX_API_TOKEN"); v != "" {
+		c.APIToken = v
+	}
 }

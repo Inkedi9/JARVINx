@@ -26,6 +26,9 @@ type Config struct {
 	RAMAlertThreshold  float64
 	DiskAlertThreshold float64
 
+	// Auth
+	APIToken string // empty = dev mode, no auth
+
 	// Ports
 	WebPort int
 

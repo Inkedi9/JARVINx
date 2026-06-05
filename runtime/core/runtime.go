@@ -134,7 +134,7 @@ func NewRuntime(cfg *config.Config, version string) *Runtime {
 		bus:          bus,
 		scheduler:    scheduler,
 		orchestrator: orchestrator,
-		cli:          NewCLI(state, scheduler),
+		cli:          NewCLI(store, scheduler),
 		webServer: web.NewServer(
 			cfg, state, registry,
 			logger, alertLogger,

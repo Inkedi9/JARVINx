@@ -13,11 +13,11 @@ import (
 )
 
 type CLI struct {
-	state     *memory.State
+	state     memory.Store
 	scheduler *Scheduler
 }
 
-func NewCLI(state *memory.State, scheduler *Scheduler) *CLI {
+func NewCLI(state memory.Store, scheduler *Scheduler) *CLI {
 	return &CLI{
 		state:     state,
 		scheduler: scheduler,

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/fs"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/Inkedi9/jarvinx/agents"
@@ -195,8 +196,7 @@ func (s *Server) Start() {
 	mux.HandleFunc("/api/llm-context", s.handleLLMContext)
 	mux.HandleFunc("/api/history/full", s.handleHistoryFull)
 
-	// corsMiddleware est maintenant une méthode — accès à s.allowedOrigins
-	handler := s.corsMiddleware(mux)
+	handler := s.corsMiddleware(s.authMiddleware(mux))
 
 	addr := fmt.Sprintf(":%d", s.port)
 	jxlog.Info("WEB", fmt.Sprintf("Dashboard → http://localhost%s", addr))
@@ -204,6 +204,25 @@ func (s *Server) Start() {
 	if err := http.ListenAndServe(addr, handler); err != nil {
 		jxlog.Error("WEB", fmt.Sprintf("Erreur serveur : %v", err))
 	}
+}
+
+// authMiddleware protège tous les /api/* avec un Bearer token.
+// Si APIToken est vide, l'auth est désactivée (dev mode).
+func (s *Server) authMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if s.cfg.APIToken == "" || !strings.HasPrefix(r.URL.Path, "/api/") {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		authHeader := r.Header.Get("Authorization")
+		if !strings.HasPrefix(authHeader, "Bearer ") || strings.TrimPrefix(authHeader, "Bearer ") != s.cfg.APIToken {
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
 }
 
 // corsMiddleware gère les CORS pour Next.js en dev et en prod

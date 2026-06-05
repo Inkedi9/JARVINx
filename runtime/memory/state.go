@@ -8,7 +8,10 @@ import (
 	"time"
 )
 
-const maxHistory = 20
+const (
+	maxHistory          = 20
+	currentStateVersion = 1
+)
 
 type Snapshot struct {
 	Timestamp   time.Time `json:"timestamp"`
@@ -42,6 +45,7 @@ type State struct {
 	filepath string
 	mu       sync.RWMutex
 
+	Version  int           `json:"version"`
 	History  []Snapshot    `json:"history"`
 	Cycles   []CycleRecord `json:"cycles"`
 	CycleNum int           `json:"cycle_num"`
@@ -126,13 +130,27 @@ func (s *State) Save() error {
 func (s *State) load() {
 	data, err := os.ReadFile(s.filepath)
 	if err != nil {
+		s.Version = currentStateVersion
 		return
 	}
 	if err := json.Unmarshal(data, s); err != nil {
 		fmt.Printf("[ STATE ] state.json corrompu, reset\n")
 		s.History = nil
 		s.Cycles = nil
+		s.Version = currentStateVersion
+		return
 	}
+	s.migrateFrom(s.Version)
+}
+
+// migrateFrom fait évoluer le state chargé vers currentStateVersion.
+// Chaque case transforme les données si nécessaire avant de passer au suivant.
+func (s *State) migrateFrom(from int) {
+	if from >= currentStateVersion {
+		return
+	}
+	// v0 → v1 : ajout du champ version, pas de changement structurel
+	s.Version = currentStateVersion
 }
 
 func NewCycleRecord(snap Snapshot, action, analysis, reason, command string) CycleRecord {
