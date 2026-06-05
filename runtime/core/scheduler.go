@@ -45,6 +45,10 @@ func (s *Scheduler) Start(ctx context.Context) {
 
 	currentInterval := s.getInterval()
 
+	// Baseline réseau — premier tick aura un delta valide
+	prevNet, hasNet := tools.ReadNetCounters()
+	prevNetAt := time.Now()
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -73,15 +77,36 @@ func (s *Scheduler) Start(ctx context.Context) {
 				continue
 			}
 
+			// Delta réseau depuis le tick précédent
+			currNet, ok := tools.ReadNetCounters()
+			if ok && hasNet {
+				elapsed := time.Since(prevNetAt).Seconds()
+				state.NetRecvMBps, state.NetSentMBps = tools.DeltaMBps(prevNet, currNet, elapsed)
+			}
+			if ok {
+				prevNet = currNet
+				hasNet = true
+			}
+			prevNetAt = time.Now()
+
 			snap := memory.Snapshot{
 				Timestamp:   state.Timestamp,
 				CPUPercent:  state.CPUPercent,
 				MemUsed:     state.MemUsed,
 				MemTotal:    state.MemTotal,
 				MemPercent:  state.MemPercent,
+				SwapUsed:    state.SwapUsed,
+				SwapTotal:   state.SwapTotal,
+				SwapPercent: state.SwapPercent,
 				DiskUsed:    state.DiskUsed,
 				DiskTotal:   state.DiskTotal,
 				DiskPercent: state.DiskPercent,
+				NetRecvMBps: state.NetRecvMBps,
+				NetSentMBps: state.NetSentMBps,
+				LoadAvg1:    state.LoadAvg1,
+				LoadAvg5:    state.LoadAvg5,
+				LoadAvg15:   state.LoadAvg15,
+				TopProcs:    toMemProcInfos(state.TopProcs),
 			}
 
 			state.Display()
@@ -98,4 +123,15 @@ func (s *Scheduler) Start(ctx context.Context) {
 // Appelé depuis CLI quand l'utilisateur change l'intervalle à chaud
 func (s *Scheduler) Restart(ctx context.Context) {
 	go s.Start(ctx)
+}
+
+func toMemProcInfos(procs []tools.ProcInfo) []memory.ProcInfo {
+	if len(procs) == 0 {
+		return nil
+	}
+	result := make([]memory.ProcInfo, len(procs))
+	for i, p := range procs {
+		result[i] = memory.ProcInfo{PID: p.PID, Name: p.Name, MemMB: p.MemMB}
+	}
+	return result
 }

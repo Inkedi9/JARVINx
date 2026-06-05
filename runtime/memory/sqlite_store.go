@@ -2,7 +2,9 @@ package memory
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -69,10 +71,30 @@ func sqliteMigrate(db *sql.DB) error {
 			mem_used_mb   INTEGER  NOT NULL,
 			mem_total_mb  INTEGER  NOT NULL,
 			mem_percent   REAL     NOT NULL,
+			swap_used_mb  INTEGER  NOT NULL DEFAULT 0,
+			swap_total_mb INTEGER  NOT NULL DEFAULT 0,
+			swap_percent  REAL     NOT NULL DEFAULT 0,
 			disk_used_gb  INTEGER  NOT NULL,
 			disk_total_gb INTEGER  NOT NULL,
-			disk_percent  REAL     NOT NULL
+			disk_percent  REAL     NOT NULL,
+			net_recv_mbps REAL     NOT NULL DEFAULT 0,
+			net_sent_mbps REAL     NOT NULL DEFAULT 0,
+			load_avg1     REAL     NOT NULL DEFAULT 0,
+			load_avg5     REAL     NOT NULL DEFAULT 0,
+			load_avg15    REAL     NOT NULL DEFAULT 0,
+			top_procs     TEXT     NOT NULL DEFAULT '[]'
 		)`
+
+	// Migration pour les bases existantes — ignore "duplicate column name"
+	const addSwapUsed = `ALTER TABLE snapshots ADD COLUMN swap_used_mb INTEGER NOT NULL DEFAULT 0`
+	const addSwapTotal = `ALTER TABLE snapshots ADD COLUMN swap_total_mb INTEGER NOT NULL DEFAULT 0`
+	const addSwapPct = `ALTER TABLE snapshots ADD COLUMN swap_percent REAL NOT NULL DEFAULT 0`
+	const addNetRecv = `ALTER TABLE snapshots ADD COLUMN net_recv_mbps REAL NOT NULL DEFAULT 0`
+	const addNetSent = `ALTER TABLE snapshots ADD COLUMN net_sent_mbps REAL NOT NULL DEFAULT 0`
+	const addLoad1 = `ALTER TABLE snapshots ADD COLUMN load_avg1 REAL NOT NULL DEFAULT 0`
+	const addLoad5 = `ALTER TABLE snapshots ADD COLUMN load_avg5 REAL NOT NULL DEFAULT 0`
+	const addLoad15 = `ALTER TABLE snapshots ADD COLUMN load_avg15 REAL NOT NULL DEFAULT 0`
+	const addTopProcs = `ALTER TABLE snapshots ADD COLUMN top_procs TEXT NOT NULL DEFAULT '[]'`
 
 	const createCycles = `
 		CREATE TABLE IF NOT EXISTS cycles (
@@ -104,18 +126,41 @@ func sqliteMigrate(db *sql.DB) error {
 			return err
 		}
 	}
+	// ALTER TABLE tolère l'erreur "duplicate column name" pour les bases existantes
+	for _, stmt := range []string{addSwapUsed, addSwapTotal, addSwapPct, addNetRecv, addNetSent, addLoad1, addLoad5, addLoad15, addTopProcs} {
+		if _, err := db.Exec(stmt); err != nil && !isDuplicateColumnErr(err) {
+			return err
+		}
+	}
 	return nil
 }
 
+func isDuplicateColumnErr(err error) bool {
+	msg := err.Error()
+	return strings.Contains(msg, "duplicate column name") || strings.Contains(msg, "already exists")
+}
+
 func (s *SQLiteStore) Add(snap Snapshot) error {
+	topProcsJSON, _ := json.Marshal(snap.TopProcs)
+	if topProcsJSON == nil {
+		topProcsJSON = []byte("[]")
+	}
 	_, err := s.db.Exec(
 		`INSERT INTO snapshots
 			(timestamp, cpu_percent, mem_used_mb, mem_total_mb, mem_percent,
-			 disk_used_gb, disk_total_gb, disk_percent)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+			 swap_used_mb, swap_total_mb, swap_percent,
+			 disk_used_gb, disk_total_gb, disk_percent,
+			 net_recv_mbps, net_sent_mbps,
+			 load_avg1, load_avg5, load_avg15,
+			 top_procs)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		snap.Timestamp.UTC().Format(time.RFC3339Nano),
 		snap.CPUPercent, snap.MemUsed, snap.MemTotal, snap.MemPercent,
+		snap.SwapUsed, snap.SwapTotal, snap.SwapPercent,
 		snap.DiskUsed, snap.DiskTotal, snap.DiskPercent,
+		snap.NetRecvMBps, snap.NetSentMBps,
+		snap.LoadAvg1, snap.LoadAvg5, snap.LoadAvg15,
+		string(topProcsJSON),
 	)
 	if err != nil {
 		return fmt.Errorf("sqlite insert snapshot: %w", err)
@@ -166,7 +211,11 @@ func (s *SQLiteStore) Last(n int) []Snapshot {
 
 	rows, err := s.db.Query(
 		`SELECT timestamp, cpu_percent, mem_used_mb, mem_total_mb, mem_percent,
-		        disk_used_gb, disk_total_gb, disk_percent
+		        swap_used_mb, swap_total_mb, swap_percent,
+		        disk_used_gb, disk_total_gb, disk_percent,
+		        net_recv_mbps, net_sent_mbps,
+		        load_avg1, load_avg5, load_avg15,
+		        top_procs
 		 FROM snapshots ORDER BY id DESC LIMIT ?`, n)
 	if err != nil {
 		return nil
@@ -176,11 +225,16 @@ func (s *SQLiteStore) Last(n int) []Snapshot {
 	snaps := make([]Snapshot, 0, n)
 	for rows.Next() {
 		var snap Snapshot
-		var ts string
+		var ts, topProcsJSON string
 		if err := rows.Scan(&ts, &snap.CPUPercent, &snap.MemUsed, &snap.MemTotal,
-			&snap.MemPercent, &snap.DiskUsed, &snap.DiskTotal, &snap.DiskPercent); err != nil {
+			&snap.MemPercent, &snap.SwapUsed, &snap.SwapTotal, &snap.SwapPercent,
+			&snap.DiskUsed, &snap.DiskTotal, &snap.DiskPercent,
+			&snap.NetRecvMBps, &snap.NetSentMBps,
+			&snap.LoadAvg1, &snap.LoadAvg5, &snap.LoadAvg15,
+			&topProcsJSON); err != nil {
 			continue
 		}
+		_ = json.Unmarshal([]byte(topProcsJSON), &snap.TopProcs)
 		snap.Timestamp, _ = time.Parse(time.RFC3339Nano, ts)
 		snaps = append(snaps, snap)
 	}
