@@ -334,6 +334,25 @@ func TestValidate_GotifyInvalidScheme(t *testing.T) {
 	}
 }
 
+func TestValidate_WebhookHTTPRejected(t *testing.T) {
+	cases := []struct {
+		name string
+		set  func(cfg *Config)
+	}{
+		{"discord http", func(c *Config) { c.DiscordWebhook = "http://discord.com/api/webhooks/123/abc" }},
+		{"slack http", func(c *Config) { c.SlackWebhook = "http://hooks.slack.com/services/xxx" }},
+		{"gotify http", func(c *Config) { c.GotifyURL = "http://gotify.example.com"; c.GotifyToken = "tok" }},
+		{"ntfy http", func(c *Config) { c.NtfyURL = "http://ntfy.sh"; c.NtfyTopic = "test" }},
+	}
+	for _, tc := range cases {
+		cfg := Default()
+		tc.set(cfg)
+		if err := cfg.Validate(); err == nil {
+			t.Errorf("%s: expected error for http:// webhook, got none", tc.name)
+		}
+	}
+}
+
 func TestValidate_FilePathRoot(t *testing.T) {
 	cfg := Default()
 	cfg.FileWatchPaths = []string{"/"}

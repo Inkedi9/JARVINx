@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math/rand"
 	"net/http"
 	"time"
 
@@ -38,13 +39,23 @@ type ollamaResponse struct {
 type RetryConfig struct {
 	MaxAttempts int
 	Delay       time.Duration
+	Jitter      time.Duration // max random jitter added to Delay (0 = no jitter)
 }
 
 func DefaultRetryConfig() RetryConfig {
 	return RetryConfig{
 		MaxAttempts: 3,
 		Delay:       2 * time.Second,
+		Jitter:      1000 * time.Millisecond,
 	}
+}
+
+// sleepDuration returns Delay + a random jitter in [0, Jitter).
+func (r RetryConfig) sleepDuration() time.Duration {
+	if r.Jitter <= 0 {
+		return r.Delay
+	}
+	return r.Delay + time.Duration(rand.Intn(int(r.Jitter/time.Millisecond)))*time.Millisecond
 }
 
 func NewOllamaClient(baseURL, model string) *OllamaClient {
@@ -141,7 +152,7 @@ func (c *OllamaClient) ThinkWithDecision(
 				attempt, retry.MaxAttempts, err))
 
 			if attempt < retry.MaxAttempts {
-				time.Sleep(retry.Delay)
+				time.Sleep(retry.sleepDuration())
 			}
 			continue
 		}
@@ -153,7 +164,7 @@ func (c *OllamaClient) ThinkWithDecision(
 				attempt, retry.MaxAttempts))
 
 			if attempt < retry.MaxAttempts {
-				time.Sleep(retry.Delay)
+				time.Sleep(retry.sleepDuration())
 			}
 			continue
 		}

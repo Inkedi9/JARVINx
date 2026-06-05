@@ -177,7 +177,7 @@ func TestSecurityHeaders(t *testing.T) {
 	handler.ServeHTTP(w, req)
 
 	checks := map[string]string{
-		"X-Frame-Options":       "DENY",
+		"X-Frame-Options":        "DENY",
 		"X-Content-Type-Options": "nosniff",
 	}
 	for header, want := range checks {

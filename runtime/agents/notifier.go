@@ -253,9 +253,16 @@ func (n *GotifyNotifier) Send(alert Alert) error {
 		return fmt.Errorf("marshal: %w", err)
 	}
 
-	url := fmt.Sprintf("%s/message?token=%s", n.serverURL, n.token)
+	url := fmt.Sprintf("%s/message", n.serverURL)
 
-	resp, err := n.client.Post(url, "application/json", bytes.NewBuffer(body))
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(body))
+	if err != nil {
+		return fmt.Errorf("create request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Gotify-Key", n.token)
+
+	resp, err := n.client.Do(req)
 	if err != nil {
 		return fmt.Errorf("post: %w", err)
 	}

@@ -215,9 +215,16 @@ func TestGotifyNotifier_Name(t *testing.T) {
 
 func TestGotifyNotifier_Send(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Token doit être dans le header, pas dans l'URL
+		if got := r.Header.Get("X-Gotify-Key"); got != "mytoken" {
+			t.Errorf("expected X-Gotify-Key=mytoken, got %q", got)
+		}
+		if r.URL.Query().Get("token") != "" {
+			t.Error("token must not appear as URL query param")
+		}
+
 		var payload map[string]any
 		_ = json.NewDecoder(r.Body).Decode(&payload)
-
 		if _, ok := payload["title"]; !ok {
 			t.Error("expected title in Gotify payload")
 		}

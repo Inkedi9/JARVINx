@@ -105,8 +105,8 @@ func Default() *Config {
 		FileEnabled:        true,
 		FileWatchPaths:     []string{}, // vide = désactivé jusqu'à config
 		FileMaxSizeMB:      500,        // alerte si fichier > 500 MB
-		NtfyURL:            "https://ntfy.sh",
-		NtfyTopic:          "jarvinx",
+		NtfyURL:            "",
+		NtfyTopic:          "",
 		DailyReportEnabled: false, // désactivé par défaut
 		DailyReportHour:    8,
 		DailyReportMinute:  0,

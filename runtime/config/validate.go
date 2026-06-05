@@ -140,8 +140,8 @@ func validateWebhookURL(name, rawURL string) error {
 		return fmt.Errorf("%s URL invalide : %v", name, err)
 	}
 
-	if u.Scheme != "https" && u.Scheme != "http" {
-		return fmt.Errorf("%s URL doit commencer par http:// ou https://, got '%s'", name, u.Scheme)
+	if u.Scheme != "https" {
+		return fmt.Errorf("%s URL doit commencer par https://, got '%s'", name, u.Scheme)
 	}
 
 	if u.Host == "" {
