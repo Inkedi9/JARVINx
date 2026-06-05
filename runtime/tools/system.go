@@ -57,7 +57,7 @@ func Observe() (SystemState, error) {
 	// Swap — fail-silent (absent sur certains OS/configs)
 	var swapTotal, swapUsed uint64
 	var swapPercent float64
-	if swapStats, err := mem.SwapMemory(); err == nil {
+	if swapStats, swapErr := mem.SwapMemory(); swapErr == nil {
 		swapTotal = swapStats.Total / 1024 / 1024
 		swapUsed = swapStats.Used / 1024 / 1024
 		swapPercent = swapStats.UsedPercent
@@ -121,7 +121,7 @@ func ObserveWithContext(ctx context.Context) (SystemState, error) {
 
 		var swapTotal, swapUsed uint64
 		var swapPercent float64
-		if swapStats, err := mem.SwapMemory(); err == nil {
+		if swapStats, swapErr := mem.SwapMemory(); swapErr == nil {
 			swapTotal = swapStats.Total / 1024 / 1024
 			swapUsed = swapStats.Used / 1024 / 1024
 			swapPercent = swapStats.UsedPercent

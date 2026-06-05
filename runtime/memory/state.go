@@ -14,17 +14,17 @@ const (
 )
 
 type Snapshot struct {
-	Timestamp   time.Time `json:"timestamp"`
-	CPUPercent  float64   `json:"cpu_percent"`
-	MemUsed     uint64    `json:"mem_used_mb"`
-	MemTotal    uint64    `json:"mem_total_mb"`
-	MemPercent  float64   `json:"mem_percent"`
-	SwapUsed    uint64    `json:"swap_used_mb,omitempty"`
-	SwapTotal   uint64    `json:"swap_total_mb,omitempty"`
-	SwapPercent float64   `json:"swap_percent,omitempty"`
-	DiskUsed    uint64    `json:"disk_used_gb"`
-	DiskTotal   uint64    `json:"disk_total_gb"`
-	DiskPercent float64   `json:"disk_percent"`
+	Timestamp   time.Time  `json:"timestamp"`
+	CPUPercent  float64    `json:"cpu_percent"`
+	MemUsed     uint64     `json:"mem_used_mb"`
+	MemTotal    uint64     `json:"mem_total_mb"`
+	MemPercent  float64    `json:"mem_percent"`
+	SwapUsed    uint64     `json:"swap_used_mb,omitempty"`
+	SwapTotal   uint64     `json:"swap_total_mb,omitempty"`
+	SwapPercent float64    `json:"swap_percent,omitempty"`
+	DiskUsed    uint64     `json:"disk_used_gb"`
+	DiskTotal   uint64     `json:"disk_total_gb"`
+	DiskPercent float64    `json:"disk_percent"`
 	NetRecvMBps float64    `json:"net_recv_mbps,omitempty"`
 	NetSentMBps float64    `json:"net_sent_mbps,omitempty"`
 	LoadAvg1    float64    `json:"load_avg1,omitempty"`

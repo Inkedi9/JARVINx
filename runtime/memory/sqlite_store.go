@@ -85,7 +85,7 @@ func sqliteMigrate(db *sql.DB) error {
 			top_procs     TEXT     NOT NULL DEFAULT '[]'
 		)`
 
-	// Migration pour les bases existantes — ignore "duplicate column name"
+	// Migration pour les bases existing — ignore "duplicate column name"
 	const addSwapUsed = `ALTER TABLE snapshots ADD COLUMN swap_used_mb INTEGER NOT NULL DEFAULT 0`
 	const addSwapTotal = `ALTER TABLE snapshots ADD COLUMN swap_total_mb INTEGER NOT NULL DEFAULT 0`
 	const addSwapPct = `ALTER TABLE snapshots ADD COLUMN swap_percent REAL NOT NULL DEFAULT 0`
@@ -126,7 +126,7 @@ func sqliteMigrate(db *sql.DB) error {
 			return err
 		}
 	}
-	// ALTER TABLE tolère l'erreur "duplicate column name" pour les bases existantes
+	// ALTER TABLE tolère l'erreur "duplicate column name" pour les bases existing
 	for _, stmt := range []string{addSwapUsed, addSwapTotal, addSwapPct, addNetRecv, addNetSent, addLoad1, addLoad5, addLoad15, addTopProcs} {
 		if _, err := db.Exec(stmt); err != nil && !isDuplicateColumnErr(err) {
 			return err
