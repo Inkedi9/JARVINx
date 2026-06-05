@@ -35,6 +35,8 @@ type Server struct {
 	port           int
 	files          embed.FS
 	allowedOrigins map[string]bool
+	limitToggle    *tokenBucket
+	limitSendReport *tokenBucket
 }
 
 type ExecGuardStatus struct {
@@ -160,17 +162,19 @@ func NewServer(
 	}
 
 	return &Server{
-		cfg:            cfg,
-		state:          state,
-		registry:       registry,
-		mainLogger:     mainLogger,
-		alertLogger:    alertLogger,
-		dailyReporter:  dailyReporter,
-		execGuard:      guard,
-		history:        history,
-		port:           port,
-		files:          files,
-		allowedOrigins: origins,
+		cfg:             cfg,
+		state:           state,
+		registry:        registry,
+		mainLogger:      mainLogger,
+		alertLogger:     alertLogger,
+		dailyReporter:   dailyReporter,
+		execGuard:       guard,
+		history:         history,
+		port:            port,
+		files:           files,
+		allowedOrigins:  origins,
+		limitToggle:     newTokenBucket(1, 1),
+		limitSendReport: newTokenBucket(1, 1),
 	}
 }
 
@@ -305,6 +309,11 @@ func (s *Server) handleDailyReport(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleDailyReportSend(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if !s.limitSendReport.Allow() {
+		w.Header().Set("Retry-After", "1")
+		http.Error(w, "rate limit exceeded", http.StatusTooManyRequests)
 		return
 	}
 
@@ -472,6 +481,11 @@ func (s *Server) writeJSON(w http.ResponseWriter, v any) {
 func (s *Server) handleAgentToggle(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if !s.limitToggle.Allow() {
+		w.Header().Set("Retry-After", "1")
+		http.Error(w, "rate limit exceeded", http.StatusTooManyRequests)
 		return
 	}
 

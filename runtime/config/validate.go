@@ -151,22 +151,29 @@ func validateWebhookURL(name, rawURL string) error {
 	return nil
 }
 
-// validateFilePath vérifie qu'un path de surveillance est sûr
+// validateFilePath vérifie qu'un path de surveillance est sûr.
+// Bloque les préfixes système sensibles (exact + tout sous-chemin).
 func validateFilePath(path string) error {
 	path = strings.TrimSpace(path)
 	if path == "" {
 		return fmt.Errorf("path vide non autorisé")
 	}
 
-	// Chemins sensibles bloqués
 	blocked := []string{
-		"/", "/etc", "/sys", "/proc", "/dev", "/boot",
-		"C:\\", "C:\\Windows", "C:\\System32",
+		"/", "/etc", "/sys", "/proc", "/dev", "/boot", "/root",
+		`c:\`, `c:\windows`, `c:\windows\system32`,
 	}
-	normalized := strings.ToLower(strings.TrimRight(path, "/\\"))
+	// normalized: lowercase + trailing seps stripped — used for exact match only.
+	// For prefix checks we use the original blocked entry (bLower) so that
+	// TrimRight("/", ...) → "" does not accidentally match everything.
+	normalized := strings.ToLower(strings.TrimRight(path, `/\`))
 	for _, b := range blocked {
-		if normalized == strings.ToLower(strings.TrimRight(b, "/\\")) {
-			return fmt.Errorf("path '%s' non autorisé — trop sensible", path)
+		bNorm := strings.ToLower(strings.TrimRight(b, `/\`))
+		bLower := strings.ToLower(b)
+		if normalized == bNorm ||
+			strings.HasPrefix(normalized, bLower+"/") ||
+			strings.HasPrefix(normalized, bLower+`\`) {
+			return fmt.Errorf("path '%s' non autorisé — préfixe système sensible", path)
 		}
 	}
 

@@ -3,6 +3,7 @@ package agents
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	jxlog "github.com/Inkedi9/jarvinx/jxlog"
@@ -30,6 +31,7 @@ type DailyReporter struct {
 	hour       int
 	minute     int
 	dryRun     bool
+	mu         sync.Mutex
 	lastSent   time.Time
 }
 
@@ -63,25 +65,29 @@ func (r *DailyReporter) Start(ctx context.Context) {
 			return
 		case t := <-ticker.C:
 			if t.Hour() == r.hour && t.Minute() == r.minute {
-				// Évite d'envoyer deux fois dans la même minute
-				if time.Since(r.lastSent) < 2*time.Minute {
+				r.mu.Lock()
+				recent := time.Since(r.lastSent) < 2*time.Minute
+				r.mu.Unlock()
+				if recent {
 					continue
 				}
 				r.send()
-				r.lastSent = t
 			}
 		}
 	}
 }
 
 func (r *DailyReporter) send() {
-	data := r.buildReport()
+	r.mu.Lock()
+	defer r.mu.Unlock()
 
+	data := r.buildReport()
 	msg := r.formatReport(data)
 
 	if r.dryRun {
 		jxlog.Info("DRY-RUN", "Rapport quotidien simulé — non envoyé")
 		jxlog.Info("DRY-RUN", msg)
+		r.lastSent = time.Now()
 		return
 	}
 
@@ -95,6 +101,7 @@ func (r *DailyReporter) send() {
 
 	r.dispatcher.Dispatch(alert)
 	jxlog.Info("DAILY REPORT", "Rapport envoyé")
+	r.lastSent = time.Now()
 }
 
 func (r *DailyReporter) buildReport() ReportData {
@@ -164,10 +171,11 @@ func (r *DailyReporter) formatReport(d ReportData) string {
 }
 
 func (r *DailyReporter) LastSent() time.Time {
+	r.mu.Lock()
+	defer r.mu.Unlock()
 	return r.lastSent
 }
 
 func (r *DailyReporter) SendNow() {
 	r.send()
-	r.lastSent = time.Now()
 }

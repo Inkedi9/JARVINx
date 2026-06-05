@@ -393,3 +393,36 @@ func TestValidate_FilePathWindowsValid(t *testing.T) {
 		t.Fatalf("expected no error for valid Windows path, got: %v", err)
 	}
 }
+
+func TestValidate_FilePathSubdirBlocked(t *testing.T) {
+	cases := []string{
+		"/etc/passwd",
+		"/proc/cpuinfo",
+		"/sys/kernel/debug",
+		"/dev/sda",
+		"/boot/grub",
+		"/root/.ssh",
+	}
+	for _, p := range cases {
+		cfg := Default()
+		cfg.FileWatchPaths = []string{p}
+		if err := cfg.Validate(); err == nil {
+			t.Errorf("expected error for sensitive subpath %q, got none", p)
+		}
+	}
+}
+
+func TestValidate_FilePathWindowsSubdirBlocked(t *testing.T) {
+	cases := []string{
+		`C:\Windows\System32\drivers`,
+		`C:\Windows\System32`,
+		`c:\windows\temp`,
+	}
+	for _, p := range cases {
+		cfg := Default()
+		cfg.FileWatchPaths = []string{p}
+		if err := cfg.Validate(); err == nil {
+			t.Errorf("expected error for sensitive Windows subpath %q, got none", p)
+		}
+	}
+}

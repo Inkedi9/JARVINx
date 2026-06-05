@@ -40,13 +40,15 @@ func makeTestServer(origins []string) *Server {
 	}
 
 	return &Server{
-		cfg:            cfg,
-		state:          memory.NewState(""),
-		registry:       agents.NewRegistry(),
-		mainLogger:     nil,
-		alertLogger:    nil,
-		dailyReporter:  nil, // ← ajoute ça
-		allowedOrigins: originMap,
+		cfg:             cfg,
+		state:           memory.NewState(""),
+		registry:        agents.NewRegistry(),
+		mainLogger:      nil,
+		alertLogger:     nil,
+		dailyReporter:   nil,
+		allowedOrigins:  originMap,
+		limitToggle:     newTokenBucket(1, 1),
+		limitSendReport: newTokenBucket(1, 1),
 	}
 }
 
