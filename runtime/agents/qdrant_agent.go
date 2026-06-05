@@ -3,8 +3,11 @@ package agents
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"hash/fnv"
 	"net/http"
 	"sync"
 	"time"
@@ -30,6 +33,7 @@ type QdrantAgent struct {
 	embedder      *llm.OllamaEmbedder
 	httpClient    *http.Client
 	qdrantCircuit *llm.CircuitBreaker
+	instanceID    string // unique per process — prevents point ID collisions on cycle counter reset
 
 	// collMu + collReady : retentative à chaque cycle jusqu'au premier succès Qdrant
 	collMu    sync.Mutex
@@ -47,7 +51,23 @@ func NewQdrantAgent(qdrantURL, ollamaURL, embedModel string) *QdrantAgent {
 		embedder:      llm.NewOllamaEmbedder(ollamaURL, embedModel),
 		httpClient:    &http.Client{Timeout: 10 * time.Second},
 		qdrantCircuit: llm.DefaultCircuitBreaker(),
+		instanceID:    newInstanceID(),
 	}
+}
+
+// newInstanceID generates a random 8-byte hex string to uniquely identify this runtime instance.
+func newInstanceID() string {
+	b := make([]byte, 8)
+	_, _ = rand.Read(b)
+	return hex.EncodeToString(b)
+}
+
+// cyclePointID hashes instance_id:cycle_num into a uint64 Qdrant point ID.
+// Prevents collisions when the cycle counter resets (e.g. SQLite wipe + restart).
+func cyclePointID(instanceID string, cycleNum int) uint64 {
+	h := fnv.New64a()
+	_, _ = fmt.Fprintf(h, "%s:%d", instanceID, cycleNum)
+	return h.Sum64()
 }
 
 // LastSimilarDecisions implémente SimilarDecisionsProvider.
@@ -219,7 +239,7 @@ func (a *QdrantAgent) upsert(ctx context.Context, record memory.CycleRecord, vec
 	}
 
 	p := point{
-		ID:     uint64(record.CycleNum),
+		ID:     cyclePointID(a.instanceID, record.CycleNum),
 		Vector: vector,
 		Payload: map[string]any{
 			"action":       record.Action,
@@ -227,6 +247,7 @@ func (a *QdrantAgent) upsert(ctx context.Context, record memory.CycleRecord, vec
 			"reason":       record.Reason,
 			"confidence":   record.Confidence,
 			"cycle_num":    record.CycleNum,
+			"instance_id":  a.instanceID,
 			"trigger_cpu":  record.TriggerCPU,
 			"trigger_ram":  record.TriggerRAM,
 			"trigger_disk": record.TriggerDisk,

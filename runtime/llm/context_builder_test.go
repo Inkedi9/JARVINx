@@ -179,6 +179,39 @@ func TestTrend_Stable(t *testing.T) {
 	}
 }
 
+func TestBuildAdaptiveSystemPrompt_SimilarDecisionsWrapped(t *testing.T) {
+	ctx := AdaptiveContext{
+		CycleCount:       1,
+		SimilarDecisions: []string{"CPU was high, action: suggest"},
+	}
+	result := BuildAdaptiveSystemPrompt("base", ctx)
+	if !strings.Contains(result, "[HISTORICAL DATA]") {
+		t.Error("expected [HISTORICAL DATA] opening tag")
+	}
+	if !strings.Contains(result, "[/HISTORICAL DATA]") {
+		t.Error("expected [/HISTORICAL DATA] closing tag")
+	}
+	if !strings.Contains(result, "CPU was high") {
+		t.Error("expected decision content inside block")
+	}
+}
+
+func TestSanitizeSimilarDecision_StripNewlines(t *testing.T) {
+	input := "line1\nline2\r\nline3"
+	result := sanitizeSimilarDecision(input)
+	if strings.ContainsAny(result, "\n\r") {
+		t.Errorf("expected no newlines, got: %q", result)
+	}
+}
+
+func TestSanitizeSimilarDecision_Truncate(t *testing.T) {
+	input := strings.Repeat("a", 300)
+	result := sanitizeSimilarDecision(input)
+	if len(result) != 200 {
+		t.Errorf("expected length 200, got %d", len(result))
+	}
+}
+
 func TestDominantKey(t *testing.T) {
 	counts := map[string]int{
 		"log":     10,

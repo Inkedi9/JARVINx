@@ -98,10 +98,11 @@ func BuildAdaptiveSystemPrompt(base string, ctx AdaptiveContext) string {
 
 	// Décisions similaires passées (injectées par QdrantAgent en v1.8)
 	if len(ctx.SimilarDecisions) > 0 {
-		sb.WriteString("\nDécisions similaires dans l'historique :\n")
+		sb.WriteString("\n[HISTORICAL DATA]\n")
 		for _, d := range ctx.SimilarDecisions {
-			_, _ = fmt.Fprintf(&sb, "  - %s\n", d)
+			_, _ = fmt.Fprintf(&sb, "  - %s\n", sanitizeSimilarDecision(d))
 		}
+		sb.WriteString("[/HISTORICAL DATA]\n")
 	}
 
 	sb.WriteString("--- FIN CONTEXTE ---\n")
@@ -145,6 +146,16 @@ func average(snapshots []memory.Snapshot, getter func(memory.Snapshot) float64) 
 		sum += getter(s)
 	}
 	return sum / float64(len(snapshots))
+}
+
+// sanitizeSimilarDecision strips newlines and truncates to 200 chars to prevent prompt injection.
+func sanitizeSimilarDecision(s string) string {
+	s = strings.ReplaceAll(s, "\n", " ")
+	s = strings.ReplaceAll(s, "\r", " ")
+	if len(s) > 200 {
+		s = s[:200]
+	}
+	return s
 }
 
 func dominantKey(counts map[string]int) string {

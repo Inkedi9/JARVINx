@@ -165,6 +165,31 @@ func TestConfig_EmptyAllowedOrigins(t *testing.T) {
 	}
 }
 
+func TestSecurityHeaders(t *testing.T) {
+	srv := makeTestServer([]string{"http://localhost:3000"})
+
+	handler := srv.corsMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	req := httptest.NewRequest("GET", "/api/status", nil)
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+
+	checks := map[string]string{
+		"X-Frame-Options":       "DENY",
+		"X-Content-Type-Options": "nosniff",
+	}
+	for header, want := range checks {
+		if got := w.Header().Get(header); got != want {
+			t.Errorf("%s: expected %q, got %q", header, want, got)
+		}
+	}
+	if csp := w.Header().Get("Content-Security-Policy"); csp == "" {
+		t.Error("expected Content-Security-Policy header to be set")
+	}
+}
+
 func TestToggle_AgentEnable(t *testing.T) {
 	srv := makeTestServer([]string{"http://localhost:3000"})
 

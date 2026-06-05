@@ -236,6 +236,26 @@ func TestQdrantAgent_CollectionInitRetry(t *testing.T) {
 	a.collMu.Unlock()
 }
 
+func TestCyclePointID_Uniqueness(t *testing.T) {
+	// Same instance, different cycles → different IDs
+	id1 := cyclePointID("instance-A", 1)
+	id2 := cyclePointID("instance-A", 2)
+	if id1 == id2 {
+		t.Error("same instance different cycles must produce different point IDs")
+	}
+
+	// Different instances, same cycle → different IDs
+	id3 := cyclePointID("instance-B", 1)
+	if id1 == id3 {
+		t.Error("different instances same cycle must produce different point IDs")
+	}
+
+	// Deterministic: same inputs → same output
+	if cyclePointID("instance-A", 1) != id1 {
+		t.Error("cyclePointID must be deterministic")
+	}
+}
+
 func TestQdrantAgent_QdrantCircuitBreaker(t *testing.T) {
 	embedding := []float32{0.1, 0.2, 0.3}
 	ollamaSrv := mockOllamaEmbedServer(t, embedding)

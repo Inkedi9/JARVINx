@@ -163,6 +163,104 @@ type stubSimilarProvider struct {
 
 func (s *stubSimilarProvider) LastSimilarDecisions() []string { return s.decisions }
 
+// ── N-1 pattern ──────────────────────────────────────────────────────────────
+
+func TestOrchestrator_N1PatternEndToEnd(t *testing.T) {
+	bus := NewBus(10)
+	state := memory.NewState("")
+	registry := agents.NewRegistry()
+	orch := NewOrchestrator(bus, registry, state, memory.NewLogger(""), true, 5*time.Minute)
+
+	// Cycle N-1 : décision avec commande stockée dans le state
+	_ = state.AddCycle(memory.CycleRecord{
+		Action: "execute", Command: "uptime", CycleNum: 1, Timestamp: time.Now(),
+	})
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	go orch.Start(ctx)
+	time.Sleep(50 * time.Millisecond)
+
+	// Cycle N : déclenche l'observation — l'orchestrateur doit lire la commande N-1
+	bus.Publish(Event{Type: EventObserved, Payload: memory.Snapshot{
+		Timestamp: time.Now(), CPUPercent: 30.0, MemPercent: 50.0, DiskPercent: 40.0,
+	}})
+
+	deadline := time.Now().Add(500 * time.Millisecond)
+	for time.Now().Before(deadline) {
+		cmd, _ := orch.ExecGuardStatus()
+		if cmd == "uptime" {
+			return // N-1 confirmé : la commande du cycle précédent a été consommée
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	t.Error("N-1 pattern: command from previous cycle was not picked up")
+}
+
+// ── executeGuard cooldown ─────────────────────────────────────────────────────
+
+func TestOrchestrator_ExecuteGuardCooldown(t *testing.T) {
+	guard := &executeGuard{cooldown: 100 * time.Millisecond}
+
+	if !guard.Allow("uptime") {
+		t.Fatal("expected first Allow to return true")
+	}
+	// Même commande dans le cooldown : bloquée
+	if guard.Allow("uptime") {
+		t.Error("expected second Allow to be blocked by cooldown")
+	}
+	if guard.CooldownRemaining() == 0 {
+		t.Error("expected cooldown remaining > 0 after first execute")
+	}
+
+	// Commande différente dans le cooldown : autorisée (guard est par-commande)
+	if !guard.Allow("df -h") {
+		t.Error("expected different command to bypass cooldown")
+	}
+
+	// Après expiration : commande originale autorisée à nouveau
+	time.Sleep(120 * time.Millisecond)
+	if !guard.Allow("uptime") {
+		t.Error("expected Allow to return true after cooldown expired")
+	}
+}
+
+// ── shouldExecute ─────────────────────────────────────────────────────────────
+
+func TestOrchestrator_ShouldExecute_CancelsWhenMetricNormalized(t *testing.T) {
+	orch, _, _, _ := makeTestOrchestrator()
+
+	cycle := memory.CycleRecord{TriggerCPU: 90.0, Command: "uptime"}
+	current := memory.Snapshot{CPUPercent: 20.0} // très en dessous du seuil − marge
+
+	if orch.shouldExecute(cycle, current) {
+		t.Error("expected shouldExecute=false when CPU normalized (90% → 20%)")
+	}
+}
+
+func TestOrchestrator_ShouldExecute_AllowsWhenStillHigh(t *testing.T) {
+	orch, _, _, _ := makeTestOrchestrator()
+
+	cycle := memory.CycleRecord{TriggerCPU: 90.0, Command: "uptime"}
+	current := memory.Snapshot{CPUPercent: 88.0} // encore au-dessus de 90−5=85
+
+	if !orch.shouldExecute(cycle, current) {
+		t.Error("expected shouldExecute=true when CPU still high (88% vs trigger 90%)")
+	}
+}
+
+func TestOrchestrator_ShouldExecute_AllowsWithNoTriggers(t *testing.T) {
+	orch, _, _, _ := makeTestOrchestrator()
+
+	// Rétro-compatibilité : aucun trigger → toujours autorisé
+	cycle := memory.CycleRecord{Command: "uptime"}
+	current := memory.Snapshot{}
+
+	if !orch.shouldExecute(cycle, current) {
+		t.Error("expected shouldExecute=true when no trigger values set (backward compat)")
+	}
+}
+
 func TestOrchestrator_MultipleSubscribers(t *testing.T) {
 	orch, bus, _, _ := makeTestOrchestrator()
 

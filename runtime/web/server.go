@@ -232,6 +232,10 @@ func (s *Server) authMiddleware(next http.Handler) http.Handler {
 // corsMiddleware gère les CORS pour Next.js en dev et en prod
 func (s *Server) corsMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("X-Frame-Options", "DENY")
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.Header().Set("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:")
+
 		origin := r.Header.Get("Origin")
 
 		if origin != "" && s.allowedOrigins[origin] {
@@ -316,6 +320,7 @@ func (s *Server) handleDailyReportSend(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "rate limit exceeded", http.StatusTooManyRequests)
 		return
 	}
+	r.Body = http.MaxBytesReader(w, r.Body, 4096)
 
 	if s.dailyReporter == nil || !s.cfg.DailyReportEnabled {
 		s.writeJSON(w, SendReportResponse{
@@ -488,6 +493,7 @@ func (s *Server) handleAgentToggle(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "rate limit exceeded", http.StatusTooManyRequests)
 		return
 	}
+	r.Body = http.MaxBytesReader(w, r.Body, 4096)
 
 	var req ToggleRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
