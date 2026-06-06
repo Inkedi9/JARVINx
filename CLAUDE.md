@@ -106,11 +106,13 @@ GitHub Actions (`.github/workflows/ci.yml`) runs on push to `main`/`develop` and
 | `core/` | Runtime, Bus, Scheduler, Orchestrator, CLI |
 | `agents/` | Agent interface, BaseAgent, Registry, SystemAgent, AlertAgent, DockerAgent, FileAgent, QdrantAgent, DailyReporter, NotifierDispatcher, SimilarDecisionsProvider |
 | `llm/` | OllamaClient, OllamaEmbedder, JSON parser, prompt builder, AdaptiveContext, CircuitBreaker, retry logic |
-| `memory/` | `Store` + `EventLog` interfaces; `*State` (state.json, 20 cycles); `*Logger` (logs.jsonl/alerts.jsonl, rotation); `SQLiteStore` (unlimited history, WAL); `DoubleWriteStore` (dual-write JSON→SQLite, reads from SQLite); `NoopStore` |
-| `tools/` | System metrics via gopsutil, shell executor with whitelist, Docker, filesystem scan |
+| `memory/` | `Store` + `EventLog` interfaces; `*State` (state.json, 20 cycles); `*Logger` (logs.jsonl/alerts.jsonl, rotation); `SQLiteStore` (unlimited history, WAL); `DoubleWriteStore` (dual-write JSON→SQLite, reads from SQLite); `NoopStore`; `ProcInfo` type (`proc.go`) |
+| `tools/` | System metrics via gopsutil, shell executor with whitelist, Docker, filesystem scan, network counters (`network.go`), top-processes by RSS (`process.go`) |
 | `web/` | HTTP server, CORS, embedded dashboard via embed.FS |
 | `config/` | Config struct, .env loader, validation (interval 5s–1h) |
 | `jxlog/` | Structured logging with custom slog handler |
+
+**`memory.Snapshot` fields (v1.10):** In addition to CPU/RAM/Disk, each snapshot now carries `SwapUsed/Total/Percent`, `NetRecvMBps`/`NetSentMBps` (delta since last cycle via `tools/network.go`), `LoadAvg1/5/15` (Unix only, zero on Windows), and `TopProcs []ProcInfo` (up to 5 processes by RSS, collected by `tools/process.go` with a 2s sub-timeout). All fields are `omitempty` — consumers must tolerate zero values on Windows or when collection fails.
 
 External dependencies: `github.com/shirou/gopsutil/v3` (cross-platform metrics) + `modernc.org/sqlite` (pure Go SQLite, no CGO — only active when `JARVINX_SQLITE_PATH` is set). Note: `go.mod` requires `go 1.25.0` due to `modernc.org/libc` transitive dependency.
 
@@ -176,21 +178,21 @@ A `CircuitBreaker` (`circuit_breaker.go`) wraps all Ollama calls: after `maxFail
 
 ### Web API (`web/`)
 
-Go embeds the compiled dashboard into the binary via `embed.FS`. In dev, the Go server (`:8080`) serves only the API; the Next.js dev server (`:3000`) serves the UI. CORS origin check is an O(1) map lookup.
+Go embeds the compiled dashboard into the binary via `embed.FS`. In dev, the Go server (`:8080`) serves only the API; the Next.js dev server (`:3000`) serves the UI. CORS origin check is an O(1) map lookup. The CORS middleware also sets `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, and a restrictive `Content-Security-Policy` on every response.
 
 API endpoints:
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/api/status` | Runtime status, uptime, circuit state, last cycle |
+| GET | `/api/status` | Runtime status, uptime, circuit state, last cycle, `exec_guard` (last cmd + cooldown remaining) |
 | GET | `/api/history` | Last 10 cycles (most recent first) |
 | GET | `/api/agents` | Agent list with enabled/run/error counts |
-| POST | `/api/agents/toggle` | Toggle agent by name — body: `{"name": "..."}` |
+| POST | `/api/agents/toggle` | Toggle agent by name — body: `{"name": "..."}` — rate-limited (1 req/s, token bucket) |
 | GET | `/api/docker` | Container list with running/exited counts |
 | GET | `/api/logs/status` | Log file sizes and rotation status |
 | GET | `/api/file` | FileAgent status and watched paths |
 | GET | `/api/daily-report` | DailyReporter schedule and last/next send |
-| POST | `/api/daily-report/send` | Trigger an immediate report dispatch |
+| POST | `/api/daily-report/send` | Trigger an immediate report dispatch — rate-limited (1 req/s, token bucket) |
 | GET | `/api/llm-context` | Adaptive context fed to the LLM (trends, alert rate) |
 | GET | `/api/history/full` | Aggregated snapshots by period (`?range=7d\|30d\|90d`) — hourly or daily buckets from SQLite |
 
