@@ -21,7 +21,7 @@ type ContainerState struct {
 	ID           string
 	Name         string
 	Image        string
-	Status       string    // Docker State: "running", "exited", "paused", etc.
+	Status       string // Docker State: "running", "exited", "paused", etc.
 	Running      bool
 	Exited       bool
 	Unhealthy    bool      // parsed from raw Docker Status string
