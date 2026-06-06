@@ -7,18 +7,26 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"regexp"
 	"runtime"
+	"strconv"
+	"strings"
 	"time"
 )
 
+var reRestarts = regexp.MustCompile(`(\d+)\s+restarts?`)
+
 // ContainerState représente l'état d'un container Docker
 type ContainerState struct {
-	ID      string
-	Name    string
-	Image   string
-	Status  string // "running", "exited", "paused", etc.
-	Running bool
-	Exited  bool
+	ID           string
+	Name         string
+	Image        string
+	Status       string    // Docker State: "running", "exited", "paused", etc.
+	Running      bool
+	Exited       bool
+	Unhealthy    bool      // parsed from raw Docker Status string
+	RestartCount int       // parsed from "(N restarts)" in raw Status string
+	CreatedAt    time.Time // parsed from Created unix timestamp
 }
 
 // DockerAvailable vérifie si Docker est accessible
@@ -67,11 +75,12 @@ func ListContainers(ctx context.Context) ([]ContainerState, error) {
 
 	// Structure brute de l'API Docker
 	var raw []struct {
-		ID     string   `json:"Id"`
-		Names  []string `json:"Names"`
-		Image  string   `json:"Image"`
-		State  string   `json:"State"`
-		Status string   `json:"Status"`
+		ID      string   `json:"Id"`
+		Names   []string `json:"Names"`
+		Image   string   `json:"Image"`
+		State   string   `json:"State"`
+		Status  string   `json:"Status"`  // human-readable: "Up 2h (unhealthy)", "(3 restarts)"
+		Created int64    `json:"Created"` // unix timestamp
 	}
 
 	if err := json.Unmarshal(body, &raw); err != nil {
@@ -89,13 +98,23 @@ func ListContainers(ctx context.Context) ([]ContainerState, error) {
 			}
 		}
 
+		restartCount := 0
+		if m := reRestarts.FindStringSubmatch(c.Status); len(m) > 1 {
+			if n, err := strconv.Atoi(m[1]); err == nil {
+				restartCount = n
+			}
+		}
+
 		containers = append(containers, ContainerState{
-			ID:      c.ID[:12],
-			Name:    name,
-			Image:   c.Image,
-			Status:  c.State,
-			Running: c.State == "running",
-			Exited:  c.State == "exited",
+			ID:           c.ID[:12],
+			Name:         name,
+			Image:        c.Image,
+			Status:       c.State,
+			Running:      c.State == "running",
+			Exited:       c.State == "exited",
+			Unhealthy:    strings.Contains(c.Status, "unhealthy"),
+			RestartCount: restartCount,
+			CreatedAt:    time.Unix(c.Created, 0),
 		})
 	}
 

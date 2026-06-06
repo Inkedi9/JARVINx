@@ -119,6 +119,69 @@ func TestDockerAgent_DryRunNoDiscord(t *testing.T) {
 	}
 }
 
+func TestDockerAgent_DetectUnhealthy_NewAlert(t *testing.T) {
+	a := makeDockerAgent()
+	a.prevStates["nginx"] = "running"
+	// pas encore marqué unhealthy
+
+	containers := []tools.ContainerState{
+		{Name: "nginx", Image: "nginx:latest", Status: "running", Running: true, Unhealthy: true},
+	}
+
+	alerts := a.detectChanges(containers)
+	if len(alerts) == 0 {
+		t.Error("expected unhealthy alert on first detection")
+	}
+}
+
+func TestDockerAgent_DetectUnhealthy_NoRepeat(t *testing.T) {
+	a := makeDockerAgent()
+	a.prevStates["nginx"] = "running"
+	a.prevUnhealthy["nginx"] = true // already known unhealthy
+
+	containers := []tools.ContainerState{
+		{Name: "nginx", Image: "nginx:latest", Status: "running", Running: true, Unhealthy: true},
+	}
+
+	alerts := a.detectChanges(containers)
+	if len(alerts) != 0 {
+		t.Errorf("should not re-alert on already-known unhealthy, got %d alerts", len(alerts))
+	}
+}
+
+func TestDockerAgent_RestartCountLogged(t *testing.T) {
+	a := makeDockerAgent()
+	a.prevStates["nginx"] = "running"
+
+	containers := []tools.ContainerState{
+		{Name: "nginx", Image: "nginx:latest", Status: "running", Running: true, RestartCount: 3},
+	}
+
+	// detectChanges ne doit pas paniquer avec un RestartCount > 0
+	alerts := a.detectChanges(containers)
+	if len(alerts) != 0 {
+		t.Errorf("restart count alone should not produce alert, got %d", len(alerts))
+	}
+}
+
+func TestContainerAge(t *testing.T) {
+	cases := []struct {
+		delta    time.Duration
+		contains string
+	}{
+		{30 * time.Minute, "m"},
+		{5 * time.Hour, "h"},
+		{3 * 24 * time.Hour, "d"},
+	}
+	for _, tc := range cases {
+		c := tools.ContainerState{CreatedAt: time.Now().Add(-tc.delta)}
+		age := containerAge(c)
+		if age == "unknown" || len(age) == 0 {
+			t.Errorf("unexpected age '%s' for delta %v", age, tc.delta)
+		}
+	}
+}
+
 func TestCountByStatus(t *testing.T) {
 	containers := []tools.ContainerState{
 		{Status: "running", Running: true},
