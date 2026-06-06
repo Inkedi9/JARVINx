@@ -9,12 +9,15 @@ import (
 	"github.com/Inkedi9/jarvinx/tools"
 )
 
+const unknownAge = "unknown"
+
 type FileAgent struct {
 	BaseAgent
 	watchPaths []string
 	maxSizeMB  int64
 	dryRun     bool
-	prevSizes  map[string]float64 // taille précédente par path en MB
+	prevSizes  map[string]float64   // taille précédente par path en MB
+	prevTimes  map[string]time.Time // timestamp du dernier scan par path
 }
 
 func NewFileAgent(watchPaths []string, maxSizeMB int64, dryRun bool) *FileAgent {
@@ -24,6 +27,7 @@ func NewFileAgent(watchPaths []string, maxSizeMB int64, dryRun bool) *FileAgent 
 		maxSizeMB:  maxSizeMB,
 		dryRun:     dryRun,
 		prevSizes:  make(map[string]float64),
+		prevTimes:  make(map[string]time.Time),
 	}
 }
 
@@ -50,16 +54,24 @@ func (a *FileAgent) Run(ctx context.Context, actx AgentContext) error {
 			continue
 		}
 
+		lastMod := unknownAge
+		if !stats.LastModified.IsZero() {
+			lastMod = time.Since(stats.LastModified).Round(time.Minute).String() + " ago"
+		}
+		inodesInfo := ""
+		if stats.InodesUsed > 0 {
+			inodesInfo = fmt.Sprintf(" | inodes %.1f%%", stats.InodesPercent)
+		}
 		jxlog.Debug("FILE AGENT", fmt.Sprintf(
-			"'%s' → %.1f MB | %d fichiers | %d gros fichiers",
-			path, stats.TotalMB, stats.FileCount, len(stats.LargeFiles),
+			"'%s' → %.1f MB | %d fichiers | %d gros fichiers | last-mod: %s%s",
+			path, stats.TotalMB, stats.FileCount, len(stats.LargeFiles), lastMod, inodesInfo,
 		))
 
 		// Détecte les gros fichiers
 		for _, f := range stats.LargeFiles {
 			msg := fmt.Sprintf(
-				"Fichier volumineux détecté : %s (%.1f MB)",
-				f.Path, f.SizeMB,
+				"Fichier volumineux détecté : %s (%.1f MB, modifié %s)",
+				f.Path, f.SizeMB, f.ModTime.Format("2006-01-02 15:04"),
 			)
 			if a.dryRun {
 				jxlog.Info("DRY-RUN", fmt.Sprintf("File alert simulée : %s", msg))
@@ -69,13 +81,19 @@ func (a *FileAgent) Run(ctx context.Context, actx AgentContext) error {
 			hasAlerts = true
 		}
 
-		// Détecte la croissance rapide du dossier
+		// Détecte la croissance rapide du dossier (avec taux MB/min)
 		if prev, ok := a.prevSizes[path]; ok {
 			growth := stats.TotalMB - prev
 			if growth > float64(a.maxSizeMB)/2 {
+				rate := 0.0
+				if prevT, hasPrevT := a.prevTimes[path]; hasPrevT {
+					if elapsed := time.Since(prevT).Minutes(); elapsed > 0 {
+						rate = growth / elapsed
+					}
+				}
 				msg := fmt.Sprintf(
-					"Dossier '%s' a grandi de %.1f MB en un cycle (total : %.1f MB)",
-					path, growth, stats.TotalMB,
+					"Dossier '%s' a grandi de %.1f MB (%.2f MB/min) — total : %.1f MB",
+					path, growth, rate, stats.TotalMB,
 				)
 				if a.dryRun {
 					jxlog.Info("DRY-RUN", fmt.Sprintf("File growth alert simulée : %s", msg))
@@ -87,6 +105,7 @@ func (a *FileAgent) Run(ctx context.Context, actx AgentContext) error {
 		}
 
 		a.prevSizes[path] = stats.TotalMB
+		a.prevTimes[path] = time.Now()
 	}
 
 	if hasAlerts {

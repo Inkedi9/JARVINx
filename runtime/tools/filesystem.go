@@ -5,6 +5,9 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"time"
+
+	"github.com/shirou/gopsutil/v3/disk"
 )
 
 // FileInfo représente un fichier ou dossier analysé
@@ -13,17 +16,21 @@ type FileInfo struct {
 	SizeBytes int64
 	SizeMB    float64
 	IsDir     bool
-	Children  int // nombre de fichiers dans le dossier (si IsDir)
+	Children  int       // nombre de fichiers dans le dossier (si IsDir)
+	ModTime   time.Time // last modification time
 }
 
 // DirStats represents the global stats of a monitored directory
 type DirStats struct {
-	Path       string
-	TotalBytes int64
-	TotalMB    float64
-	FileCount  int
-	LargeFiles []FileInfo // fichiers au-dessus du seuil
-	Error      string
+	Path          string
+	TotalBytes    int64
+	TotalMB       float64
+	FileCount     int
+	LargeFiles    []FileInfo // fichiers au-dessus du seuil
+	LastModified  time.Time  // modtime du fichier le plus récemment modifié
+	InodesUsed    uint64     // 0 on Windows (fail-silent)
+	InodesPercent float64    // 0 on Windows (fail-silent)
+	Error         string
 }
 
 // ScanDirectory analyse un dossier et retourne ses stats
@@ -54,11 +61,16 @@ func ScanDirectory(path string, maxSizeMB int64) DirStats {
 		stats.TotalBytes += fi.Size()
 		stats.FileCount++
 
+		if fi.ModTime().After(stats.LastModified) {
+			stats.LastModified = fi.ModTime()
+		}
+
 		if fi.Size() >= maxBytes {
 			stats.LargeFiles = append(stats.LargeFiles, FileInfo{
 				Path:      p,
 				SizeBytes: fi.Size(),
 				SizeMB:    float64(fi.Size()) / 1024 / 1024,
+				ModTime:   fi.ModTime(),
 			})
 		}
 
@@ -70,6 +82,12 @@ func ScanDirectory(path string, maxSizeMB int64) DirStats {
 	}
 
 	stats.TotalMB = float64(stats.TotalBytes) / 1024 / 1024
+
+	// Inodes — fail-silent (returns 0 on Windows)
+	if usage, inoErr := disk.Usage(path); inoErr == nil {
+		stats.InodesUsed = usage.InodesUsed
+		stats.InodesPercent = usage.InodesUsedPercent
+	}
 
 	// Trie les gros fichiers par taille décroissante
 	sort.Slice(stats.LargeFiles, func(i, j int) bool {
