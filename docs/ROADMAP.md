@@ -126,35 +126,35 @@
 - [x] **Webhooks HTTPS uniquement** — rejeter `http://` dans `validateWebhookURL`
 - [x] **Corriger TECHNICAL.md** — `/api/chat`, `Add()`, cap 20 cycles, noms variables réels, commandes Windows
 
-## ⚡ V1.10 — Enrichissement agents
+## ⚡ V1.10 — Enrichissement agents ✅
 
 > Améliorer la qualité des décisions LLM sans changer l'architecture.
 
 System Agent — nouvelles métriques gopsutil :
 
-- [ ] **Swap** — `mem.SwapMemory()` dans `tools/system.go` + `Snapshot`. Effort XS
-- [ ] **Load average** — `load.Avg()`, fail-silent sur Windows. Effort XS
-- [ ] **Top 5 processus** — `process.Processes()` avec timeout 2s. Effort M
-- [ ] **Réseau delta** — débit MB/s via delta `net.IOCounters()`. Effort S
+- [x] **Swap** — `mem.SwapMemory()` dans `tools/system.go` + `Snapshot`. Effort XS
+- [x] **Load average** — `load.Avg()`, fail-silent sur Windows. Effort XS
+- [x] **Top 5 processus** — `process.Processes()` avec timeout 2s. Effort M
+- [x] **Réseau delta** — débit MB/s via delta `net.IOCounters()`. Effort S
 
 Docker Agent — sans appel stats supplémentaire
 
-- [ ] **Health check** — parser `"unhealthy"` dans le champ `Status` déjà retourné par Docker. Effort XS
-- [ ] **Restart count** — regex `"Restarted N times"` dans `Status`. Effort XS
-- [ ] **Container age** — champ `Created` (unix timestamp) déjà dans la réponse brute. Effort XS
+- [x] **Health check** — parser `"unhealthy"` dans le champ `Status` déjà retourné par Docker. Effort XS
+- [x] **Restart count** — regex `"(\d+) restarts?"` dans `Status`. Effort XS
+- [x] **Container age** — champ `Created` (unix timestamp) déjà dans la réponse brute. Effort XS
 
 File Agent
 
-- [ ] **Taux de croissance MB/min** — diviser `growth` par durée du cycle. Effort XS
-- [ ] **ModTime récent** — `fi.ModTime()` gratuit dans `filepath.Walk`. Effort XS
-- [ ] **Inodes Linux** — `disk.Usage(path).InodesUsed` via gopsutil, fail-silent sur Windows. Effort XS
+- [x] **Taux de croissance MB/min** — diviser `growth` par durée du cycle. Effort XS
+- [x] **ModTime récent** — `fi.ModTime()` gratuit dans `filepath.Walk`. Effort XS
+- [x] **Inodes Linux** — `disk.Usage(path).InodesUsed` via gopsutil, fail-silent sur Windows. Effort XS
 
 Prompt adaptatif — zero appel réseau
 
-- [ ] **Heure + période** — nuit/matin/journée/soirée + weekend dans `context_builder.go`. Effort XS
-- [ ] **Corrélations CPU/RAM** — diagnostic pré-calculé : "RAM monte CPU stable → memory leak potentiel". Effort XS
-- [ ] **Streak stabilité** — cycles depuis dernière alerte injecté dans le prompt. Effort XS
-- [ ] **Forecast N cycles** — projection linéaire vers le seuil configuré. Effort S
+- [x] **Heure + période** — nuit/matin/journée/soirée + weekend dans `context_builder.go`. Effort XS
+- [x] **Corrélations CPU/RAM** — diagnostic pré-calculé : "RAM monte CPU stable → memory leak potentiel". Effort XS
+- [x] **Streak stabilité** — cycles depuis dernière alerte injecté dans le prompt. Effort XS
+- [x] **Forecast N cycles** — projection linéaire vers le seuil configuré. Effort S
 
 ## 📊 V1.11 — Dashboard & visibilité
 

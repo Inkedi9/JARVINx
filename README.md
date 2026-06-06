@@ -7,7 +7,7 @@
 ██   ██║██╔══██║██╔══██╗╚██╗ ██╔╝██║██║╚██╗██║ ██╔██╗
 ╚█████╔╝██║  ██║██║  ██║ ╚████╔╝ ██║██║ ╚████║██╔╝ ██╗
  ╚════╝ ╚═╝  ╚═╝╚═╝  ╚═╝  ╚═══╝  ╚═╝╚═╝  ╚═══╝╚═╝  ╚═╝
-Version 1.9.0
+Version 1.10.0
 ```
 
 **Autonomous AI Runtime · Observing. Thinking. Acting. Evolving.**
@@ -15,7 +15,7 @@ Version 1.9.0
 ![Go](https://img.shields.io/badge/Go-1.26.3-00ADD8?style=flat-square&logo=go&logoColor=white)
 ![Ollama](https://img.shields.io/badge/Ollama-local%20LLM-black?style=flat-square)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
-![Status](https://img.shields.io/badge/status-v1.9%20stable-00E5FF?style=flat-square)
+![Status](https://img.shields.io/badge/status-v1.10%20stable-00E5FF?style=flat-square)
 
 _Your system. My mission._
 
@@ -409,18 +409,18 @@ go test ./agents/... -v
 go test ./... -cover
 ```
 
-| Package         | Tests                                                            | Couverture            |
-| --------------- | ---------------------------------------------------------------- | --------------------- |
-| `llm`           | 36 tests — parser JSON, markdown, fallback, uppercase, malformed | Parser robuste        |
-| `agents`        | 44 tests — seuils, cooldown, enable/disable, panic isolation     | AlertAgent + Registry |
-| `tools`         | 8 tests — whitelist, timeout, commandes valides                  | Shell executor        |
-| `config`        | 29 tests — seuils, intervalle, port, champs vides                | Validation config     |
-| `jxlog`         | 9 tests — niveaux, filtrage debug, nil safety                    | Logger structuré      |
-| `memory`        | 11 tests                                                         |
-| `web`           | 15 tests                                                         |
-| `core`          | 23 tests                                                         |
-| `dashboard/lib` | 18 tests                                                         |
-| **Total**       | **~193 tests**                                                   |
+| Package         | Tests                                                                          | Couverture                     |
+| --------------- | ------------------------------------------------------------------------------ | ------------------------------ |
+| `llm`           | 57 tests — parser JSON, markdown, fallback, context adaptatif, forecast        | Parser + prompt adaptatif      |
+| `agents`        | 70 tests — seuils, cooldown, enable/disable, panic isolation, docker, file     | AlertAgent + Registry + agents |
+| `tools`         | 8 tests — whitelist, timeout, commandes valides                                | Shell executor                 |
+| `config`        | 38 tests — seuils, intervalle, port, champs vides                              | Validation config              |
+| `jxlog`         | 10 tests — niveaux, filtrage debug, nil safety                                 | Logger structuré               |
+| `memory`        | 28 tests — state, SQLite, DoubleWrite, logger, rotation                        | Persistance                    |
+| `web`           | 22 tests — handlers API, CORS, auth, rate limit                                | HTTP server                    |
+| `core`          | 32 tests — orchestrator, bus, scheduler, N-1, executeGuard                     | Core runtime                   |
+| `dashboard/lib` | ~18 tests                                                                      | Hooks + composants             |
+| **Total**       | **~283 tests**                                                                 |                                |
 
 **Ce qui est testé :**
 
@@ -558,7 +558,7 @@ JARVINx envoie des embeds Discord structurés quand un seuil est dépassé.
 | V1.7    | Mémoire historique SQLite | ✅ Released |
 | V1.8    | Mémoire sémantique Qdrant | ✅ Released |
 | V1.9    | Sécurité & hardening      | ✅ Released |
-| V1.10   | Enrichissement agents     | 🔮 Future   |
+| V1.10   | Enrichissement agents     | ✅ Released |
 | V1.11   | Dashboard & visibilité    | 🔮 Future   |
 | V1.12   | Robustesse & tests        | 🔮 Future   |
 

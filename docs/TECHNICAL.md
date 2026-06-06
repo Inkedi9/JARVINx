@@ -319,6 +319,8 @@ Appelle Ollama avec les métriques + historique, parse la décision JSON, persis
 - Si `action == "execute"` : remplit `TriggerCPU/RAM/Disk` dans le `CycleRecord` avec les métriques du snapshot courant
 - Copie `decision.Confidence` dans le `CycleRecord` (persisté dans `state.json`)
 
+**Métriques collectées (v1.10) :** `Snapshot` contient désormais : CPU%, RAM (used/total/%), Swap (used/total/%), Disk (used/total/%), débit réseau (↓recv MB/s / ↑sent MB/s via delta `net.IOCounters()`), load average 1/5/15min (fail-silent sur Windows), top 5 processus par RAM résidente (`tools.TopProcesses`, timeout 2s). Tous les champs nouveaux ont `omitempty` — zéro impact sur les bases existantes.
+
 #### `AlertAgent` (`agents/alert_agent.go`)
 
 Analyse les seuils, gère le cooldown anti-spam, envoie les embeds Discord.
@@ -337,6 +339,14 @@ Schedule : 30s. Pas de dépendance externe — `net/http` standard avec transpor
 - Détecte les redémarrages `exited → running`
 - WatchList optionnelle — vide = surveille tout
 - Désactivable via `JARVINX_DOCKER_ENABLED=false`
+
+**Enrichissements v1.10 (zéro appel API supplémentaire)** — parsés depuis le champ `Status` et `Created` déjà retournés par `/containers/json?all=true` :
+
+- `Unhealthy bool` — `strings.Contains(status, "unhealthy")` ; alerte à la première transition healthy→unhealthy (pas de spam via `prevUnhealthy map[string]bool`)
+- `RestartCount int` — regex `(\d+)\s+restarts?` dans le status string ; loggé en WARN si > 0
+- `CreatedAt time.Time` — `time.Unix(Created, 0)` ; affiché en âge lisible (2m / 5h / 3d) dans le Debug log
+
+Ces champs sont exposés automatiquement dans `GET /api/docker` sans modification du handler.
 
 Windows : Docker Desktop doit exposer le port TCP 2375 dans ses settings.
 
@@ -357,6 +367,12 @@ Schedule : 5 minutes.
 - Détecte les fichiers dépassant `FileMaxSizeMB`
 - Détecte la croissance rapide d'un dossier entre deux cycles
 - Nécessite `JARVINX_FILE_WATCH` — désactivé si vide
+
+**Enrichissements v1.10 (zéro appel OS supplémentaire)** :
+
+- **Taux MB/min** — `prevTimes map[string]time.Time` stocke le timestamp du dernier scan ; le taux de croissance `growth / elapsed.Minutes()` est inclus dans l'alerte ("grandi de X MB à Y MB/min")
+- **ModTime** — `fi.ModTime()` collecté gratuitement dans le Walk ; `DirStats.LastModified` = fichier le plus récemment modifié ; inclus dans le Debug log et dans l'alerte gros fichier (date de dernière modification)
+- **Inodes (Linux)** — `disk.Usage(path).InodesUsed/InodesUsedPercent` après le Walk ; fail-silent sur Windows (retourne 0) ; affiché dans le Debug log si non-nul
 
 ### Multi-webhook (`agents/notifier.go`)
 
@@ -430,6 +446,20 @@ Activé via `JARVINX_DAILY_REPORT=true`.
 - Tendances CPU/RAM/Disk via `trendWithThreshold(threshold)` — les seuils réels de config remplacent les valeurs hardcodées
 - Dernières alertes déclenchées
 - `SimilarDecisions []string` — décisions passées similaires issues de Qdrant (v1.8), `nil` si désactivé
+
+**Enrichissements v1.10 (zéro appel réseau)** — calculés localement à partir des données déjà en mémoire :
+
+| Champ | Calcul | Injection prompt |
+|---|---|---|
+| `TimeOfDay string` | `time.Now().Hour()` → nuit/matin/journée/soirée | "Période : journée" |
+| `IsWeekend bool` | `.Weekday() == Saturday \| Sunday` | ", weekend" si vrai |
+| `Correlation string` | pente CPU vs pente RAM sur N snapshots → diagnostic texte | "Corrélation : RAM↑ CPU stable → memory leak potentiel" |
+| `StableStreak int` | cycles consécutifs sans `action=alert` (itération inverse) | affiché si ≥ 3 |
+| `CPUForecast string` | `(threshold - current) / deltaPerSnapshot` → "~N cycles avant seuil" | section "Projection" |
+| `RAMForecast string` | idem RAM | idem |
+| `DiskForecast string` | idem Disk | idem |
+
+Forecast retourne `""` si tendance stable/descendante ou > 100 cycles (trop lointain pour être actionnable). Pente = `(last - first) / (n-1)` — délibérément simple et testable.
 
 `BuildAdaptiveSystemPrompt(base, ctx)` enrichit le system prompt avec ce contexte, y compris la section "Décisions similaires dans l'historique" quand `SimilarDecisions` est non vide.
 Utilisé automatiquement par `SystemAgent` — aucune config requise.
