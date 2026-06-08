@@ -156,16 +156,16 @@ Prompt adaptatif — zero appel réseau
 - [x] **Streak stabilité** — cycles depuis dernière alerte injecté dans le prompt. Effort XS
 - [x] **Forecast N cycles** — projection linéaire vers le seuil configuré. Effort S
 
-## 📊 V1.11 — Dashboard & visibilité
+## 📊 V1.11 — Dashboard & visibilité ✅
 
 > Exposer ce qui existe déjà mais n'est pas visible.
 
-- [ ] **Circuit breaker visible** — `circuit_state` dans topbar ou Overview. Zero nouveau endpoint, 20 lignes
-- [ ] **Page Alerts** — exposer `alerts.jsonl` via `GET /api/alerts` + page `/alerts` avec filtres Warning/Critical
-- [ ] **Corrélations colorées LLM Context** — remplacer le texte de tendance par des badges avec flèches colorées
-- [ ] **Sparklines History** — mini-courbe SVG inline par ligne de la table History
-- [ ] **Forecast card Overview** — afficher le forecast RAM/CPU si disponible dans `/api/llm-context`
-- [ ] **Live terminal execute** — afficher le résultat de la dernière commande exécutée dans l'Overview
+- [x] **Circuit breaker visible** — `circuit_state` dans topbar ou Overview. Zero nouveau endpoint, 20 lignes
+- [x] **Page Alerts** — exposer `alerts.jsonl` via `GET /api/alerts` + page `/alerts` avec filtres Warning/Critical
+- [x] **Corrélations colorées LLM Context** — remplacer le texte de tendance par des badges avec flèches colorées
+- [x] **Sparklines History** — mini-courbe SVG inline par ligne de la table History
+- [x] **Forecast card Overview** — afficher le forecast RAM/CPU si disponible dans `/api/llm-context`
+- [x] **Live terminal execute** — afficher le résultat de la dernière commande exécutée dans l'Overview
 
 ## 🧪 V1.12 — Robustesse & tests
 

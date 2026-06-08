@@ -357,41 +357,41 @@ func Default() *Config {
 
 ### Variables d'environnement
 
-| Variable                   | Description                                | Défaut                   |
-| -------------------------- | ------------------------------------------ | ------------------------ |
-| `DISCORD_WEBHOOK`          | URL webhook Discord                        | —                        |
-| `JARVINX_DEBUG`            | Logs DEBUG (`true/false`)                  | `false`                  |
-| `JARVINX_DRY_RUN`          | Mode simulation (`true/false`)             | `false`                  |
-| `JARVINX_ALLOWED_ORIGINS`  | Origins CORS supplémentaires (virgule)     | —                        |
-| `JARVINX_MODEL`            | Modèle Ollama                              | `llama3.1:8b`            |
-| `JARVINX_OLLAMA_URL`       | URL Ollama                                 | `http://localhost:11434` |
-| `JARVINX_INTERVAL`         | Intervalle d'observation (`15s`, `1m`)     | `15s`                    |
-| `JARVINX_CPU_THRESHOLD`    | Seuil alerte CPU (%)                       | `85`                     |
-| `JARVINX_RAM_THRESHOLD`    | Seuil alerte RAM (%)                       | `90`                     |
-| `JARVINX_DISK_THRESHOLD`   | Seuil alerte Disk (%)                      | `85`                     |
-| `JARVINX_ALERT_COOLDOWN`   | Cycles entre deux alertes identiques       | `5`                      |
-| `JARVINX_ALERT_MIN_CYCLES` | Cycles consécutifs avant alerte CPU/RAM    | `2`                      |
-| `JARVINX_PORT`             | Port dashboard web                         | `8080`                   |
-| `JARVINX_LOG_MAX_MB`       | Taille max logs.jsonl en MB                | `10`                     |
-| `JARVINX_LOG_MAX_BACKUPS`  | Nombre de backups logs                     | `3`                      |
-| `JARVINX_DOCKER_ENABLED`   | Active le DockerAgent (`true/false`)       | `true`                   |
-| `JARVINX_DOCKER_WATCH`     | Containers à surveiller (virgule)          | tous                     |
-| `JARVINX_FILE_ENABLED`     | Active le FileAgent (`true/false`)         | `true`                   |
-| `JARVINX_FILE_WATCH`       | Dossiers à surveiller (virgule)            | —                        |
-| `JARVINX_FILE_MAX_MB`      | Taille max fichier avant alerte (MB)       | `500`                    |
-| `SLACK_WEBHOOK`            | URL webhook Slack                          | —                        |
-| `NTFY_URL`                 | URL serveur Ntfy                           | — (désactivé)            |
-| `NTFY_TOPIC`               | Topic Ntfy                                 | — (désactivé)            |
-| `GOTIFY_URL`               | URL serveur Gotify                         | —                        |
-| `GOTIFY_TOKEN`             | Token Gotify                               | —                        |
-| `JARVINX_DAILY_REPORT`     | Active le rapport quotidien (`true/false`) | `false`                  |
-| `JARVINX_REPORT_HOUR`      | Heure d'envoi du rapport (0-23)            | `8`                      |
-| `JARVINX_REPORT_MINUTE`    | Minute d'envoi du rapport (0-59)           | `0`                      |
-| `JARVINX_EXEC_COOLDOWN`    | Cooldown entre deux exécutions identiques  | `5m`                     |
-| `JARVINX_SQLITE_PATH`      | Chemin SQLite (vide = JSON seul)           | —                        |
-| `JARVINX_QDRANT_URL`       | URL Qdrant — active la mémoire sémantique  | — (opt-in)               |
-| `JARVINX_EMBED_MODEL`      | Modèle Ollama pour les embeddings          | `nomic-embed-text`       |
-| `JARVINX_API_TOKEN`        | Bearer token pour l'API REST (vide = pas d'auth) | —              |
+| Variable                   | Description                                      | Défaut                   |
+| -------------------------- | ------------------------------------------------ | ------------------------ |
+| `DISCORD_WEBHOOK`          | URL webhook Discord                              | —                        |
+| `JARVINX_DEBUG`            | Logs DEBUG (`true/false`)                        | `false`                  |
+| `JARVINX_DRY_RUN`          | Mode simulation (`true/false`)                   | `false`                  |
+| `JARVINX_ALLOWED_ORIGINS`  | Origins CORS supplémentaires (virgule)           | —                        |
+| `JARVINX_MODEL`            | Modèle Ollama                                    | `llama3.1:8b`            |
+| `JARVINX_OLLAMA_URL`       | URL Ollama                                       | `http://localhost:11434` |
+| `JARVINX_INTERVAL`         | Intervalle d'observation (`15s`, `1m`)           | `15s`                    |
+| `JARVINX_CPU_THRESHOLD`    | Seuil alerte CPU (%)                             | `85`                     |
+| `JARVINX_RAM_THRESHOLD`    | Seuil alerte RAM (%)                             | `90`                     |
+| `JARVINX_DISK_THRESHOLD`   | Seuil alerte Disk (%)                            | `85`                     |
+| `JARVINX_ALERT_COOLDOWN`   | Cycles entre deux alertes identiques             | `5`                      |
+| `JARVINX_ALERT_MIN_CYCLES` | Cycles consécutifs avant alerte CPU/RAM          | `2`                      |
+| `JARVINX_PORT`             | Port dashboard web                               | `8080`                   |
+| `JARVINX_LOG_MAX_MB`       | Taille max logs.jsonl en MB                      | `10`                     |
+| `JARVINX_LOG_MAX_BACKUPS`  | Nombre de backups logs                           | `3`                      |
+| `JARVINX_DOCKER_ENABLED`   | Active le DockerAgent (`true/false`)             | `true`                   |
+| `JARVINX_DOCKER_WATCH`     | Containers à surveiller (virgule)                | tous                     |
+| `JARVINX_FILE_ENABLED`     | Active le FileAgent (`true/false`)               | `true`                   |
+| `JARVINX_FILE_WATCH`       | Dossiers à surveiller (virgule)                  | —                        |
+| `JARVINX_FILE_MAX_MB`      | Taille max fichier avant alerte (MB)             | `500`                    |
+| `SLACK_WEBHOOK`            | URL webhook Slack                                | —                        |
+| `NTFY_URL`                 | URL serveur Ntfy                                 | — (désactivé)            |
+| `NTFY_TOPIC`               | Topic Ntfy                                       | — (désactivé)            |
+| `GOTIFY_URL`               | URL serveur Gotify                               | —                        |
+| `GOTIFY_TOKEN`             | Token Gotify                                     | —                        |
+| `JARVINX_DAILY_REPORT`     | Active le rapport quotidien (`true/false`)       | `false`                  |
+| `JARVINX_REPORT_HOUR`      | Heure d'envoi du rapport (0-23)                  | `8`                      |
+| `JARVINX_REPORT_MINUTE`    | Minute d'envoi du rapport (0-59)                 | `0`                      |
+| `JARVINX_EXEC_COOLDOWN`    | Cooldown entre deux exécutions identiques        | `5m`                     |
+| `JARVINX_SQLITE_PATH`      | Chemin SQLite (vide = JSON seul)                 | —                        |
+| `JARVINX_QDRANT_URL`       | URL Qdrant — active la mémoire sémantique        | — (opt-in)               |
+| `JARVINX_EMBED_MODEL`      | Modèle Ollama pour les embeddings                | `nomic-embed-text`       |
+| `JARVINX_API_TOKEN`        | Bearer token pour l'API REST (vide = pas d'auth) | —                        |
 
 ---
 
@@ -409,18 +409,18 @@ go test ./agents/... -v
 go test ./... -cover
 ```
 
-| Package         | Tests                                                                          | Couverture                     |
-| --------------- | ------------------------------------------------------------------------------ | ------------------------------ |
-| `llm`           | 57 tests — parser JSON, markdown, fallback, context adaptatif, forecast        | Parser + prompt adaptatif      |
-| `agents`        | 70 tests — seuils, cooldown, enable/disable, panic isolation, docker, file     | AlertAgent + Registry + agents |
-| `tools`         | 8 tests — whitelist, timeout, commandes valides                                | Shell executor                 |
-| `config`        | 38 tests — seuils, intervalle, port, champs vides                              | Validation config              |
-| `jxlog`         | 10 tests — niveaux, filtrage debug, nil safety                                 | Logger structuré               |
-| `memory`        | 28 tests — state, SQLite, DoubleWrite, logger, rotation                        | Persistance                    |
-| `web`           | 22 tests — handlers API, CORS, auth, rate limit                                | HTTP server                    |
-| `core`          | 32 tests — orchestrator, bus, scheduler, N-1, executeGuard                     | Core runtime                   |
-| `dashboard/lib` | ~18 tests                                                                      | Hooks + composants             |
-| **Total**       | **~283 tests**                                                                 |                                |
+| Package         | Tests                                                                      | Couverture                     |
+| --------------- | -------------------------------------------------------------------------- | ------------------------------ |
+| `llm`           | 57 tests — parser JSON, markdown, fallback, context adaptatif, forecast    | Parser + prompt adaptatif      |
+| `agents`        | 70 tests — seuils, cooldown, enable/disable, panic isolation, docker, file | AlertAgent + Registry + agents |
+| `tools`         | 8 tests — whitelist, timeout, commandes valides                            | Shell executor                 |
+| `config`        | 38 tests — seuils, intervalle, port, champs vides                          | Validation config              |
+| `jxlog`         | 10 tests — niveaux, filtrage debug, nil safety                             | Logger structuré               |
+| `memory`        | 28 tests — state, SQLite, DoubleWrite, logger, rotation                    | Persistance                    |
+| `web`           | 22 tests — handlers API, CORS, auth, rate limit                            | HTTP server                    |
+| `core`          | 32 tests — orchestrator, bus, scheduler, N-1, executeGuard                 | Core runtime                   |
+| `dashboard/lib` | ~18 tests                                                                  | Hooks + composants             |
+| **Total**       | **~283 tests**                                                             |                                |
 
 **Ce qui est testé :**
 
@@ -452,18 +452,18 @@ go test ./... -cover
 
 **Endpoints API :**
 
-| Méthode | Endpoint                 | Description                                                      |
-| ------- | ------------------------ | ---------------------------------------------------------------- |
-| GET     | `/api/status`            | État runtime, uptime, circuit breaker, dernier cycle, exec_guard |
-| GET     | `/api/history`           | 10 derniers cycles (plus récent en premier)                      |
-| GET     | `/api/agents`            | Liste agents avec runs/erreurs/enabled                           |
-| POST    | `/api/agents/toggle`     | Active/désactive un agent — body: `{"name": "..."}`              |
-| GET     | `/api/docker`            | Containers avec running/exited counts                            |
-| GET     | `/api/logs/status`       | Taille et état des fichiers de logs                              |
-| GET     | `/api/file`              | Status FileAgent + chemins surveillés                            |
-| GET     | `/api/daily-report`      | Horaire rapport + dernier/prochain envoi                         |
-| POST    | `/api/daily-report/send` | Déclenche un rapport immédiat                                    |
-| GET     | `/api/llm-context`       | Contexte adaptatif transmis au LLM                               |
+| Méthode | Endpoint                 | Description                                                           |
+| ------- | ------------------------ | --------------------------------------------------------------------- |
+| GET     | `/api/status`            | État runtime, uptime, circuit breaker, dernier cycle, exec_guard      |
+| GET     | `/api/history`           | 10 derniers cycles (plus récent en premier)                           |
+| GET     | `/api/agents`            | Liste agents avec runs/erreurs/enabled                                |
+| POST    | `/api/agents/toggle`     | Active/désactive un agent — body: `{"name": "..."}`                   |
+| GET     | `/api/docker`            | Containers avec running/exited counts                                 |
+| GET     | `/api/logs/status`       | Taille et état des fichiers de logs                                   |
+| GET     | `/api/file`              | Status FileAgent + chemins surveillés                                 |
+| GET     | `/api/daily-report`      | Horaire rapport + dernier/prochain envoi                              |
+| POST    | `/api/daily-report/send` | Déclenche un rapport immédiat                                         |
+| GET     | `/api/llm-context`       | Contexte adaptatif transmis au LLM                                    |
 | GET     | `/api/history/full`      | Snapshots agrégés par période (`?range=7d\|30d\|90d`) — SQLite requis |
 
 > **Auth API (v1.9)** — si `JARVINX_API_TOKEN` est défini, toutes les routes `/api/*` requièrent le header `Authorization: Bearer <token>`. Laisser vide pour désactiver (dev local).
@@ -559,7 +559,7 @@ JARVINx envoie des embeds Discord structurés quand un seuil est dépassé.
 | V1.8    | Mémoire sémantique Qdrant | ✅ Released |
 | V1.9    | Sécurité & hardening      | ✅ Released |
 | V1.10   | Enrichissement agents     | ✅ Released |
-| V1.11   | Dashboard & visibilité    | 🔮 Future   |
+| V1.11   | Dashboard & visibilité    | ✅ Released |
 | V1.12   | Robustesse & tests        | 🔮 Future   |
 
 ## Roadmap
