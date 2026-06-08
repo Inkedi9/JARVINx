@@ -1,12 +1,15 @@
 package web
 
 import (
+	"bufio"
 	"context"
 	"embed"
 	"encoding/json"
 	"fmt"
 	"io/fs"
 	"net/http"
+	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -21,6 +24,7 @@ import (
 // execGuardProvider permet au serveur d'interroger l'état du guard sans importer core.
 type execGuardProvider interface {
 	ExecGuardStatus() (string, time.Duration)
+	LastExecResultStatus() (tools.CommandResult, bool)
 }
 
 type Server struct {
@@ -44,16 +48,26 @@ type ExecGuardStatus struct {
 	CooldownRemainingSeconds float64 `json:"cooldown_remaining_seconds"`
 }
 
+type ExecLastResult struct {
+	Command    string  `json:"command"`
+	Output     string  `json:"output,omitempty"`
+	Error      string  `json:"error,omitempty"`
+	Success    bool    `json:"success"`
+	DurationMs float64 `json:"duration_ms"`
+	TimedOut   bool    `json:"timed_out,omitempty"`
+}
+
 type StatusResponse struct {
-	Online       bool                `json:"online"`
-	Model        string              `json:"model"`
-	Interval     string              `json:"interval"`
-	CycleNum     int                 `json:"cycle_num"`
-	Uptime       string              `json:"uptime"`
-	DryRun       bool                `json:"dry_run"`
-	CircuitState string              `json:"circuit_state"`
-	LastCycle    *memory.CycleRecord `json:"last_cycle,omitempty"`
-	ExecGuard    ExecGuardStatus     `json:"exec_guard"`
+	Online         bool                `json:"online"`
+	Model          string              `json:"model"`
+	Interval       string              `json:"interval"`
+	CycleNum       int                 `json:"cycle_num"`
+	Uptime         string              `json:"uptime"`
+	DryRun         bool                `json:"dry_run"`
+	CircuitState   string              `json:"circuit_state"`
+	LastCycle      *memory.CycleRecord `json:"last_cycle,omitempty"`
+	ExecGuard      ExecGuardStatus     `json:"exec_guard"`
+	LastExecResult *ExecLastResult     `json:"last_exec_result,omitempty"`
 }
 
 type HistoryResponse struct {
@@ -129,6 +143,13 @@ type HistoryFullResponse struct {
 	Available      bool                    `json:"available"`
 }
 
+// ── /api/alerts ───────────────────────────────────────────────────────────────
+
+type AlertsResponse struct {
+	Alerts []agents.Alert `json:"alerts"`
+	Total  int            `json:"total"`
+}
+
 // ── /api/llm-context ─────────────────────────────────────────────────────────
 
 type LLMContextResponse struct {
@@ -138,6 +159,9 @@ type LLMContextResponse struct {
 	CPUTrend       string   `json:"cpu_trend"`
 	RAMTrend       string   `json:"ram_trend"`
 	DiskTrend      string   `json:"disk_trend"`
+	CPUForecast    string   `json:"cpu_forecast,omitempty"`
+	RAMForecast    string   `json:"ram_forecast,omitempty"`
+	DiskForecast   string   `json:"disk_forecast,omitempty"`
 	RecentAlerts   []string `json:"recent_alerts"`
 }
 
@@ -197,6 +221,7 @@ func (s *Server) Start() {
 	mux.HandleFunc("/api/file", s.handleFile)
 	mux.HandleFunc("/api/daily-report", s.handleDailyReport)
 	mux.HandleFunc("/api/daily-report/send", s.handleDailyReportSend)
+	mux.HandleFunc("/api/alerts", s.handleAlerts)
 	mux.HandleFunc("/api/llm-context", s.handleLLMContext)
 	mux.HandleFunc("/api/history/full", s.handleHistoryFull)
 
@@ -256,6 +281,65 @@ func (s *Server) corsMiddleware(next http.Handler) http.Handler {
 
 		next.ServeHTTP(w, r)
 	})
+}
+
+// ── /api/alerts ───────────────────────────────────────────────────────────────
+
+func (s *Server) handleAlerts(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if s.alertLogger == nil {
+		s.writeJSON(w, AlertsResponse{Alerts: []agents.Alert{}, Total: 0})
+		return
+	}
+
+	levelFilter := r.URL.Query().Get("level") // "warning", "critical", or ""
+	limit := 100
+	if lq := r.URL.Query().Get("limit"); lq != "" {
+		if n, err := strconv.Atoi(lq); err == nil && n > 0 && n <= 500 {
+			limit = n
+		}
+	}
+
+	file, err := os.Open(s.alertLogger.Filepath())
+	if err != nil {
+		if os.IsNotExist(err) {
+			s.writeJSON(w, AlertsResponse{Alerts: []agents.Alert{}, Total: 0})
+			return
+		}
+		http.Error(w, "cannot read alerts", http.StatusInternalServerError)
+		return
+	}
+	defer func() { _ = file.Close() }()
+
+	var all []agents.Alert
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		var a agents.Alert
+		if err := json.Unmarshal(scanner.Bytes(), &a); err != nil {
+			continue
+		}
+		if levelFilter == "" || string(a.Level) == levelFilter {
+			all = append(all, a)
+		}
+	}
+
+	// Most recent first
+	for i, j := 0, len(all)-1; i < j; i, j = i+1, j-1 {
+		all[i], all[j] = all[j], all[i]
+	}
+
+	total := len(all)
+	if limit < total {
+		all = all[:limit]
+	}
+	if all == nil {
+		all = []agents.Alert{}
+	}
+
+	s.writeJSON(w, AlertsResponse{Alerts: all, Total: total})
 }
 
 // ── /api/file ────────────────────────────────────────────────────────────────
@@ -353,6 +437,9 @@ func (s *Server) handleLLMContext(w http.ResponseWriter, r *http.Request) {
 		CPUTrend:       ctx.CPUTrend,
 		RAMTrend:       ctx.RAMTrend,
 		DiskTrend:      ctx.DiskTrend,
+		CPUForecast:    ctx.CPUForecast,
+		RAMForecast:    ctx.RAMForecast,
+		DiskForecast:   ctx.DiskForecast,
 		RecentAlerts:   ctx.RecentAlerts,
 	})
 }
@@ -447,6 +534,16 @@ func (s *Server) handleStatus(w http.ResponseWriter, r *http.Request) {
 		resp.ExecGuard = ExecGuardStatus{
 			LastCmd:                  lastCmd,
 			CooldownRemainingSeconds: remaining.Seconds(),
+		}
+		if result, ok := s.execGuard.LastExecResultStatus(); ok {
+			resp.LastExecResult = &ExecLastResult{
+				Command:    result.Command,
+				Output:     result.Output,
+				Error:      result.Error,
+				Success:    result.Success,
+				DurationMs: float64(result.Duration.Milliseconds()),
+				TimedOut:   result.TimedOut,
+			}
 		}
 	}
 

@@ -18,6 +18,15 @@ type executeGuard struct {
 	LastCmd    string
 	lastExecAt time.Time
 	cooldown   time.Duration
+
+	resultMu   sync.Mutex
+	lastResult *tools.CommandResult
+}
+
+func (g *executeGuard) setLastResult(r tools.CommandResult) {
+	g.resultMu.Lock()
+	g.lastResult = &r
+	g.resultMu.Unlock()
 }
 
 func (g *executeGuard) Allow(cmd string) bool {
@@ -45,6 +54,16 @@ func (o *Orchestrator) ExecGuardStatus() (string, time.Duration) {
 	o.execGuard.mu.Lock()
 	defer o.execGuard.mu.Unlock()
 	return o.execGuard.LastCmd, o.execGuard.CooldownRemaining()
+}
+
+// LastExecResultStatus retourne le résultat de la dernière commande exécutée.
+func (o *Orchestrator) LastExecResultStatus() (tools.CommandResult, bool) {
+	o.execGuard.resultMu.Lock()
+	defer o.execGuard.resultMu.Unlock()
+	if o.execGuard.lastResult == nil {
+		return tools.CommandResult{}, false
+	}
+	return *o.execGuard.lastResult, true
 }
 
 type Orchestrator struct {
@@ -197,9 +216,11 @@ func (o *Orchestrator) handleObserved(snap memory.Snapshot) {
 			jxlog.Info("DRY-RUN", fmt.Sprintf("Commande '%s' simulée — non exécutée", cmd))
 			result := tools.ExecuteCommandDryRun(cmd)
 			result.Display()
+			o.execGuard.setLastResult(result)
 		} else {
 			result := tools.ExecuteCommand(cmd)
 			result.Display()
+			o.execGuard.setLastResult(result)
 			o.bus.Publish(Event{Type: EventExecuted, Payload: result})
 		}
 	}
