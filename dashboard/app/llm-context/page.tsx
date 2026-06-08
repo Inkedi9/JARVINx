@@ -1,56 +1,44 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { api, LLMContextResponse } from '@/lib/api'
+import { useLLMContext } from '@/lib/hooks'
 import { cn } from '@/lib/utils'
-import { Brain, TrendingUp, TrendingDown, Minus, AlertTriangle } from 'lucide-react'
+import { Brain, TrendingUp, TrendingDown, ArrowRight, AlertTriangle } from 'lucide-react'
 
-function useLLMContext() {
-    const [data, setData] = useState<LLMContextResponse>({
-        cycle_count: 0,
-        dominant_action: '',
-        alert_rate: 0,
-        cpu_trend: '',
-        ram_trend: '',
-        disk_trend: '',
-        recent_alerts: [], // ← déjà []
-    })
-
-    useEffect(() => {
-        const fetch = async () => {
-            try {
-                const result = await api.llmContext()
-                setData(result)
-            } catch { }
-        }
-        fetch()
-        const id = setInterval(fetch, 15_000)
-        return () => clearInterval(id)
-    }, [])
-
-    return { data }
-}
-
-function TrendIcon({ trend }: { trend: string }) {
-    if (trend.includes('hausse') || trend.includes('rising')) {
-        return <TrendingUp size={12} className="text-amber-400" />
+function TrendBadge({ trend }: { trend: string }) {
+    const t = trend.toLowerCase()
+    if (t.includes('critique') || t.includes('critical') || t === 'high') {
+        return (
+            <span className="flex items-center gap-1 px-2 py-0.5 rounded border bg-red-500/15 border-red-500/30 text-red-400 font-mono text-[10px] font-semibold">
+                <TrendingUp size={10} />{trend || '—'}
+            </span>
+        )
     }
-    if (trend.includes('baisse') || trend.includes('falling')) {
-        return <TrendingDown size={12} className="text-emerald-400" />
+    if (t.includes('hausse') || t.includes('rising') || t.includes('élevé')) {
+        return (
+            <span className="flex items-center gap-1 px-2 py-0.5 rounded border bg-amber-500/15 border-amber-500/30 text-amber-400 font-mono text-[10px] font-semibold">
+                <TrendingUp size={10} />{trend || '—'}
+            </span>
+        )
     }
-    if (trend.includes('critique') || trend.includes('critical')) {
-        return <TrendingUp size={12} className="text-red-400" />
+    if (t.includes('baisse') || t.includes('falling')) {
+        return (
+            <span className="flex items-center gap-1 px-2 py-0.5 rounded border bg-sky-500/15 border-sky-500/30 text-sky-400 font-mono text-[10px] font-semibold">
+                <TrendingDown size={10} />{trend || '—'}
+            </span>
+        )
     }
-    return <Minus size={12} className="text-gray-500" />
-}
-
-function TrendColor(trend: string): string {
-    if (trend.includes('critique')) return 'text-red-400'
-    if (trend.includes('élevé')) return 'text-amber-400'
-    if (trend.includes('hausse')) return 'text-amber-400'
-    if (trend.includes('baisse')) return 'text-emerald-400'
-    if (trend.includes('stable')) return 'text-emerald-400'
-    return 'text-gray-400'
+    if (t.includes('stable')) {
+        return (
+            <span className="flex items-center gap-1 px-2 py-0.5 rounded border bg-emerald-500/15 border-emerald-500/30 text-emerald-400 font-mono text-[10px] font-semibold">
+                <ArrowRight size={10} />{trend || '—'}
+            </span>
+        )
+    }
+    return (
+        <span className="flex items-center gap-1 px-2 py-0.5 rounded border bg-gray-500/15 border-gray-500/30 text-gray-400 font-mono text-[10px]">
+            <ArrowRight size={10} />{trend || '—'}
+        </span>
+    )
 }
 
 function ActionBadge({ action }: { action: string }) {
@@ -159,13 +147,8 @@ export default function LLMContextPage() {
                                     { label: 'Disk', trend: data.disk_trend },
                                 ].map(({ label, trend }) => (
                                     <div key={label} className="flex items-center justify-between">
-                                        <div className="flex items-center gap-2">
-                                            <span className="font-mono text-[10px] text-gray-600 w-8">{label}</span>
-                                            <TrendIcon trend={trend} />
-                                        </div>
-                                        <span className={cn('font-mono text-[11px]', TrendColor(trend))}>
-                                            {trend || '—'}
-                                        </span>
+                                        <span className="font-mono text-xs text-gray-500 w-8">{label}</span>
+                                        <TrendBadge trend={trend} />
                                     </div>
                                 ))}
                             </div>

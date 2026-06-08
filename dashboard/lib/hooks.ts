@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useRef } from 'react'
-import { api, StatusResponse, HistoryResponse, AgentsResponse, DockerResponse, HistoryFullResponse } from './api'
+import { api, StatusResponse, HistoryResponse, AgentsResponse, DockerResponse, HistoryFullResponse, AlertsResponse, LLMContextResponse } from './api'
 
 const MAX_BACKOFF_MS = 30_000  // 30s max
 const BASE_BACKOFF_MS = 1_000   // 1s initial
@@ -67,6 +67,25 @@ export function useDocker() {
         15_000,
         { available: false, containers: [], total: 0, running: 0, exited: 0 }
     )
+}
+
+export function useLLMContext() {
+    return usePolling<LLMContextResponse>(api.llmContext, 15_000, {
+        cycle_count: 0,
+        dominant_action: '',
+        alert_rate: 0,
+        cpu_trend: '',
+        ram_trend: '',
+        disk_trend: '',
+        cpu_forecast: '',
+        ram_forecast: '',
+        disk_forecast: '',
+        recent_alerts: [],
+    })
+}
+
+export function useAlerts() {
+    return usePolling<AlertsResponse>(api.alerts, 30_000, { alerts: [], total: 0 })
 }
 
 export function useHistoryFull(range: '7d' | '30d' | '90d') {

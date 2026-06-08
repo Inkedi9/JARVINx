@@ -5,6 +5,45 @@ import { useHistory, useHistoryFull } from '@/lib/hooks'
 import { formatTime, actionColor, cn } from '@/lib/utils'
 import { Terminal, Clock, TrendingUp, Activity, BarChart2 } from 'lucide-react'
 import { MetricsChart } from '@/app/components/metrics-chart'
+import { CycleRecord } from '@/lib/api'
+
+const SPARK_W = 104
+const SPARK_H = 28
+
+function Sparkline({ cycles, highlightNum }: { cycles: CycleRecord[]; highlightNum: number }) {
+    if (cycles.length < 2) return <span className="block w-[104px]" />
+
+    const ordered = [...cycles].reverse() // oldest → newest
+
+    const toPath = (vals: number[]) =>
+        vals.map((v, i) => {
+            const x = (i / (ordered.length - 1)) * SPARK_W
+            const y = SPARK_H - (v / 100) * SPARK_H
+            return `${i === 0 ? 'M' : 'L'}${x.toFixed(1)},${y.toFixed(1)}`
+        }).join(' ')
+
+    const cpuPath = toPath(ordered.map(c => c.snapshot.cpu_percent))
+    const ramPath = toPath(ordered.map(c => c.snapshot.mem_percent))
+
+    const hiIdx = ordered.findIndex(c => c.cycle_num === highlightNum)
+    const hi = hiIdx >= 0 ? ordered[hiIdx] : null
+    const hiX = hi ? (hiIdx / (ordered.length - 1)) * SPARK_W : null
+    const hiCpuY = hi ? SPARK_H - (hi.snapshot.cpu_percent / 100) * SPARK_H : null
+    const hiRamY = hi ? SPARK_H - (hi.snapshot.mem_percent / 100) * SPARK_H : null
+
+    return (
+        <svg width={SPARK_W} height={SPARK_H} className="overflow-visible">
+            <path d={ramPath} fill="none" stroke="#f59e0b" strokeWidth="1.2" strokeLinejoin="round" opacity="0.5" />
+            <path d={cpuPath} fill="none" stroke="#60a5fa" strokeWidth="1.5" strokeLinejoin="round" opacity="0.85" />
+            {hiX !== null && hiCpuY !== null && (
+                <circle cx={hiX} cy={hiCpuY} r="2.5" fill="#60a5fa" />
+            )}
+            {hiX !== null && hiRamY !== null && (
+                <circle cx={hiX} cy={hiRamY} r="2" fill="#f59e0b" />
+            )}
+        </svg>
+    )
+}
 
 function ActionBadge({ action }: { action: string }) {
     return (
@@ -129,8 +168,8 @@ export default function HistoryPage() {
             <div className="bg-bg-secondary border border-border rounded-xl overflow-hidden">
 
                 {/* Table header */}
-                <div className="grid grid-cols-[80px_100px_80px_80px_80px_1fr_140px] gap-4 px-5 py-3 border-b border-border bg-bg-tertiary">
-                    {['Cycle', 'Time', 'CPU', 'RAM', 'Disk', 'Analysis', 'Action'].map(h => (
+                <div className="grid grid-cols-[80px_100px_60px_60px_60px_120px_1fr_140px] gap-4 px-5 py-3 border-b border-border bg-bg-tertiary">
+                    {['Cycle', 'Time', 'CPU', 'RAM', 'Disk', 'Trend', 'Analysis', 'Action'].map(h => (
                         <div key={h} className="font-mono text-[9px] text-gray-600 uppercase tracking-widest">
                             {h}
                         </div>
@@ -163,7 +202,7 @@ export default function HistoryPage() {
                         return (
                             <div
                                 key={cycle.cycle_num}
-                                className="grid grid-cols-[80px_100px_80px_80px_80px_1fr_140px] gap-4 px-5 py-3.5 hover:bg-bg-tertiary transition-all group"
+                                className="grid grid-cols-[80px_100px_60px_60px_60px_120px_1fr_140px] gap-4 px-5 py-3.5 hover:bg-bg-tertiary transition-all group"
                             >
                                 {/* Cycle num */}
                                 <div className="flex items-center">
@@ -199,6 +238,11 @@ export default function HistoryPage() {
                                     <span className={cn('font-mono text-xs font-semibold', diskColor)}>
                                         {snap.disk_percent.toFixed(1)}%
                                     </span>
+                                </div>
+
+                                {/* Sparkline */}
+                                <div className="flex items-center">
+                                    <Sparkline cycles={history.cycles} highlightNum={cycle.cycle_num} />
                                 </div>
 
                                 {/* Analysis */}

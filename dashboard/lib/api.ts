@@ -27,6 +27,15 @@ export interface CycleRecord {
     trigger_disk?: number
 }
 
+export interface ExecLastResult {
+    command: string
+    output?: string
+    error?: string
+    success: boolean
+    duration_ms: number
+    timed_out?: boolean
+}
+
 export interface StatusResponse {
     online: boolean
     model: string
@@ -34,11 +43,13 @@ export interface StatusResponse {
     cycle_num: number
     uptime: string
     dry_run: boolean
+    circuit_state?: 'closed' | 'open' | 'half-open'
     last_cycle?: CycleRecord
     exec_guard?: {
         last_cmd: string
         cooldown_remaining_seconds: number
     }
+    last_exec_result?: ExecLastResult
 }
 
 export interface HistoryResponse {
@@ -124,6 +135,9 @@ export interface LLMContextResponse {
     cpu_trend: string
     ram_trend: string
     disk_trend: string
+    cpu_forecast?: string
+    ram_forecast?: string
+    disk_forecast?: string
     recent_alerts: string[]
 }
 
@@ -136,6 +150,21 @@ export interface SnapshotBucket {
     disk_avg: number
     disk_max: number
     count: number
+}
+
+export interface AlertEntry {
+    timestamp: string
+    level: 'warning' | 'critical'
+    metric: string
+    value: number
+    threshold: number
+    message: string
+    cycles_above: number
+}
+
+export interface AlertsResponse {
+    alerts: AlertEntry[]
+    total: number
 }
 
 export interface HistoryFullResponse {
@@ -173,6 +202,7 @@ export const api = {
             recent_alerts: res.recent_alerts ?? [],
         }
     },
+    alerts: () => fetchAPI<AlertsResponse>('/api/alerts?limit=200'),
     historyFull: (range: '7d' | '30d' | '90d') =>
         fetchAPI<HistoryFullResponse>(`/api/history/full?range=${range}`),
     sendDailyReport: async (): Promise<SendReportResponse> => {

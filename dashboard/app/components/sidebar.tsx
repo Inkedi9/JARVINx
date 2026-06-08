@@ -12,6 +12,7 @@ import {
     Terminal,
     Container,
     Brain,
+    Bell,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -22,6 +23,7 @@ const nav = [
     { href: '/llm-context', label: 'LLM Context', icon: Brain },
     { href: '/memory', label: 'Memory', icon: Database },
     { href: '/tools', label: 'Tools', icon: Wrench },
+    { href: '/alerts', label: 'Alerts', icon: Bell },
     { href: '/history', label: 'History', icon: History },
     { href: '/settings', label: 'Settings', icon: Settings },
 ]

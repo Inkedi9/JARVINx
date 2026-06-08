@@ -75,6 +75,18 @@ export default function Topbar() {
                         </span>
                     </div>
                 )}
+
+                {/* Circuit breaker badge — hidden when closed (nominal) */}
+                {status?.circuit_state && status.circuit_state !== 'closed' && (
+                    <div className={cn(
+                        'flex items-center gap-1.5 rounded px-2 py-1 border font-mono text-[10px] font-semibold',
+                        status.circuit_state === 'open'
+                            ? 'bg-red-500/10 border-red-500/20 text-red-400'
+                            : 'bg-amber-500/10 border-amber-500/20 text-amber-400'
+                    )}>
+                        <span>CB {status.circuit_state.toUpperCase()}</span>
+                    </div>
+                )}
             </div>
 
             {/* Right */}
